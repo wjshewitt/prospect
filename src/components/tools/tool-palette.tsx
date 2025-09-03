@@ -16,10 +16,10 @@ type ToolPaletteProps = {
 const tools: { id: Tool; label: string; icon: React.ReactNode }[] = [
   { id: 'pan', label: 'Pan & Select', icon: <MousePointer2 /> },
   { id: 'rectangle', label: 'Rectangle Tool', icon: <Square /> },
+  { id: 'polygon', label: 'Polygon Tool', icon: <Pen /> },
 ];
 
 const disabledTools: { id: Tool | string; label: string; icon: React.ReactNode }[] = [
-    { id: 'pen', label: 'Pen Tool', icon: <Pen /> },
     { id: 'circle', label: 'Circle Tool', icon: <Circle /> },
     { id: 'text', label: 'Text Tool', icon: <Type /> },
     { id: 'boundary', label: 'Boundary Tool', icon: <Spline /> },

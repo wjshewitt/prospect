@@ -5,4 +5,4 @@ export type Shape = {
   area?: number; // in square meters
 };
 
-export type Tool = 'pan' | 'pen' | 'rectangle' | 'circle' | 'text';
+export type Tool = 'pan' | 'pen' | 'rectangle' | 'circle' | 'text' | 'polygon';

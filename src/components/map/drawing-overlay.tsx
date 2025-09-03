@@ -24,6 +24,9 @@ export function DrawingOverlay({ shapes, setShapes, selectedTool }: DrawingOverl
   const [startPos, setStartPos] = useState<google.maps.Point | null>(null);
   const [currentPos, setCurrentPos] = useState<google.maps.Point | null>(null);
 
+  // For polygon drawing
+  const [polygonPoints, setPolygonPoints] = useState<google.maps.Point[]>([]);
+
   const redrawCanvas = useCallback(() => {
     if (!overlayRef.current || !canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -33,7 +36,6 @@ export function DrawingOverlay({ shapes, setShapes, selectedTool }: DrawingOverl
     const projection = overlayRef.current.getProjection();
     if (!projection) return;
 
-    // The canvas needs to be cleared and sized correctly on every frame.
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const mapDiv = map?.getDiv();
     if(mapDiv) {
@@ -41,45 +43,73 @@ export function DrawingOverlay({ shapes, setShapes, selectedTool }: DrawingOverl
         canvas.height = mapDiv.clientHeight;
     }
 
-
-    ctx.strokeStyle = '#F4A460'; // Sandy Brown
+    ctx.strokeStyle = '#F4A460';
     ctx.fillStyle = 'rgba(244, 164, 96, 0.2)';
     ctx.lineWidth = 3;
     ctx.setLineDash([]);
 
     shapes.forEach(shape => {
-      if (shape.type === 'rectangle' && shape.path.length >= 2) {
-        const sw = projection.fromLatLngToDivPixel(new google.maps.LatLng(shape.path[0]));
-        const ne = projection.fromLatLngToDivPixel(new google.maps.LatLng(shape.path[1]));
-        if(sw && ne){
-            const width = ne.x - sw.x;
-            const height = sw.y - ne.y;
-            ctx.strokeRect(sw.x, ne.y, width, height);
-            ctx.fillRect(sw.x, ne.y, width, height);
+      if (!projection) return;
+      ctx.beginPath();
+      const firstPoint = projection.fromLatLngToDivPixel(new google.maps.LatLng(shape.path[0]));
+      if (!firstPoint) return;
+      ctx.moveTo(firstPoint.x, firstPoint.y);
+      shape.path.slice(1).forEach(latLng => {
+        const point = projection.fromLatLngToDivPixel(new google.maps.LatLng(latLng));
+        if (point) {
+          ctx.lineTo(point.x, point.y);
         }
+      });
+      if (shape.type === 'polygon') {
+        ctx.closePath();
       }
+      ctx.stroke();
+      ctx.fill();
     });
 
     // Draw the current shape being drawn
-    if (isDrawing && startPos && currentPos) {
-      ctx.strokeStyle = '#388E3C'; // Forest Green
+    if (isDrawing && startPos && currentPos && selectedTool === 'rectangle') {
+      ctx.strokeStyle = '#388E3C';
       ctx.fillStyle = 'rgba(56, 142, 60, 0.2)';
       ctx.setLineDash([5, 5]);
 
-      if (selectedTool === 'rectangle') {
-        const width = currentPos.x - startPos.x;
-        const height = currentPos.y - startPos.y;
-        ctx.strokeRect(startPos.x, startPos.y, width, height);
-        ctx.fillRect(startPos.x, startPos.y, width, height);
-      }
+      const width = currentPos.x - startPos.x;
+      const height = currentPos.y - startPos.y;
+      ctx.strokeRect(startPos.x, startPos.y, width, height);
+      ctx.fillRect(startPos.x, startPos.y, width, height);
     }
-  }, [map, shapes, isDrawing, startPos, currentPos, selectedTool]);
+    
+    // Draw current polygon being created
+    if (selectedTool === 'polygon' && polygonPoints.length > 0) {
+      ctx.strokeStyle = '#388E3C';
+      ctx.fillStyle = 'rgba(56, 142, 60, 0.2)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+
+      ctx.beginPath();
+      ctx.moveTo(polygonPoints[0].x, polygonPoints[0].y);
+      for (let i = 1; i < polygonPoints.length; i++) {
+        ctx.lineTo(polygonPoints[i].x, polygonPoints[i].y);
+      }
+      if (currentPos) {
+          ctx.lineTo(currentPos.x, currentPos.y);
+      }
+      ctx.stroke();
+
+      // Draw vertices
+      ctx.fillStyle = '#388E3C';
+      polygonPoints.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+    }
+
+  }, [map, shapes, isDrawing, startPos, currentPos, selectedTool, polygonPoints]);
 
   useEffect(() => {
-    if (!apiIsLoaded || !map || !canvasRef.current) return;
+    if (!apiIsLoaded || !map) return;
 
-    // This is a custom overlay component that will host our canvas
-    // See https://developers.google.com/maps/documentation/javascript/react-map/custom-components#adding_a_custom_overlay
     class CustomOverlay extends google.maps.OverlayView {
         private container: HTMLElement;
         private onDraw: () => void;
@@ -90,6 +120,9 @@ export function DrawingOverlay({ shapes, setShapes, selectedTool }: DrawingOverl
             this.container = container;
             this.onDraw = onDraw;
             this.onClick = onClick;
+            this.onAdd = this.onAdd.bind(this);
+            this.onRemove = this.onRemove.bind(this);
+            this.draw = this.draw.bind(this);
         }
 
         onAdd() {
@@ -101,16 +134,17 @@ export function DrawingOverlay({ shapes, setShapes, selectedTool }: DrawingOverl
             if (this.container.parentElement) {
                 this.container.parentElement.removeChild(this.container);
             }
-            this.getPanes()?.overlayMouseTarget.removeEventListener('click', this.onClick);
+             this.getPanes()?.overlayMouseTarget.removeEventListener('click', this.onClick);
         }
 
         draw() {
             this.onDraw();
         }
     }
-
-    overlayRef.current = new CustomOverlay(canvasRef.current, redrawCanvas, () => {});
-    overlayRef.current.setMap(map);
+    if (canvasRef.current) {
+        overlayRef.current = new CustomOverlay(canvasRef.current, redrawCanvas, () => {});
+        overlayRef.current.setMap(map);
+    }
     
     return () => {
         if(overlayRef.current) {
@@ -125,43 +159,46 @@ export function DrawingOverlay({ shapes, setShapes, selectedTool }: DrawingOverl
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (selectedTool === 'pan' || !map) return;
-    setIsDrawing(true);
-    const pos = new google.maps.Point(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
-    setStartPos(pos);
-    setCurrentPos(pos);
+
+    if (selectedTool === 'rectangle') {
+        setIsDrawing(true);
+        const pos = new google.maps.Point(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+        setStartPos(pos);
+        setCurrentPos(pos);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || selectedTool === 'pan' || !map) return;
+    if (selectedTool === 'pan' || !map) return;
     const pos = new google.maps.Point(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
     setCurrentPos(pos);
-    redrawCanvas();
+
+    if (isDrawing && selectedTool === 'rectangle') {
+      redrawCanvas();
+    }
+     if (selectedTool === 'polygon' && polygonPoints.length > 0) {
+      redrawCanvas();
+    }
   };
 
   const handleMouseUp = () => {
-    if (!isDrawing || selectedTool === 'pan' || !overlayRef.current || !startPos || !currentPos) return;
+    if (!isDrawing || selectedTool !== 'rectangle' || !overlayRef.current || !startPos || !currentPos) return;
 
     const projection = overlayRef.current.getProjection();
     if (!projection) return;
     
-    // fromDivPixelToLatLng is available on the projection from an OverlayView
     const sw = projection.fromDivPixelToLatLng(startPos);
     const ne = projection.fromDivPixelToLatLng(currentPos);
 
     if (sw && ne) {
       const newPath: google.maps.LatLngLiteral[] = [
         { lat: Math.min(sw.lat(), ne.lat()), lng: Math.min(sw.lng(), ne.lng()) },
-        { lat: Math.max(sw.lat(), ne.lat()), lng: Math.max(sw.lng(), ne.lng()) }
+        { lat: newPath[0].lat, lng: Math.max(sw.lng(), ne.lng())},
+        { lat: Math.max(sw.lat(), ne.lat()), lng: Math.max(sw.lng(), ne.lng()) },
+        { lat: Math.max(sw.lat(), ne.lat()), lng: Math.min(sw.lng(), ne.lng()) }
       ];
 
-      const polygonPathForArea = [
-          newPath[0],
-          {lat: newPath[0].lat, lng: newPath[1].lng},
-          newPath[1],
-          {lat: newPath[1].lat, lng: newPath[0].lng},
-      ];
-      
-      const areaInMeters = apiIsLoaded ? google.maps.geometry.spherical.computeArea(polygonPathForArea.map(p => new google.maps.LatLng(p))) : 0;
+      const areaInMeters = apiIsLoaded ? google.maps.geometry.spherical.computeArea(newPath.map(p => new google.maps.LatLng(p))) : 0;
 
       const newShape: Shape = {
         id: new Date().toISOString(),
@@ -178,6 +215,36 @@ export function DrawingOverlay({ shapes, setShapes, selectedTool }: DrawingOverl
     setCurrentPos(null);
   };
   
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (selectedTool !== 'polygon' || !overlayRef.current) return;
+    const projection = overlayRef.current.getProjection();
+    if(!projection) return;
+    
+    const clickPos = new google.maps.Point(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    
+    // Finish polygon on click near start point
+    if (polygonPoints.length > 2) {
+      const startPos = polygonPoints[0];
+      const distance = Math.sqrt(Math.pow(clickPos.x - startPos.x, 2) + Math.pow(clickPos.y - startPos.y, 2));
+      if (distance < 10) { // 10px tolerance
+        const path = polygonPoints.map(p => projection.fromDivPixelToLatLng(p) as google.maps.LatLng);
+        const areaInMeters = apiIsLoaded ? google.maps.geometry.spherical.computeArea(path) : 0;
+        
+        const newShape: Shape = {
+          id: new Date().toISOString(),
+          type: 'polygon',
+          path: path.map(p => p.toJSON()),
+          area: areaInMeters,
+        };
+        setShapes(prev => [...prev, newShape]);
+        setPolygonPoints([]);
+        return;
+      }
+    }
+    
+    setPolygonPoints(prev => [...prev, clickPos]);
+  };
+  
   return (
     <canvas
       ref={canvasRef}
@@ -185,6 +252,7 @@ export function DrawingOverlay({ shapes, setShapes, selectedTool }: DrawingOverl
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onClick={handleCanvasClick}
       style={{
         position: 'absolute',
         top: 0,

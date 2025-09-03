@@ -16,8 +16,8 @@ export default function MapCanvas({ shapes, setShapes, selectedTool }: MapCanvas
   return (
     <div className="w-full h-full">
       <Map
-        defaultCenter={{ lat: 34.0522, lng: -118.2437 }}
-        defaultZoom={12}
+        defaultCenter={{ lat: 51.5072, lng: -0.1276 }}
+        defaultZoom={10}
         mapId={MAP_ID}
         disableDefaultUI={true}
         gestureHandling={'greedy'}
