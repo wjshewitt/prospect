@@ -191,9 +191,11 @@ export async function analyzeElevation(
                 proj.xyToLL(x + dx, y + dy),
                 proj.xyToLL(x, y + dy),
             ];
+            
+            const cellCenter = proj.xyToLL(x + dx / 2, y + dy / 2);
 
-            // Only include cells where at least one corner is inside the polygon
-            if (!cellPath.some(pt => google.maps.geometry.poly.containsLocation(new google.maps.LatLng(pt), sitePolygon))) {
+            // Only include cells where the center is inside the polygon
+            if (!google.maps.geometry.poly.containsLocation(new google.maps.LatLng(cellCenter), sitePolygon)) {
                 continue;
             }
             
@@ -208,8 +210,6 @@ export async function analyzeElevation(
             const avgSlope = validCorners.length > 0
                 ? validCorners.reduce((a, b) => a + b, 0) / validCorners.length
                 : NaN;
-
-            const cellCenter = proj.xyToLL(x + dx / 2, y + dy / 2);
             
             cells.push({
                 path: cellPath,
