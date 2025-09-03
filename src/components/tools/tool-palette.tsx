@@ -41,7 +41,7 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
                   <Button
                       variant="ghost"
                       className={cn(
-                        'w-14 h-14 group/button flex justify-center items-center gap-2 px-0 hover:w-40 hover:justify-start hover:px-4 hover:absolute hover:left-0 hover:z-20 transition-all duration-300',
+                        'w-14 h-14 group/button flex justify-center items-center gap-2 px-0 hover:w-40 hover:justify-start hover:px-4 hover:z-20 transition-all duration-300',
                         selectedTool === tool.id && 'bg-accent text-accent-foreground'
                       )}
                       onClick={() => setSelectedTool(tool.id)}
@@ -67,7 +67,7 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
               <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    className='w-14 h-14 group/button flex justify-center items-center gap-2 px-0 hover:w-40 hover:justify-start hover:px-4 hover:absolute hover:left-0 hover:z-20 transition-all duration-300'
+                    className='w-14 h-14 group/button flex justify-center items-center gap-2 px-0 hover:w-40 hover:justify-start hover:px-4 hover:z-20 transition-all duration-300'
                     disabled
                   >
                     {tool.icon}
