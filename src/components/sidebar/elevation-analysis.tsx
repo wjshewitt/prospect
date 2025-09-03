@@ -28,7 +28,7 @@ export function ElevationAnalysis({
 
   const analysis = useMemo(() => {
     if (!elevationGrid || elevationGrid.cells.length === 0) {
-      return { flatArea: 0, steepArea: 0 };
+      return { flatPercent: 0, steepPercent: 0 };
     }
     const flatCount = elevationGrid.cells.filter(cell => cell.slope <= steepnessThreshold).length;
     const steepCount = elevationGrid.cells.length - flatCount;
