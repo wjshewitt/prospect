@@ -67,15 +67,15 @@ export function BuildingPlacementDialog() {
         <Tooltip>
           <TooltipTrigger asChild>
             <DialogTrigger asChild>
-              <Button variant="ghost" className="w-full justify-start gap-2 px-2 group-hover/palette:w-full group-hover/palette:px-4">
+              <Button variant="ghost" className="w-full justify-center group-hover/button:justify-start group-hover/button:px-4 gap-2 px-0">
                 <Bot />
-                <span className="opacity-0 group-hover/palette:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap">
+                <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
                     AI Placement
                 </span>
               </Button>
             </DialogTrigger>
           </TooltipTrigger>
-          <TooltipContent side="right" className="group-hover/palette:hidden">
+          <TooltipContent side="right" className="md:hidden">
             <p>AI Building Placement</p>
           </TooltipContent>
         </Tooltip>

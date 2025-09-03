@@ -31,7 +31,7 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
   return (
     <aside 
       id="tool-palette" 
-      className="group/palette w-16 hover:w-48 transition-all duration-300 ease-in-out border-r bg-background/80 backdrop-blur-sm flex flex-col items-center py-4 data-[state=collapsed]:items-start"
+      className="w-16 border-r bg-background/80 backdrop-blur-sm flex flex-col items-center py-4"
     >
       <TooltipProvider>
         {tools.map(tool => (
@@ -40,18 +40,18 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
                 <Button
                     variant="ghost"
                     className={cn(
-                    'w-full flex justify-start items-center gap-2 px-4',
-                    selectedTool === tool.id && 'bg-accent text-accent-foreground'
+                      'w-14 group/button flex justify-center items-center gap-2 px-0 hover:w-40 hover:justify-start hover:px-4 transition-all duration-300',
+                      selectedTool === tool.id && 'bg-accent text-accent-foreground'
                     )}
                     onClick={() => setSelectedTool(tool.id)}
                 >
                     {tool.icon}
-                    <span className="opacity-0 group-hover/palette:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap">
+                    <span className="opacity-0 w-0 group-hover/button:opacity-100 group-hover/button:w-auto transition-all duration-200 delay-100 whitespace-nowrap">
                         {tool.label}
                     </span>
                 </Button>
             </TooltipTrigger>
-             <TooltipContent side="right" className="group-hover/palette:hidden">
+             <TooltipContent side="right" className="md:hidden">
               <p>{tool.label}</p>
             </TooltipContent>
           </Tooltip>
@@ -63,17 +63,17 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
              <Tooltip key={tool.id}>
              <TooltipTrigger asChild>
                 <Button
-                 variant="ghost"
-                 className='w-full flex justify-start items-center gap-2 px-4'
-                 disabled
-               >
-                 {tool.icon}
-                 <span className="opacity-0 group-hover/palette:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap">
-                    {tool.label}
-                 </span>
-               </Button>
+                  variant="ghost"
+                  className='w-14 group/button flex justify-center items-center gap-2 px-0 hover:w-40 hover:justify-start hover:px-4 transition-all duration-300'
+                  disabled
+                >
+                  {tool.icon}
+                  <span className="opacity-0 w-0 group-hover/button:opacity-100 group-hover/button:w-auto transition-all duration-200 delay-100 whitespace-nowrap">
+                      {tool.label}
+                  </span>
+                </Button>
              </TooltipTrigger>
-             <TooltipContent side="right" className="group-hover/palette:hidden">
+             <TooltipContent side="right" className="md:hidden">
                <p>{tool.label} (coming soon)</p>
              </TooltipContent>
            </Tooltip>
@@ -81,7 +81,7 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
 
         <div className="flex-grow" />
         
-        <div className="w-full px-2">
+        <div className="w-full px-2 group/button hover:w-40 transition-all duration-300">
             <BuildingPlacementDialog />
         </div>
 
@@ -89,3 +89,4 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
     </aside>
   );
 }
+
