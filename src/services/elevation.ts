@@ -173,9 +173,11 @@ export async function getElevationGrid(shape: Shape, resolution: number): Promis
                 proj.xyToLL(x, y2),
             ];
             
-            // Check if center of the cell is inside the polygon
-            const cellCenter = proj.xyToLL(x + resolution/2, y + resolution/2);
-            if (!google.maps.geometry.poly.containsLocation(new google.maps.LatLng(cellCenter), sitePolygon)) {
+            const isInside = cellLatLngs.some(pt => 
+                google.maps.geometry.poly.containsLocation(new google.maps.LatLng(pt), sitePolygon)
+            );
+
+            if (!isInside) {
                 continue;
             }
 
