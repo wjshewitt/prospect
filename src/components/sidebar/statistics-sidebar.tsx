@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Shape } from '@/lib/types';
@@ -38,7 +39,7 @@ export default function StatisticsSidebar({ shapes, isOpen }: StatisticsSidebarP
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
-                Total Area
+                <span>Total Area</span>
                 <LandPlot className="h-5 w-5 text-muted-foreground" />
               </CardTitle>
             </CardHeader>
@@ -54,30 +55,28 @@ export default function StatisticsSidebar({ shapes, isOpen }: StatisticsSidebarP
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
-                Elevation Analysis
+                <span>Elevation Analysis</span>
                 <TrendingUp className="h-5 w-5 text-muted-foreground" />
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <CardDescription>
-                <div className="space-y-2 text-sm">
-                  <p>Elevation data not available.</p>
-                  <p>Draw a shape to analyze elevation changes.</p>
-                </div>
-              </CardDescription>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>Elevation data not available.</p>
+                <p>Draw a shape to analyze elevation changes.</p>
+              </div>
             </CardContent>
           </Card>
 
            <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
-                Water Features
+                <span>Water Features</span>
                 <Waves className="h-5 w-5 text-muted-foreground" />
               </CardTitle>
             </CardHeader>
             <CardContent>
               <CardDescription>
-                <p>No water features detected.</p>
+                No water features detected.
               </CardDescription>
             </CardContent>
           </Card>
