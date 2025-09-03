@@ -1,3 +1,4 @@
+
 // src/services/elevation.ts
 import type { Shape, LatLng, ElevationGrid, ElevationGridCell } from '@/lib/types';
 
@@ -138,16 +139,16 @@ export async function analyzeElevation(
     let dy = desiredRes;
 
     // Adjust grid resolution to stay under the max points limit
-    let nx = Math.floor(width / dx) + 1;
-    let ny = Math.floor(height / dy) + 1;
+    let nx = Math.max(2, Math.floor(width / dx) + 1);
+    let ny = Math.max(2, Math.floor(height / dy) + 1);
     let totalPts = nx * ny;
 
     if (totalPts > MAX_GRID_POINTS) {
         const scale = Math.sqrt(totalPts / MAX_GRID_POINTS);
         dx *= scale;
         dy *= scale;
-        nx = Math.floor(width / dx) + 1;
-        ny = Math.floor(height / dy) + 1;
+        nx = Math.max(2, Math.floor(width / dx) + 1);
+        ny = Math.max(2, Math.floor(height / dy) + 1);
         totalPts = nx * ny;
     }
 
@@ -177,7 +178,7 @@ export async function analyzeElevation(
     for (let j = 0; j < ny - 1; j++) {
         const y = xyB.minY + j * dy;
         for (let i = 0; i < nx - 1; i++) {
-            const x = minX + i * dx;
+            const x = xyB.minX + i * dx;
 
             const cellPath = [
                 proj.xyToLL(x, y),
