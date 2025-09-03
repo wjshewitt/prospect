@@ -5,6 +5,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {Map, useMap, useApiIsLoaded} from '@vis.gl/react-google-maps';
 import type { LatLng, Shape, Tool } from '@/lib/types';
 import { ShapeContextMenu } from './shape-context-menu';
+import { useToast } from '@/hooks/use-toast';
 
 interface MapCanvasProps {
   selectedTool: Tool;
@@ -93,7 +94,11 @@ const DrawingManagerComponent: React.FC<{
           { lat: sw.lat(), lng: sw.lng() },
           { lat: sw.lat(), lng: ne.lng() },
         ];
-        const area = google.maps.geometry.spherical.computeArea(path);
+
+        // Ensure the path is clockwise for consistent area calculation
+        if (google.maps.geometry.spherical.computeArea(path) > 0) {
+            path.reverse();
+        }
         
         setShapes(prev => [...prev, {
             id: uuid(),
@@ -104,7 +109,7 @@ const DrawingManagerComponent: React.FC<{
                 east: ne.lng(),
                 west: sw.lng()
             },
-            area
+            area: google.maps.geometry.spherical.computeArea(path)
         }]);
         rect.setMap(null); 
         setSelectedTool('pan');
@@ -141,9 +146,13 @@ const DrawnShapes: React.FC<{
   onShapeClick: (shapeId: string, event: google.maps.MapMouseEvent) => void;
   editingShapeId: string | null;
   setEditingShapeId: (id: string | null) => void;
-}> = ({ shapes, setShapes, onShapeClick, editingShapeId, setEditingShapeId }) => {
+  movingShapeId: string | null;
+  setMovingShapeId: (id: string | null) => void;
+}> = ({ shapes, setShapes, onShapeClick, editingShapeId, setEditingShapeId, movingShapeId, setMovingShapeId }) => {
     const map = useMap();
     const [polygons, setPolygons] = useState<{[id: string]: google.maps.Polygon}>({});
+    const { toast } = useToast();
+    const [hasShownMovePrompt, setHasShownMovePrompt] = useState(false);
   
     // Effect to create and manage polygon instances on the map
     useEffect(() => {
@@ -166,16 +175,19 @@ const DrawnShapes: React.FC<{
         }
   
         const isEditing = shape.id === editingShapeId;
+        const isMoving = shape.id === movingShapeId;
+
         const poly = new google.maps.Polygon({
           paths: path,
           strokeColor: 'hsl(var(--primary))',
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
+          strokeOpacity: isMoving ? 1.0 : 0.8,
+          strokeWeight: isMoving ? 3 : 2,
           fillColor: 'hsl(var(--primary))',
-          fillOpacity: 0.3,
+          fillOpacity: isMoving ? 0.5 : 0.3,
           map: map,
           clickable: true,
           editable: isEditing,
+          draggable: isMoving,
         });
 
         poly.addListener('rightclick', (e: google.maps.MapMouseEvent) => onShapeClick(shape.id, e));
@@ -187,12 +199,29 @@ const DrawnShapes: React.FC<{
                 setEditingShapeId(null);
             }
         });
+        
+        poly.addListener('dblclick', () => {
+            setEditingShapeId(null);
+            setMovingShapeId(shape.id);
+            if (!hasShownMovePrompt) {
+                toast({
+                    title: "Shape is now movable",
+                    description: "Click and drag to move the shape. Click the map to stop.",
+                });
+                setHasShownMovePrompt(true);
+            }
+        });
 
         if (isEditing) {
             const path = poly.getPath();
-            // Listen for changes to the polygon's path
             google.maps.event.addListener(path, 'set_at', () => updateShape(shape.id, poly));
             google.maps.event.addListener(path, 'insert_at', () => updateShape(shape.id, poly));
+        }
+
+        if (isMoving) {
+            google.maps.event.addListener(poly, 'dragend', () => {
+                updateShape(shape.id, poly);
+            });
         }
         
         newPolygons[shape.id] = poly;
@@ -215,18 +244,22 @@ const DrawnShapes: React.FC<{
         });
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [shapes, map, editingShapeId, onShapeClick]);
+    }, [shapes, map, editingShapeId, movingShapeId, onShapeClick]);
 
 
-    // Effect to update the editable property of polygons when editingShapeId changes
+    // Effect to update the editable/draggable properties of polygons when editing/moving state changes
     useEffect(() => {
         Object.entries(polygons).forEach(([id, poly]) => {
             const isEditing = id === editingShapeId;
+            const isMoving = id === movingShapeId;
             if (poly.getEditable() !== isEditing) {
                 poly.setEditable(isEditing);
             }
+            if (poly.getDraggable() !== isMoving) {
+                poly.setDraggable(isMoving);
+            }
         });
-    }, [editingShapeId, polygons]);
+    }, [editingShapeId, movingShapeId, polygons]);
 
 
     const updateShape = (id: string, poly: google.maps.Polygon) => {
@@ -235,10 +268,7 @@ const DrawnShapes: React.FC<{
         
         setShapes(prev => prev.map(s => {
             if (s.id === id) {
-                if (s.type === 'polygon') {
-                    return { ...s, path: newPath, area: newArea };
-                }
-                // Handle rectangle update (it becomes a polygon)
+                // Any edit/move converts a rectangle to a polygon
                 return {
                     id: s.id,
                     type: 'polygon',
@@ -265,20 +295,21 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   const map = useMap();
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [editingShapeId, setEditingShapeId] = useState<string | null>(null);
+  const [movingShapeId, setMovingShapeId] = useState<string | null>(null);
+
+  const isInteractingWithShape = !!editingShapeId || !!movingShapeId;
 
   const handleShapeClick = useCallback((shapeId: string, event: google.maps.MapMouseEvent) => {
     if (!map || !event.domEvent) return;
     event.domEvent.preventDefault();
     event.domEvent.stopPropagation();
     
-    // Stop editing other shapes when opening context menu
+    // Stop editing/moving other shapes when opening context menu
     setEditingShapeId(null);
+    setMovingShapeId(null);
     
-    const mapContainer = map.getDiv();
     const projection = map.getProjection();
     if (!projection) return;
-    
-    const worldPoint = projection.fromLatLngToPoint(event.latLng!);
     
     const scale = Math.pow(2, map.getZoom()!);
     const bounds = map.getBounds();
@@ -288,6 +319,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     const sw = bounds.getSouthWest();
     const nw = new google.maps.LatLng(ne.lat(), sw.lng());
     
+    const worldPoint = projection.fromLatLngToPoint(event.latLng!);
     const mapTopLeft = projection.fromLatLngToPoint(nw);
     
     setContextMenu({
@@ -309,10 +341,14 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     if (editingShapeId === shapeId) {
       setEditingShapeId(null);
     }
+    if (movingShapeId === shapeId) {
+      setMovingShapeId(null);
+    }
     closeContextMenu();
   };
   
   const handleEditShape = (shapeId: string) => {
+    setMovingShapeId(null);
     setEditingShapeId(shapeId);
     closeContextMenu();
   }
@@ -321,6 +357,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     const handleClickOutside = () => {
       closeContextMenu();
       setEditingShapeId(null); // Stop editing when clicking the map
+      setMovingShapeId(null); // Stop moving when clicking the map
     };
     if (map) {
       map.addListener('click', handleClickOutside);
@@ -340,8 +377,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         defaultCenter={{lat: 53.483959, lng: -2.244644}}
         defaultZoom={7}
         mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
-        gestureHandling={selectedTool === 'pan' && !editingShapeId ? 'greedy' : 'none'}
-        zoomControl={selectedTool === 'pan' && !editingShapeId}
+        gestureHandling={selectedTool === 'pan' && !isInteractingWithShape ? 'greedy' : 'none'}
+        zoomControl={selectedTool === 'pan' && !isInteractingWithShape}
         disableDoubleClickZoom={selectedTool !== 'pan'}
         streetViewControl={false}
         mapTypeControl={false}
@@ -349,7 +386,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         className="w-full h-full"
       >
         {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} setShapes={setShapes} setSelectedTool={setSelectedTool} />}
-        {isLoaded && <DrawnShapes shapes={shapes} setShapes={setShapes} onShapeClick={handleShapeClick} editingShapeId={editingShapeId} setEditingShapeId={setEditingShapeId} />}
+        {isLoaded && <DrawnShapes shapes={shapes} setShapes={setShapes} onShapeClick={handleShapeClick} editingShapeId={editingShapeId} setEditingShapeId={setEditingShapeId} movingShapeId={movingShapeId} setMovingShapeId={setMovingShapeId} />}
       </Map>
 
        {contextMenu && (
