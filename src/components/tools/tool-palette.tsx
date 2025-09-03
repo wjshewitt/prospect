@@ -31,7 +31,7 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
   return (
     <aside 
       id="tool-palette" 
-      className="w-16 border-r bg-background/80 backdrop-blur-sm flex flex-col items-center py-4"
+      className="w-16 border-r bg-background/80 backdrop-blur-sm flex flex-col items-center py-4 z-10"
     >
       <TooltipProvider>
         {tools.map(tool => (
@@ -46,7 +46,7 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
                     onClick={() => setSelectedTool(tool.id)}
                 >
                     {tool.icon}
-                    <span className="opacity-0 w-0 group-hover/button:opacity-100 group-hover/button:w-auto transition-all duration-200 delay-100 whitespace-nowrap">
+                    <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
                         {tool.label}
                     </span>
                 </Button>
@@ -89,4 +89,3 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
     </aside>
   );
 }
-
