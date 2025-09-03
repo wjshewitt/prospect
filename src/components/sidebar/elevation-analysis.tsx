@@ -93,7 +93,7 @@ export function ElevationAnalysis({
                     max={100}
                     step={1}
                     value={[steepnessThreshold]}
-                    onValue-change={([val]) => setSteepnessThreshold(val)}
+                    onValueChange={([val]) => setSteepnessThreshold(val)}
                 />
             </div>
 
