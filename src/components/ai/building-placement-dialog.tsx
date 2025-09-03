@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -20,6 +21,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Bot, Loader2, Sparkles } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
 const formSchema = z.object({
   propertyDetails: z.string().min(10, {
@@ -61,12 +63,23 @@ export function BuildingPlacementDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" className="w-full justify-start">
-          <Bot className="mr-2 h-4 w-4" />
-          AI Building Placement
-        </Button>
-      </DialogTrigger>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DialogTrigger asChild>
+              <Button variant="ghost" className="w-full justify-start gap-2 px-2 group-hover/palette:w-full group-hover/palette:px-4">
+                <Bot />
+                <span className="opacity-0 group-hover/palette:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap">
+                    AI Placement
+                </span>
+              </Button>
+            </DialogTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="group-hover/palette:hidden">
+            <p>AI Building Placement</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

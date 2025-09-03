@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Tool } from '@/lib/types';
@@ -28,44 +29,51 @@ const disabledTools: { id: string; label: string; icon: React.ReactNode }[] = [
 
 export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPaletteProps) {
   return (
-    <aside id="tool-palette" className="w-16 border-r bg-background/80 backdrop-blur-sm flex flex-col items-center py-4 space-y-2">
+    <aside 
+      id="tool-palette" 
+      className="group/palette w-16 hover:w-48 transition-all duration-300 ease-in-out border-r bg-background/80 backdrop-blur-sm flex flex-col items-center py-4 data-[state=collapsed]:items-start"
+    >
       <TooltipProvider>
         {tools.map(tool => (
           <Tooltip key={tool.id}>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={cn(
-                  'h-10 w-10',
-                  selectedTool === tool.id && 'bg-accent text-accent-foreground'
-                )}
-                onClick={() => setSelectedTool(tool.id)}
-              >
-                {tool.icon}
-              </Button>
+                <Button
+                    variant="ghost"
+                    className={cn(
+                    'w-full flex justify-start items-center gap-2 px-4',
+                    selectedTool === tool.id && 'bg-accent text-accent-foreground'
+                    )}
+                    onClick={() => setSelectedTool(tool.id)}
+                >
+                    {tool.icon}
+                    <span className="opacity-0 group-hover/palette:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap">
+                        {tool.label}
+                    </span>
+                </Button>
             </TooltipTrigger>
-            <TooltipContent side="right">
+             <TooltipContent side="right" className="group-hover/palette:hidden">
               <p>{tool.label}</p>
             </TooltipContent>
           </Tooltip>
         ))}
 
-        <Separator className="my-4" />
+        <Separator className="my-4 w-10/12 mx-auto" />
 
         {disabledTools.map(tool => (
              <Tooltip key={tool.id}>
              <TooltipTrigger asChild>
-               <Button
+                <Button
                  variant="ghost"
-                 size="icon"
-                 className='h-10 w-10'
+                 className='w-full flex justify-start items-center gap-2 px-4'
                  disabled
                >
                  {tool.icon}
+                 <span className="opacity-0 group-hover/palette:opacity-100 transition-opacity duration-200 delay-100 whitespace-nowrap">
+                    {tool.label}
+                 </span>
                </Button>
              </TooltipTrigger>
-             <TooltipContent side="right">
+             <TooltipContent side="right" className="group-hover/palette:hidden">
                <p>{tool.label} (coming soon)</p>
              </TooltipContent>
            </Tooltip>
@@ -73,7 +81,9 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
 
         <div className="flex-grow" />
         
-        <BuildingPlacementDialog />
+        <div className="w-full px-2">
+            <BuildingPlacementDialog />
+        </div>
 
       </TooltipProvider>
     </aside>
