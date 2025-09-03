@@ -34,50 +34,54 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
       className="w-16 border-r bg-background/80 backdrop-blur-sm flex flex-col items-center py-4 z-10"
     >
       <TooltipProvider>
-        {tools.map(tool => (
-          <Tooltip key={tool.id}>
-            <TooltipTrigger asChild>
-                <Button
-                    variant="ghost"
-                    className={cn(
-                      'w-14 group/button flex justify-center items-center gap-2 px-0 hover:w-40 hover:justify-start hover:px-4 transition-all duration-300',
-                      selectedTool === tool.id && 'bg-accent text-accent-foreground'
-                    )}
-                    onClick={() => setSelectedTool(tool.id)}
-                >
-                    {tool.icon}
-                    <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
-                        {tool.label}
-                    </span>
-                </Button>
-            </TooltipTrigger>
-             <TooltipContent side="right" className="md:hidden">
-              <p>{tool.label}</p>
-            </TooltipContent>
-          </Tooltip>
-        ))}
+        <div className="flex flex-col items-center gap-1">
+          {tools.map(tool => (
+            <Tooltip key={tool.id}>
+              <TooltipTrigger asChild>
+                  <Button
+                      variant="ghost"
+                      className={cn(
+                        'w-14 h-14 group/button flex justify-center items-center gap-2 px-0 hover:w-40 hover:justify-start hover:px-4 hover:absolute hover:left-0 hover:z-20 transition-all duration-300',
+                        selectedTool === tool.id && 'bg-accent text-accent-foreground'
+                      )}
+                      onClick={() => setSelectedTool(tool.id)}
+                  >
+                      {tool.icon}
+                      <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
+                          {tool.label}
+                      </span>
+                  </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="md:hidden">
+                <p>{tool.label}</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
 
         <Separator className="my-4 w-10/12 mx-auto" />
 
-        {disabledTools.map(tool => (
-             <Tooltip key={tool.id}>
-             <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className='w-14 group/button flex justify-center items-center gap-2 px-0 hover:w-40 hover:justify-start hover:px-4 transition-all duration-300'
-                  disabled
-                >
-                  {tool.icon}
-                  <span className="opacity-0 w-0 group-hover/button:opacity-100 group-hover/button:w-auto transition-all duration-200 delay-100 whitespace-nowrap">
-                      {tool.label}
-                  </span>
-                </Button>
-             </TooltipTrigger>
-             <TooltipContent side="right" className="md:hidden">
-               <p>{tool.label} (coming soon)</p>
-             </TooltipContent>
-           </Tooltip>
-        ))}
+        <div className="flex flex-col items-center gap-1">
+          {disabledTools.map(tool => (
+              <Tooltip key={tool.id}>
+              <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className='w-14 h-14 group/button flex justify-center items-center gap-2 px-0 hover:w-40 hover:justify-start hover:px-4 hover:absolute hover:left-0 hover:z-20 transition-all duration-300'
+                    disabled
+                  >
+                    {tool.icon}
+                    <span className="opacity-0 w-0 group-hover/button:opacity-100 group-hover/button:w-auto transition-all duration-200 delay-100 whitespace-nowrap">
+                        {tool.label}
+                    </span>
+                  </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="md:hidden">
+                <p>{tool.label} (coming soon)</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
 
         <div className="flex-grow" />
         
