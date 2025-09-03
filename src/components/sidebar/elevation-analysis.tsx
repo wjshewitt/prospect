@@ -27,16 +27,18 @@ export function ElevationAnalysis({
 }: ElevationAnalysisProps) {
 
   const analysis = useMemo(() => {
-    if (!elevationGrid || !elevationGrid.cells || elevationGrid.cells.length === 0) {
+    if (!elevationGrid || !elevationGrid.gridData || !elevationGrid.gridData.cells || elevationGrid.gridData.cells.length === 0) {
       return { flatPercent: 0, steepPercent: 0, totalCells: 0 };
     }
-    const flatCount = elevationGrid.cells.filter(cell => cell.slope <= steepnessThreshold).length;
-    const steepCount = elevationGrid.cells.length - flatCount;
+    
+    const { cells } = elevationGrid.gridData;
+    const flatCount = cells.filter(cell => cell.slope <= steepnessThreshold).length;
+    const steepCount = cells.length - flatCount;
     
     return {
-      flatPercent: (flatCount / elevationGrid.cells.length) * 100,
-      steepPercent: (steepCount / elevationGrid.cells.length) * 100,
-      totalCells: elevationGrid.cells.length,
+      flatPercent: (flatCount / cells.length) * 100,
+      steepPercent: (steepCount / cells.length) * 100,
+      totalCells: cells.length,
     }
   }, [elevationGrid, steepnessThreshold]);
 
@@ -79,7 +81,6 @@ export function ElevationAnalysis({
                     step={1}
                     value={[gridResolution]}
                     onValueChange={([val]) => setGridResolution(val)}
-                    disabled // Will be enabled when debouncing is properly implemented
                 />
             </div>
             <div className="space-y-4">

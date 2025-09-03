@@ -2,7 +2,7 @@
 'use client';
 
 import type { Shape, Tool, ElevationGrid } from '@/lib/types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import Header from '@/components/layout/header';
 import ToolPalette from '@/components/tools/tool-palette';
@@ -12,12 +12,32 @@ import { Button } from '@/components/ui/button';
 import { PanelRightClose, PanelLeftClose } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Custom hook for debouncing a value
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+
 export default function Home() {
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedTool, setSelectedTool] = useState<Tool>('pan');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
-  const [gridResolution, setGridResolution] = useState<number>(12); // default 12 meters
+  const [gridResolution, setGridResolution] = useState<number>(12); // UI state
+  const debouncedGridResolution = useDebounce(gridResolution, 1000); // Debounced state for API
+  
   const [steepnessThreshold, setSteepnessThreshold] = useState<number>(8); // default 8 percent
   const [elevationGrid, setElevationGrid] = useState<ElevationGrid | null>(null);
 
@@ -50,7 +70,7 @@ export default function Home() {
               setShapes={setShapes}
               selectedTool={selectedTool}
               setSelectedTool={setSelectedTool}
-              gridResolution={gridResolution}
+              gridResolution={debouncedGridResolution} // Use debounced value for analysis
               steepnessThreshold={steepnessThreshold}
               elevationGrid={elevationGrid}
               setElevationGrid={setElevationGrid}
@@ -67,7 +87,7 @@ export default function Home() {
           <StatisticsSidebar 
             shapes={shapes} 
             isOpen={isSidebarOpen}
-            gridResolution={gridResolution}
+            gridResolution={gridResolution} // Use immediate value for slider UI
             setGridResolution={setGridResolution}
             steepnessThreshold={steepnessThreshold}
             setSteepnessThreshold={setSteepnessThreshold}
