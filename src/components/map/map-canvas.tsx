@@ -6,7 +6,7 @@ import {Map, useMap, useApiIsLoaded} from '@vis.gl/react-google-maps';
 import type { Shape, Tool, ElevationGrid } from '@/lib/types';
 import { ShapeContextMenu } from './shape-context-menu';
 import { useToast } from '@/hooks/use-toast';
-import { getElevationGrid } from '@/services/elevation';
+import { analyzeElevationForShape } from '@/services/elevation';
 
 interface MapCanvasProps {
   selectedTool: Tool;
@@ -331,7 +331,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   
   useEffect(() => {
     if (shapes.length === 1 && isLoaded) {
-      getElevationGrid(shapes[0], gridResolution)
+      analyzeElevationForShape(shapes[0], gridResolution)
         .then(grid => {
             setElevationGrid(grid)
         })
@@ -452,3 +452,5 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
+
+    
