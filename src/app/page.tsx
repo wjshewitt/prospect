@@ -30,7 +30,10 @@ export default function Home() {
   }
 
   return (
-    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}>
+    <APIProvider 
+      apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+      libraries={['drawing', 'geometry']}
+    >
       <div id="capture-area" className="flex flex-col h-screen bg-background text-foreground font-body">
         <Header shapes={shapes} setShapes={setShapes} />
         <div className="flex flex-1 overflow-hidden">
@@ -40,6 +43,7 @@ export default function Home() {
               shapes={shapes}
               setShapes={setShapes}
               selectedTool={selectedTool}
+              setSelectedTool={setSelectedTool}
             />
             <Button 
               size="icon" 
