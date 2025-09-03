@@ -10,9 +10,10 @@ import { SiteAssessmentDialog } from '../assessment/site-assessment-dialog';
 type HeaderProps = {
   shapes: Shape[];
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  elevationGrid: ElevationGrid | null;
 };
 
-export default function Header({ shapes, setShapes }: HeaderProps) {
+export default function Header({ shapes, setShapes, elevationGrid }: HeaderProps) {
   
   const handleClear = () => {
     if (window.confirm('Are you sure you want to clear all drawings? This cannot be undone.')) {
@@ -33,7 +34,7 @@ export default function Header({ shapes, setShapes }: HeaderProps) {
             <Trash2 className="h-4 w-4 mr-2" />
             Clear
         </Button>
-        <SiteAssessmentDialog shapes={shapes} />
+        <SiteAssessmentDialog shapes={shapes} elevationGrid={elevationGrid} />
       </div>
     </header>
   );

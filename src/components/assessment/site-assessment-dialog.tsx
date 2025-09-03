@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Shape } from '@/lib/types';
+import type { Shape, ElevationGrid } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,6 +24,7 @@ const SQ_METERS_TO_ACRES = 0.000247105;
 
 interface SiteAssessmentDialogProps {
     shapes: Shape[];
+    elevationGrid: ElevationGrid | null;
 }
 
 function getCenterOfShape(shape: Shape): {lat: number, lng: number} {
@@ -32,7 +33,30 @@ function getCenterOfShape(shape: Shape): {lat: number, lng: number} {
     return bounds.getCenter().toJSON();
 }
 
-export function SiteAssessmentDialog({ shapes }: SiteAssessmentDialogProps) {
+function getBoundsOfShape(shape: Shape): google.maps.LatLngBounds {
+    const bounds = new google.maps.LatLngBounds();
+    shape.path.forEach(p => bounds.extend(p));
+    return bounds;
+}
+
+// Function to expand bounds by a factor. factor=2.25 means new area is ~5x old area.
+function expandBounds(bounds: google.maps.LatLngBounds, factor: number) {
+    const center = bounds.getCenter();
+    const ne = bounds.getNorthEast();
+
+    const newNeLat = center.lat() + (ne.lat() - center.lat()) * factor;
+    const newNeLng = center.lng() + (ne.lng() - center.lng()) * factor;
+    const newSwLat = center.lat() - (center.lat() - bounds.getSouthWest().lat()) * factor;
+    const newSwLng = center.lng() - (center.lng() - bounds.getSouthWest().lng()) * factor;
+
+    return new google.maps.LatLngBounds(
+        new google.maps.LatLng(newSwLat, newSwLng),
+        new google.maps.LatLng(newNeLat, newNeLng)
+    );
+}
+
+
+export function SiteAssessmentDialog({ shapes, elevationGrid }: SiteAssessmentDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [assessmentData, setAssessmentData] = useState<FindNearbyPlacesOutput | null>(null);
@@ -44,25 +68,35 @@ export function SiteAssessmentDialog({ shapes }: SiteAssessmentDialogProps) {
 
   const handleOpenChange = async (open: boolean) => {
     setIsOpen(open);
-    if (open && shapes.length === 1) {
+    if (open && shapes.length === 1 && map) {
         setIsLoading(true);
         setError(null);
         setAssessmentData(null);
         setMapImage(null);
 
-        try {
-            // Capture map image first
-            const mapContainer = map?.getDiv();
-            if (mapContainer) {
-                const canvas = await html2canvas(mapContainer, {
-                    useCORS: true,
-                    allowTaint: true,
-                    logging: false,
-                });
-                setMapImage(canvas.toDataURL('image/png'));
-            }
+        // Store original map state
+        const originalCenter = map.getCenter();
+        const originalZoom = map.getZoom();
 
-            // Then fetch assessment data
+        try {
+            // Calculate new bounds for the screenshot
+            const shapeBounds = getBoundsOfShape(shapes[0]);
+            const expandedBounds = expandBounds(shapeBounds, 2.25); // For ~20% area coverage
+            map.fitBounds(expandedBounds);
+
+            // Give map time to re-render before taking screenshot
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Capture map image
+            const mapContainer = map.getDiv();
+            const canvas = await html2canvas(mapContainer, {
+                useCORS: true,
+                allowTaint: true,
+                logging: false,
+            });
+            setMapImage(canvas.toDataURL('image/png'));
+           
+            // Fetch assessment data in parallel
             const center = getCenterOfShape(shapes[0]);
             const data = await findNearbyPlaces(center);
             setAssessmentData(data);
@@ -71,6 +105,11 @@ export function SiteAssessmentDialog({ shapes }: SiteAssessmentDialogProps) {
             console.error(err);
             setError("Failed to generate site assessment. Please try again.");
         } finally {
+            // Restore original map state
+            if(originalCenter && originalZoom) {
+              map.setCenter(originalCenter);
+              map.setZoom(originalZoom);
+            }
             setIsLoading(false);
         }
     }
@@ -185,13 +224,33 @@ export function SiteAssessmentDialog({ shapes }: SiteAssessmentDialogProps) {
                         </div>
                      </div>
 
+                    <h3 className="font-semibold text-lg">Elevation Analysis</h3>
+                    <div className="p-4 rounded-md border bg-muted/50">
+                         <h4 className="font-medium flex items-center gap-2 mb-3"><Mountain className="h-5 w-5" /> Slope Extremes</h4>
+                         <div className="flex justify-around text-center">
+                            <div>
+                                <p className="text-2xl font-bold flex items-center justify-center gap-1">
+                                    <ArrowDown className="h-5 w-5 text-muted-foreground" />
+                                    {elevationGrid?.minSlope.toFixed(1)}%
+                                </p>
+                                <p className="text-xs text-muted-foreground">Lowest</p>
+                            </div>
+                            <div>
+                            <p className="text-2xl font-bold flex items-center justify-center gap-1">
+                                    <ArrowUp className="h-5 w-5 text-muted-foreground" />
+                                    {elevationGrid?.maxSlope.toFixed(1)}%
+                                </p>
+                                <p className="text-xs text-muted-foreground">Steepest</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         )}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setIsOpen(false)}>Close</Button>
-          <Button onClick={handleExport} disabled={isExporting || isLoading}>
+          <Button onClick={handleExport} disabled={isExporting || isLoading || !assessmentData}>
             {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
             Export PDF
           </Button>

@@ -62,7 +62,7 @@ export default function Home() {
       libraries={['drawing', 'geometry', 'elevation', 'places']}
     >
       <div id="capture-area" className="flex flex-col h-screen bg-background text-foreground font-body">
-        <Header shapes={shapes} setShapes={setShapes} />
+        <Header shapes={shapes} setShapes={setShapes} elevationGrid={elevationGrid} />
         <div className="flex flex-1 overflow-hidden">
           <ToolPalette selectedTool={selectedTool} setSelectedTool={setSelectedTool} />
           <main className="flex-1 relative bg-muted/20">
