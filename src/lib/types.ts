@@ -10,9 +10,14 @@ export type Bounds = {
 
 export type Shape = {
   id: string;
-  type: 'rectangle' | 'polygon' | 'freehand';
+  type: 'rectangle' | 'polygon' | 'freehand' | 'buffer';
   path: LatLng[];
   area?: number;
+  // Optional metadata for buffer shapes
+  bufferMeta?: {
+    originalShapeId: string;
+    distance: number;
+  }
 };
 
 export type Tool = 'pan' | 'rectangle' | 'polygon' | 'freehand';

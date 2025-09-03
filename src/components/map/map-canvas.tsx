@@ -7,6 +7,8 @@ import type { Shape, Tool, ElevationGrid, ElevationGridCell, LatLng } from '@/li
 import { ShapeContextMenu } from './shape-context-menu';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeElevation } from '@/services/elevation';
+import { BufferDialog, type BufferState } from './buffer-dialog';
+import { applyBuffer } from '@/services/buffer';
 
 interface MapCanvasProps {
   selectedTool: Tool;
@@ -163,14 +165,15 @@ const DrawnShapes: React.FC<{
   
         const isEditing = shape.id === editingShapeId;
         const isMoving = shape.id === movingShapeId;
+        const isBuffer = shape.type === 'buffer';
 
         const poly = new google.maps.Polygon({
           paths: path,
-          strokeColor: 'hsl(var(--primary))',
+          strokeColor: isBuffer ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
           strokeOpacity: isMoving ? 1.0 : 0.8,
-          strokeWeight: isMoving ? 3 : 2,
-          fillColor: 'hsl(var(--primary))',
-          fillOpacity: isMoving ? 0.5 : 0.3,
+          strokeWeight: isMoving ? 3 : isBuffer ? 2.5 : 2,
+          fillColor: isBuffer ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
+          fillOpacity: isMoving ? 0.5 : isBuffer ? 0.25 : 0.3,
           map: map,
           clickable: true,
           editable: isEditing,
@@ -188,6 +191,10 @@ const DrawnShapes: React.FC<{
         });
         
         poly.addListener('dblclick', () => {
+            if (isBuffer) {
+                toast({ title: 'Buffer shapes cannot be moved directly.' });
+                return;
+            }
             setEditingShapeId(null); // Stop editing if we start moving
             setMovingShapeId(shape.id);
             if (!hasShownMovePrompt) {
@@ -253,18 +260,26 @@ const DrawnShapes: React.FC<{
         const newPath = poly.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
         const newArea = google.maps.geometry.spherical.computeArea(newPath);
         
-        setShapes(prev => prev.map(s => {
-            if (s.id === id) {
-                // Any edit/move converts the original shape type to a polygon
-                return {
-                    id: s.id,
-                    type: 'polygon',
-                    path: newPath,
-                    area: newArea
-                };
-            }
-            return s;
-        }));
+        setShapes(prev => {
+            const newShapes = prev.map(s => {
+                if (s.id === id) {
+                    // Any edit/move converts the original shape type to a polygon
+                    return { ...s, type: 'polygon' as Shape['type'], path: newPath, area: newArea, bufferMeta: undefined };
+                }
+                return s;
+            });
+            
+            // Now, find any buffers that depended on this shape and update them
+            return newShapes.map(s => {
+                if (s.bufferMeta?.originalShapeId === id) {
+                    const originalShape = newShapes.find(os => os.id === id);
+                    if (!originalShape) return s; // Should not happen
+                    const buffered = applyBuffer(originalShape, s.bufferMeta.distance);
+                    return { ...s, ...buffered, bufferMeta: { ...s.bufferMeta, distance: s.bufferMeta.distance } };
+                }
+                return s;
+            });
+        });
     };
   
     return null;
@@ -450,6 +465,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   const [movingShapeId, setMovingShapeId] = useState<string | null>(null);
   const { toast } = useToast();
   const [elevationService, setElevationService] = useState<google.maps.ElevationService | null>(null);
+  const [bufferState, setBufferState] = useState<BufferState>({ isOpen: false, shapeId: null });
 
   const isInteractingWithShape = !!editingShapeId || !!movingShapeId;
   
@@ -537,7 +553,40 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     setMovingShapeId(null);
     setEditingShapeId(shapeId);
     closeContextMenu();
-  }
+  };
+
+  const handleBufferShape = (shapeId: string) => {
+    setBufferState({ isOpen: true, shapeId });
+    closeContextMenu();
+  };
+
+  const handleCreateBuffer = (distance: number) => {
+    if (!bufferState.shapeId) return;
+
+    const originalShape = shapes.find(s => s.id === bufferState.shapeId);
+    if (!originalShape) return;
+    
+    try {
+        const bufferedShape = applyBuffer(originalShape, -distance); // negative for inward buffer
+        
+        setShapes(prev => [...prev, {
+            id: uuid(),
+            type: 'buffer',
+            path: bufferedShape.path,
+            area: bufferedShape.area,
+            bufferMeta: {
+                originalShapeId: originalShape.id,
+                distance: -distance,
+            }
+        }]);
+    } catch (e: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Buffer Error',
+            description: e.message || 'Could not create buffer. The distance may be too large.'
+        });
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -584,13 +633,16 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
           shapeId={contextMenu.shapeId}
           onDelete={handleDeleteShape}
           onEdit={handleEditShape}
+          onBuffer={handleBufferShape}
           onClose={closeContextMenu}
         />
       )}
+
+      <BufferDialog
+        state={bufferState}
+        onOpenChange={(isOpen) => setBufferState(prev => ({...prev, isOpen}))}
+        onCreateBuffer={handleCreateBuffer}
+      />
     </div>
   );
 };
-
-    
-
-    

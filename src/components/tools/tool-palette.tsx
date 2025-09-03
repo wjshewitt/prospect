@@ -67,7 +67,7 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
                 </Button>
               </div>
             </TooltipTrigger>
-            <TooltipContent side="right">
+            <TooltipContent side="right" className="md:block hidden">
               <p>{panTool.label}</p>
             </TooltipContent>
           </Tooltip>
@@ -93,7 +93,7 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
                   </DropdownMenuTrigger>
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="right">
+              <TooltipContent side="right" className="md:block hidden">
                 <p>Drawing Tools</p>
               </TooltipContent>
             </Tooltip>
@@ -125,7 +125,7 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
                     </Button>
                  </div>
               </TooltipTrigger>
-              <TooltipContent side="right">
+              <TooltipContent side="right" className="md:block hidden">
                 <p>{tool.label} (coming soon)</p>
               </TooltipContent>
             </Tooltip>

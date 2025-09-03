@@ -181,9 +181,9 @@ export async function analyzeElevation(
     // Create colored grid cells for visualization
     const cells: ElevationGridCell[] = [];
     for (let j = 0; j < ny - 1; j++) {
-        const y = xyB.minY + j * dy;
         for (let i = 0; i < nx - 1; i++) {
             const x = xyB.minX + i * dx;
+            const y = xyB.minY + j * dy;
 
             const cellPath = [
                 proj.xyToLL(x, y),
