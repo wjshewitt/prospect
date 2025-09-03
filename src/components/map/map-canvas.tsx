@@ -16,11 +16,12 @@ export default function MapCanvas({ shapes, setShapes, selectedTool }: MapCanvas
   return (
     <div className="w-full h-full">
       <Map
-        defaultCenter={{ lat: 51.5072, lng: -0.1276 }}
-        defaultZoom={10}
+        defaultCenter={{ lat: 54.5, lng: -2 }}
+        defaultZoom={6}
         mapId={MAP_ID}
         disableDefaultUI={true}
-        gestureHandling={'greedy'}
+        gestureHandling={selectedTool === 'pan' ? 'greedy' : 'none'}
+        zoomControl={selectedTool === 'pan'}
         className="w-full h-full"
       >
         <DrawingOverlay shapes={shapes} setShapes={setShapes} selectedTool={selectedTool} />

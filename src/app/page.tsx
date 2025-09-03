@@ -7,10 +7,14 @@ import Header from '@/components/layout/header';
 import ToolPalette from '@/components/tools/tool-palette';
 import StatisticsSidebar from '@/components/sidebar/statistics-sidebar';
 import MapCanvas from '@/components/map/map-canvas';
+import { Button } from '@/components/ui/button';
+import { PanelRightClose, PanelLeftClose } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function Home() {
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedTool, setSelectedTool] = useState<Tool>('pan');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
     return (
@@ -37,8 +41,16 @@ export default function Home() {
               setShapes={setShapes}
               selectedTool={selectedTool}
             />
+            <Button 
+              size="icon" 
+              variant="outline"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+              className={cn("absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm", !isSidebarOpen && "right-4")}
+            >
+              {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
+            </Button>
           </main>
-          <StatisticsSidebar shapes={shapes} />
+          <StatisticsSidebar shapes={shapes} isOpen={isSidebarOpen} />
         </div>
       </div>
     </APIProvider>

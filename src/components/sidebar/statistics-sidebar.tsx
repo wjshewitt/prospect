@@ -1,23 +1,31 @@
 'use client';
 
 import type { Shape } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { BarChart3, TrendingUp, LandPlot, Waves } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 type StatisticsSidebarProps = {
   shapes: Shape[];
+  isOpen: boolean;
 };
 
 const SQ_METERS_TO_ACRES = 0.000247105;
 
-export default function StatisticsSidebar({ shapes }: StatisticsSidebarProps) {
+export default function StatisticsSidebar({ shapes, isOpen }: StatisticsSidebarProps) {
   const totalAreaMeters = shapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
   const totalAreaAcres = totalAreaMeters * SQ_METERS_TO_ACRES;
 
   return (
-    <aside id="stats-sidebar" className="w-80 border-l bg-background/80 backdrop-blur-sm hidden md:flex flex-col">
+    <aside 
+      id="stats-sidebar" 
+      className={cn(
+        "border-l bg-background/80 backdrop-blur-sm flex-col transition-all duration-300 ease-in-out",
+        isOpen ? "w-80 flex" : "w-0 hidden"
+      )}
+    >
       <div className="p-4">
         <h2 className="text-xl font-semibold font-headline flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary"/>
@@ -51,10 +59,12 @@ export default function StatisticsSidebar({ shapes }: StatisticsSidebarProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>Elevation data not available.</p>
-                <p>Draw a shape to analyze elevation changes.</p>
-              </div>
+              <CardDescription>
+                <div className="space-y-2 text-sm">
+                  <p>Elevation data not available.</p>
+                  <p>Draw a shape to analyze elevation changes.</p>
+                </div>
+              </CardDescription>
             </CardContent>
           </Card>
 
@@ -66,9 +76,9 @@ export default function StatisticsSidebar({ shapes }: StatisticsSidebarProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 text-sm text-muted-foreground">
+              <CardDescription>
                 <p>No water features detected.</p>
-              </div>
+              </CardDescription>
             </CardContent>
           </Card>
 
