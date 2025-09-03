@@ -277,12 +277,12 @@ const ElevationGridDisplay: React.FC<{
   useEffect(() => {
     // Clear existing polygons
     gridPolygons.forEach(poly => poly.setMap(null));
-    if (!map || !elevationGrid) {
+    if (!map || !elevationGrid || !elevationGrid.gridData.cells) {
       setGridPolygons([]);
       return;
     }
 
-    const newPolys = elevationGrid.cells.map(cell => {
+    const newPolys = elevationGrid.gridData.cells.map(cell => {
       const isSteep = cell.slope > steepnessThreshold;
       const poly = new google.maps.Polygon({
         map,
@@ -459,3 +459,5 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
+
+    

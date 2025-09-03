@@ -27,15 +27,16 @@ export function ElevationAnalysis({
 }: ElevationAnalysisProps) {
 
   const analysis = useMemo(() => {
-    if (!elevationGrid || elevationGrid.cells.length === 0) {
-      return { flatPercent: 0, steepPercent: 0 };
+    if (!elevationGrid || !elevationGrid.gridData || elevationGrid.gridData.cells.length === 0) {
+      return { flatPercent: 0, steepPercent: 0, totalCells: 0 };
     }
-    const flatCount = elevationGrid.cells.filter(cell => cell.slope <= steepnessThreshold).length;
-    const steepCount = elevationGrid.cells.length - flatCount;
+    const flatCount = elevationGrid.gridData.cells.filter(cell => cell.slope <= steepnessThreshold).length;
+    const steepCount = elevationGrid.gridData.cells.length - flatCount;
     
     return {
-      flatPercent: (flatCount / elevationGrid.cells.length) * 100,
-      steepPercent: (steepCount / elevationGrid.cells.length) * 100,
+      flatPercent: (flatCount / elevationGrid.gridData.cells.length) * 100,
+      steepPercent: (steepCount / elevationGrid.gridData.cells.length) * 100,
+      totalCells: elevationGrid.gridData.cells.length,
     }
   }, [elevationGrid, steepnessThreshold]);
 
@@ -95,7 +96,7 @@ export function ElevationAnalysis({
                 />
             </div>
 
-            {elevationGrid && elevationGrid.cells.length > 0 && (
+            {elevationGrid && analysis.totalCells > 0 && (
                 <div className="space-y-4 pt-2">
                     <h4 className="font-medium text-sm flex items-center gap-2">
                         <Percent className="h-4 w-4" /> Slope Breakdown
@@ -111,11 +112,11 @@ export function ElevationAnalysis({
                         </div>
                     </div>
                      <CardDescription className="text-xs text-center pt-2">
-                        Analysis based on {elevationGrid.cells.length} grid cells.
+                        Analysis based on {analysis.totalCells} grid cells.
                     </CardDescription>
                 </div>
             )}
-             {elevationGrid && elevationGrid.cells.length === 0 && (
+             {elevationGrid && analysis.totalCells === 0 && (
                 <CardDescription className="text-center pt-2">
                     Could not generate slope analysis for this area. Try a larger area or different resolution.
                 </CardDescription>
@@ -124,3 +125,5 @@ export function ElevationAnalysis({
     </Card>
   );
 }
+
+    
