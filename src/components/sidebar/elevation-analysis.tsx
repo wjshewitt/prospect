@@ -79,6 +79,7 @@ export function ElevationAnalysis({
                     step={1}
                     value={[gridResolution]}
                     onValueChange={([val]) => setGridResolution(val)}
+                    disabled // Will be enabled when debouncing is properly implemented
                 />
             </div>
             <div className="space-y-4">
@@ -125,5 +126,3 @@ export function ElevationAnalysis({
     </Card>
   );
 }
-
-    
