@@ -4,7 +4,7 @@
  * @fileOverview A Genkit flow for finding nearby points of interest using the Google Maps Places API.
  */
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 import {
   Client,
   PlaceType2,
