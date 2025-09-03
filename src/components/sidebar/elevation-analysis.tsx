@@ -27,16 +27,16 @@ export function ElevationAnalysis({
 }: ElevationAnalysisProps) {
 
   const analysis = useMemo(() => {
-    if (!elevationGrid || !elevationGrid.gridData || elevationGrid.gridData.cells.length === 0) {
+    if (!elevationGrid || !elevationGrid.cells || elevationGrid.cells.length === 0) {
       return { flatPercent: 0, steepPercent: 0, totalCells: 0 };
     }
-    const flatCount = elevationGrid.gridData.cells.filter(cell => cell.slope <= steepnessThreshold).length;
-    const steepCount = elevationGrid.gridData.cells.length - flatCount;
+    const flatCount = elevationGrid.cells.filter(cell => cell.slope <= steepnessThreshold).length;
+    const steepCount = elevationGrid.cells.length - flatCount;
     
     return {
-      flatPercent: (flatCount / elevationGrid.gridData.cells.length) * 100,
-      steepPercent: (steepCount / elevationGrid.gridData.cells.length) * 100,
-      totalCells: elevationGrid.gridData.cells.length,
+      flatPercent: (flatCount / elevationGrid.cells.length) * 100,
+      steepPercent: (steepCount / elevationGrid.cells.length) * 100,
+      totalCells: elevationGrid.cells.length,
     }
   }, [elevationGrid, steepnessThreshold]);
 
@@ -93,7 +93,7 @@ export function ElevationAnalysis({
                     max={100}
                     step={1}
                     value={[steepnessThreshold]}
-                    onValueChange={([val]) => setSteepnessThreshold(val)}
+                    onValue-change={([val]) => setSteepnessThreshold(val)}
                 />
             </div>
 
@@ -117,7 +117,7 @@ export function ElevationAnalysis({
                     </CardDescription>
                 </div>
             )}
-             {elevationGrid && analysis.totalCells === 0 && (
+             {(!elevationGrid || analysis.totalCells === 0) && (
                 <CardDescription className="text-center pt-2">
                     Could not generate slope analysis for this area. Try a larger area or different resolution.
                 </CardDescription>
