@@ -88,10 +88,10 @@ const DrawingManagerComponent: React.FC<{
         const sw = bounds.getSouthWest();
         
         const path = [
-          { lat: ne.lat(), lng: sw.lng() },
           { lat: ne.lat(), lng: ne.lng() },
-          { lat: sw.lat(), lng: ne.lng() },
+          { lat: ne.lat(), lng: sw.lng() },
           { lat: sw.lat(), lng: sw.lng() },
+          { lat: sw.lat(), lng: ne.lng() },
         ];
         const area = google.maps.geometry.spherical.computeArea(path);
         
@@ -224,15 +224,16 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     if (!projection) return;
     
     const worldPoint = projection.fromLatLngToPoint(event.latLng!);
-    const point = {
-        x: worldPoint.x * Math.pow(2, map.getZoom()!) - (mapContainer.offsetParent as HTMLElement)?.offsetLeft,
-        y: worldPoint.y * Math.pow(2, map.getZoom()!) - (mapContainer.offsetParent as HTMLElement)?.offsetTop,
-    };
     
-    const rect = mapContainer.getBoundingClientRect();
     const scale = Math.pow(2, map.getZoom()!);
+    const bounds = map.getBounds();
+    if (!bounds) return;
 
-    const mapTopLeft = projection.fromLatLngToPoint(map.getBounds()!.getNorthWest());
+    const ne = bounds.getNorthEast();
+    const sw = bounds.getSouthWest();
+    const nw = new google.maps.LatLng(ne.lat(), sw.lng());
+    
+    const mapTopLeft = projection.fromLatLngToPoint(nw);
     
     setContextMenu({
         shapeId: shapeId,
@@ -257,6 +258,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     if (map) {
       map.addListener('click', closeContextMenu);
       map.addListener('dragstart', closeContextMenu);
+    }
+    return () => {
+      if (map) {
+        google.maps.event.clearInstanceListeners(map);
+      }
     }
   }, [map, closeContextMenu]);
 
