@@ -1,8 +1,26 @@
-export type Shape = {
-  id: string;
-  type: 'rectangle' | 'circle' | 'polygon';
-  path: google.maps.LatLngLiteral[];
-  area?: number; // in square meters
+export type LatLng = { lat: number; lng: number };
+
+export type Bounds = {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
 };
 
-export type Tool = 'pan' | 'pen' | 'rectangle' | 'circle' | 'text' | 'polygon';
+export type RectangleShape = {
+  id: string;
+  type: 'rectangle';
+  bounds: Bounds;
+  area?: number;
+};
+
+export type PolygonShape = {
+  id:string;
+  type: 'polygon';
+  path: LatLng[];
+  area?: number;
+}
+
+export type Shape = RectangleShape | PolygonShape;
+
+export type Tool = 'pan' | 'rectangle' | 'polygon';
