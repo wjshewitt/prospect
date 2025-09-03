@@ -9,6 +9,11 @@ export function getElevationGrid(shape: Shape, resolution: number): Promise<Elev
     const elevator = new google.maps.ElevationService();
     const gridPoints = createGrid(shape, resolution);
 
+    if (gridPoints.length === 0) {
+      // Resolve with an empty grid if no points were generated to avoid API error
+      return resolve({ cells: [], resolution });
+    }
+
     elevator.getElevationForLocations({ locations: gridPoints }, (results, status) => {
       if (status === 'OK' && results) {
         const elevationPoints = results.map(result => ({
@@ -29,6 +34,8 @@ export function getElevationGrid(shape: Shape, resolution: number): Promise<Elev
  */
 function createGrid(shape: Shape, resolution: number): LatLng[] {
   const path = shape.path;
+  if (path.length === 0) return [];
+  
   const bounds = new google.maps.LatLngBounds();
   path.forEach(p => bounds.extend(p));
   
@@ -50,8 +57,8 @@ function createGrid(shape: Shape, resolution: number): LatLng[] {
       new google.maps.LatLng(sw.lat(), ne.lng())
   ) / resolution);
 
-  const latStep = (ne.lat() - sw.lat()) / latSteps;
-  const lngStep = (ne.lng() - sw.lng()) / lngSteps;
+  const latStep = (ne.lat() - sw.lat()) / (latSteps || 1);
+  const lngStep = (ne.lng() - sw.lng()) / (lngSteps || 1);
 
   for (let i = 0; i <= latSteps; i++) {
     for (let j = 0; j <= lngSteps; j++) {
@@ -82,8 +89,13 @@ function calculateSlopes(points: ElevationPoint[], resolution: number): Elevatio
     const lats = [...new Set(points.map(p => p.location.lat))].sort((a,b) => b-a); // North to South
     const lngs = [...new Set(points.map(p => p.location.lng))].sort((a,b) => a-b); // West to East
     
-    const latStep = lats.length > 1 ? lats[0] - lats[1] : 0;
-    const lngStep = lngs.length > 1 ? lngs[1] - lngs[0] : 0;
+    if (lats.length < 2 || lngs.length < 2) {
+      // Not enough data to form a grid for slope calculation
+      return { cells: [], resolution };
+    }
+
+    const latStep = Math.abs(lats[0] - lats[1]);
+    const lngStep = Math.abs(lngs[1] - lngs[0]);
     
     const cells = [];
 
