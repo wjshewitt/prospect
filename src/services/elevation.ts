@@ -47,15 +47,17 @@ function createGrid(shape: Shape, resolution: number): LatLng[] {
   
   // Calculate the number of steps in latitude and longitude
   // Based on spherical geometry to approximate meter-based resolution
-  const latSteps = Math.ceil(google.maps.geometry.spherical.computeDistanceBetween(
+  const latDist = google.maps.geometry.spherical.computeDistanceBetween(
       new google.maps.LatLng(sw.lat(), sw.lng()),
       new google.maps.LatLng(ne.lat(), sw.lng())
-  ) / resolution);
-
-  const lngSteps = Math.ceil(google.maps.geometry.spherical.computeDistanceBetween(
+  );
+  const lngDist = google.maps.geometry.spherical.computeDistanceBetween(
       new google.maps.LatLng(sw.lat(), sw.lng()),
       new google.maps.LatLng(sw.lat(), ne.lng())
-  ) / resolution);
+  );
+
+  const latSteps = Math.ceil(latDist / resolution);
+  const lngSteps = Math.ceil(lngDist / resolution);
 
   const latStep = (ne.lat() - sw.lat()) / (latSteps || 1);
   const lngStep = (ne.lng() - sw.lng()) / (lngSteps || 1);
