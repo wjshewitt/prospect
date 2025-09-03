@@ -23,7 +23,7 @@ const PlaceInfoSchema = z.object({
   distanceMiles: z.string(),
 });
 
-export const FindNearbyPlacesOutputSchema = z.object({
+const FindNearbyPlacesOutputSchema = z.object({
   airport: PlaceInfoSchema.optional(),
   town: PlaceInfoSchema.optional(),
 });
@@ -79,7 +79,7 @@ const findPlaceTool = ai.defineTool(
 );
 
 
-export const findNearbyPlacesFlow = ai.defineFlow(
+const findNearbyPlacesFlow = ai.defineFlow(
   {
     name: 'findNearbyPlacesFlow',
     inputSchema: FindNearbyPlacesInputSchema,
