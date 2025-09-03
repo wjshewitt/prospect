@@ -395,7 +395,7 @@ const FreehandDrawingTool: React.FC<{
       polylineRef.current = new google.maps.Polyline({
         map,
         path: pathRef.current,
-        strokeColor: 'hsl(var(--primary))',
+        strokeColor: 'hsl(var(--accent))',
         strokeWeight: 3,
         strokeOpacity: 0.7,
       });
@@ -468,6 +468,13 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   const [bufferState, setBufferState] = useState<BufferState>({ isOpen: false, shapeId: null });
 
   const isInteractingWithShape = !!editingShapeId || !!movingShapeId;
+  const isDrawing = selectedTool === 'rectangle' || selectedTool === 'polygon' || selectedTool === 'freehand';
+
+  useEffect(() => {
+    if (map) {
+      map.setOptions({ draggableCursor: selectedTool === 'freehand' ? 'crosshair' : null });
+    }
+  }, [map, selectedTool]);
   
   useEffect(() => {
     if (isLoaded) {
@@ -613,9 +620,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
         mapTypeId="satellite"
         tilt={0}
-        gestureHandling={selectedTool === 'pan' && !isInteractingWithShape ? 'greedy' : 'none'}
-        zoomControl={selectedTool === 'pan' && !isInteractingWithShape}
-        disableDoubleClickZoom={selectedTool !== 'pan'}
+        gestureHandling={!isDrawing && !isInteractingWithShape ? 'greedy' : 'none'}
+        zoomControl={!isDrawing && !isInteractingWithShape}
+        disableDoubleClickZoom={isDrawing || isInteractingWithShape}
         streetViewControl={false}
         mapTypeControl={false}
         fullscreenControl={false}
