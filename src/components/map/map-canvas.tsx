@@ -185,12 +185,12 @@ const DrawnShapes: React.FC<{
         });
         
         poly.addListener('dblclick', () => {
-            setEditingShapeId(null);
+            setEditingShapeId(null); // Stop editing if we start moving
             setMovingShapeId(shape.id);
             if (!hasShownMovePrompt) {
                 toast({
                     title: "Shape is now movable",
-                    description: "Click and drag to move the shape. Click the map to stop.",
+                    description: "Click and drag to move the shape. Click the map to stop moving.",
                 });
                 setHasShownMovePrompt(true);
             }
@@ -228,7 +228,7 @@ const DrawnShapes: React.FC<{
         });
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [shapes, map, editingShapeId, movingShapeId, onShapeClick]);
+    }, [shapes, map, editingShapeId, movingShapeId]);
 
 
     // Effect to update the editable/draggable properties of polygons when editing/moving state changes
@@ -320,7 +320,7 @@ const ElevationGridDisplay: React.FC<{
     return () => {
         newPolys.forEach(poly => {
             google.maps.event.clearInstanceListeners(poly);
-            poly.setMap(null)
+            p.setMap(null)
         });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
