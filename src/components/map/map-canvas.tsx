@@ -6,7 +6,7 @@ import {Map, useMap, useApiIsLoaded} from '@vis.gl/react-google-maps';
 import type { Shape, Tool, ElevationGrid } from '@/lib/types';
 import { ShapeContextMenu } from './shape-context-menu';
 import { useToast } from '@/hooks/use-toast';
-import { analyzeElevationForShape } from '@/services/elevation';
+import { analyzeElevation } from '@/services/elevation';
 
 interface MapCanvasProps {
   selectedTool: Tool;
@@ -326,12 +326,19 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   const [editingShapeId, setEditingShapeId] = useState<string | null>(null);
   const [movingShapeId, setMovingShapeId] = useState<string | null>(null);
   const { toast } = useToast();
+  const [elevationService, setElevationService] = useState<google.maps.ElevationService | null>(null);
 
   const isInteractingWithShape = !!editingShapeId || !!movingShapeId;
   
   useEffect(() => {
-    if (shapes.length === 1 && isLoaded) {
-      analyzeElevationForShape(shapes[0], gridResolution)
+    if (isLoaded) {
+        setElevationService(new window.google.maps.ElevationService());
+    }
+  }, [isLoaded]);
+
+  useEffect(() => {
+    if (shapes.length === 1 && isLoaded && elevationService) {
+      analyzeElevation(shapes[0], elevationService)
         .then(grid => {
             setElevationGrid(grid)
         })
@@ -346,7 +353,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     } else if (shapes.length !== 1) { // Also clear if more than one shape
       setElevationGrid(null);
     }
-  }, [shapes, gridResolution, isLoaded, setElevationGrid, toast]);
+  }, [shapes, gridResolution, isLoaded, setElevationGrid, toast, elevationService]);
 
   const handleShapeClick = useCallback((shapeId: string, event: google.maps.MapMouseEvent) => {
     if (!map || !event.domEvent) return;
@@ -452,5 +459,3 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
-
-    
