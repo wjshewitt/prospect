@@ -320,7 +320,7 @@ const ElevationGridDisplay: React.FC<{
     return () => {
         newPolys.forEach(poly => {
             google.maps.event.clearInstanceListeners(poly);
-            p.setMap(null)
+            poly.setMap(null)
         });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
