@@ -1,52 +1,19 @@
 
 'use client';
 
-import type { Shape } from '@/lib/types';
+import type { Shape, ElevationGrid } from '@/lib/types';
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FileDown, Map, Trash2 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { Map, Trash2, FileSearch } from 'lucide-react';
+import { SiteAssessmentDialog } from '../assessment/site-assessment-dialog';
 
 type HeaderProps = {
   shapes: Shape[];
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
 };
 
-export default function Header({ setShapes }: HeaderProps) {
-  const [isExporting, setIsExporting] = React.useState(false);
-
-  const handleExport = async () => {
-    setIsExporting(true);
-    const captureArea = document.getElementById('capture-area');
-    if (captureArea) {
-      try {
-        const canvas = await html2canvas(captureArea, {
-            useCORS: true,
-            allowTaint: true,
-            logging: false,
-            onclone: (document) => {
-              // Hide tool palettes during capture
-              document.getElementById('tool-palette')?.style.setProperty('visibility', 'hidden');
-              document.getElementById('stats-sidebar')?.style.setProperty('visibility', 'hidden');
-            }
-        });
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-          orientation: 'landscape',
-          unit: 'px',
-          format: [canvas.width, canvas.height],
-        });
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-        pdf.save('landvision-export.pdf');
-      } catch (error) {
-        console.error('Failed to export PDF:', error);
-        alert('Could not export to PDF. Please try again.');
-      }
-    }
-    setIsExporting(false);
-  };
-
+export default function Header({ shapes, setShapes }: HeaderProps) {
+  
   const handleClear = () => {
     if (window.confirm('Are you sure you want to clear all drawings? This cannot be undone.')) {
         setShapes([]);
@@ -66,10 +33,7 @@ export default function Header({ setShapes }: HeaderProps) {
             <Trash2 className="h-4 w-4 mr-2" />
             Clear
         </Button>
-        <Button onClick={handleExport} disabled={isExporting} size="sm" variant="default">
-          <FileDown className="h-4 w-4 mr-2" />
-          {isExporting ? 'Exporting...' : 'Export PDF'}
-        </Button>
+        <SiteAssessmentDialog shapes={shapes} />
       </div>
     </header>
   );

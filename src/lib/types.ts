@@ -38,4 +38,6 @@ export type ElevationGridCell = {
 export type ElevationGrid = {
     cells: ElevationGridCell[];
     resolution: number;
+    minSlope: number;
+    maxSlope: number;
 }

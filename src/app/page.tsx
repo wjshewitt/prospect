@@ -59,7 +59,7 @@ export default function Home() {
   return (
     <APIProvider 
       apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-      libraries={['drawing', 'geometry', 'elevation']}
+      libraries={['drawing', 'geometry', 'elevation', 'places']}
     >
       <div id="capture-area" className="flex flex-col h-screen bg-background text-foreground font-body">
         <Header shapes={shapes} setShapes={setShapes} />

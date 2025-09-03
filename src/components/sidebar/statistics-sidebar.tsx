@@ -48,7 +48,7 @@ export default function StatisticsSidebar({
       <div className="p-4">
         <h2 className="text-xl font-semibold font-headline flex items-center gap-2">
             <BarChart3 className="h-5 w-5 text-primary"/>
-            Statistics
+            Overview
         </h2>
       </div>
       <Separator />
@@ -57,7 +57,7 @@ export default function StatisticsSidebar({
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
-                <span>Total Area</span>
+                <span>Statistics</span>
                 <LandPlot className="h-5 w-5 text-muted-foreground" />
               </CardTitle>
             </CardHeader>

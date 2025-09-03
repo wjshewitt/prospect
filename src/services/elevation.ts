@@ -180,6 +180,9 @@ export async function analyzeElevation(
 
     // Create colored grid cells for visualization
     const cells: ElevationGridCell[] = [];
+    let minSlope = Infinity;
+    let maxSlope = -Infinity;
+
     for (let j = 0; j < ny - 1; j++) {
         for (let i = 0; i < nx - 1; i++) {
             const x = xyB.minX + i * dx;
@@ -211,6 +214,11 @@ export async function analyzeElevation(
                 ? validCorners.reduce((a, b) => a + b, 0) / validCorners.length
                 : NaN;
             
+            if (isFinite(avgSlope)) {
+                if (avgSlope < minSlope) minSlope = avgSlope;
+                if (avgSlope > maxSlope) maxSlope = avgSlope;
+            }
+            
             cells.push({
                 path: cellPath,
                 center: cellCenter,
@@ -229,5 +237,7 @@ export async function analyzeElevation(
     return {
         cells,
         resolution: (dx + dy) / 2,
+        minSlope: isFinite(minSlope) ? minSlope : 0,
+        maxSlope: isFinite(maxSlope) ? maxSlope : 0,
     };
 }

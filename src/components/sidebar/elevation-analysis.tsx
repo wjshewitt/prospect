@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { TrendingUp, Percent, Eye, EyeOff } from 'lucide-react';
+import { TrendingUp, Percent, Eye, EyeOff, Mountain, ArrowDown, ArrowUp } from 'lucide-react';
 import { useMemo } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import { Separator } from '../ui/separator';
 
 type ElevationAnalysisProps = {
   shape: Shape | null;
@@ -34,12 +35,12 @@ export function ElevationAnalysis({
 
   const analysis = useMemo(() => {
     if (!elevationGrid || !elevationGrid.cells) {
-      return { flatPercent: 0, steepPercent: 0, totalCells: 0 };
+      return { flatPercent: 0, steepPercent: 0, totalCells: 0, minSlope: 0, maxSlope: 0 };
     }
     
     const validCells = elevationGrid.cells.filter(cell => isFinite(cell.slope));
     if (validCells.length === 0) {
-      return { flatPercent: 0, steepPercent: 0, totalCells: 0, invalidCells: elevationGrid.cells.length };
+      return { flatPercent: 0, steepPercent: 0, totalCells: 0, minSlope: 0, maxSlope: 0, invalidCells: elevationGrid.cells.length };
     }
 
     const flatCount = validCells.filter(cell => cell.slope <= steepnessThreshold).length;
@@ -50,6 +51,8 @@ export function ElevationAnalysis({
       steepPercent: (steepCount / validCells.length) * 100,
       totalCells: validCells.length,
       invalidCells: elevationGrid.cells.length - validCells.length,
+      minSlope: elevationGrid.minSlope,
+      maxSlope: elevationGrid.maxSlope,
     }
   }, [elevationGrid, steepnessThreshold]);
 
@@ -146,6 +149,28 @@ export function ElevationAnalysis({
                         {analysis.invalidCells > 0 && ` (${analysis.invalidCells} invalid cells ignored).`}
                         {isAnalysisVisible && " Click a grid cell to see its slope."}
                     </CardDescription>
+
+                    <Separator />
+
+                    <h4 className="font-medium text-sm flex items-center gap-2">
+                        <Mountain className="h-4 w-4" /> Slope Extemes
+                    </h4>
+                    <div className="flex justify-around text-center">
+                        <div>
+                            <p className="text-2xl font-bold flex items-center justify-center gap-1">
+                                <ArrowDown className="h-5 w-5 text-muted-foreground" />
+                                {analysis.minSlope.toFixed(1)}%
+                            </p>
+                            <p className="text-xs text-muted-foreground">Lowest</p>
+                        </div>
+                        <div>
+                           <p className="text-2xl font-bold flex items-center justify-center gap-1">
+                                <ArrowUp className="h-5 w-5 text-muted-foreground" />
+                                {analysis.maxSlope.toFixed(1)}%
+                            </p>
+                            <p className="text-xs text-muted-foreground">Steepest</p>
+                        </div>
+                    </div>
                 </div>
             )}
              {(!elevationGrid || analysis.totalCells === 0) && (
