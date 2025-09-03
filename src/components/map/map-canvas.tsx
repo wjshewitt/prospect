@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import {Map, useMap, useApiIsLoaded} from '@vis.gl/react-google-maps';
-import type { LatLng, Shape, Tool, ElevationGrid } from '@/lib/types';
+import type { Shape, Tool, ElevationGrid } from '@/lib/types';
 import { ShapeContextMenu } from './shape-context-menu';
 import { useToast } from '@/hooks/use-toast';
 import { getElevationGrid } from '@/services/elevation';
@@ -94,10 +94,10 @@ const DrawingManagerComponent: React.FC<{
         const sw = bounds.getSouthWest();
         
         const path = [
+          { lat: sw.lat(), lng: sw.lng() },
           { lat: ne.lat(), lng: sw.lng() },
           { lat: ne.lat(), lng: ne.lng() },
           { lat: sw.lat(), lng: ne.lng() },
-          { lat: sw.lat(), lng: sw.lng() },
         ];
         
         setShapes(prev => [...prev, {
@@ -272,32 +272,35 @@ const ElevationGridDisplay: React.FC<{
   steepnessThreshold: number;
 }> = ({ elevationGrid, steepnessThreshold }) => {
   const map = useMap();
-  const [gridRects, setGridRects] = useState<google.maps.Rectangle[]>([]);
+  const [gridPolygons, setGridPolygons] = useState<google.maps.Polygon[]>([]);
 
   useEffect(() => {
-    // Clear existing rectangles
-    gridRects.forEach(rect => rect.setMap(null));
+    // Clear existing polygons
+    gridPolygons.forEach(poly => poly.setMap(null));
     if (!map || !elevationGrid) {
-      setGridRects([]);
+      setGridPolygons([]);
       return;
     }
 
-    const newRects = elevationGrid.cells.map(cell => {
+    const newPolys = elevationGrid.cells.map(cell => {
       const isSteep = cell.slope > steepnessThreshold;
-      const rect = new google.maps.Rectangle({
+      const poly = new google.maps.Polygon({
         map,
-        bounds: cell.bounds,
-        fillColor: isSteep ? '#FF0000' : '#00FF00',
-        fillOpacity: 0.4,
-        strokeWeight: 0,
+        paths: cell.path,
+        fillColor: isSteep ? '#ef4444' : '#22c55e',
+        strokeColor: isSteep ? '#dc2626' : '#16a34a',
+        fillOpacity: 0.45,
+        strokeWeight: 0.5,
+        strokeOpacity: 0.6,
+        clickable: false,
       });
-      return rect;
+      return poly;
     });
 
-    setGridRects(newRects);
+    setGridPolygons(newPolys);
     
     return () => {
-        newRects.forEach(rect => rect.setMap(null));
+        newPolys.forEach(poly => poly.setMap(null));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, elevationGrid, steepnessThreshold]);
@@ -328,8 +331,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   
   useEffect(() => {
     if (shapes.length === 1 && isLoaded) {
-      const shape = shapes[0];
-      getElevationGrid(shape, gridResolution)
+      getElevationGrid(shapes[0], gridResolution)
         .then(grid => {
             setElevationGrid(grid)
         })
@@ -341,7 +343,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
                 description: 'Could not fetch elevation data. Please check your API key and permissions.'
             })
         });
-    } else if (shapes.length === 0) {
+    } else if (shapes.length !== 1) { // Also clear if more than one shape
       setElevationGrid(null);
     }
   }, [shapes, gridResolution, isLoaded, setElevationGrid, toast]);
@@ -367,7 +369,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     const nw = new google.maps.LatLng(ne.lat(), sw.lng());
     
     const worldPoint = projection.fromLatLngToPoint(event.latLng!);
-    const mapTopLeft = projection.fromLatLngToPoint(nw);
+    const mapTopLeft = projection.fromLatLngToPoint(nw)!;
     
     setContextMenu({
         shapeId: shapeId,
@@ -407,12 +409,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
       setMovingShapeId(null); // Stop moving when clicking the map
     };
     if (map) {
-      map.addListener('click', handleClickOutside);
-      map.addListener('dragstart', closeContextMenu);
-    }
-    return () => {
-      if (map) {
-        google.maps.event.clearInstanceListeners(map);
+      const clickListener = map.addListener('click', handleClickOutside);
+      const dragListener = map.addListener('dragstart', closeContextMenu);
+      return () => {
+        clickListener.remove();
+        dragListener.remove();
       }
     }
   }, [map, closeContextMenu]);

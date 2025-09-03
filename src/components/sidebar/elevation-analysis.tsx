@@ -50,7 +50,7 @@ export function ElevationAnalysis({
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Draw a single shape to analyze its elevation and slope.
+                Draw a single shape to analyze its slope.
               </CardDescription>
             </CardContent>
         </Card>
@@ -61,7 +61,7 @@ export function ElevationAnalysis({
     <Card>
         <CardHeader>
             <CardTitle className="text-base flex items-center justify-between">
-            <span>Elevation Analysis</span>
+            <span>Slope Analysis</span>
             <TrendingUp className="h-5 w-5 text-muted-foreground" />
             </CardTitle>
         </CardHeader>
@@ -74,8 +74,8 @@ export function ElevationAnalysis({
                 <Slider
                     id="grid-resolution"
                     min={5}
-                    max={100}
-                    step={5}
+                    max={50}
+                    step={1}
                     value={[gridResolution]}
                     onValueChange={([val]) => setGridResolution(val)}
                 />
@@ -83,19 +83,19 @@ export function ElevationAnalysis({
             <div className="space-y-4">
                  <div className="flex justify-between items-center">
                     <Label htmlFor="steepness-threshold">Steepness Threshold</Label>
-                    <span className="text-sm font-medium">{steepnessThreshold}°</span>
+                    <span className="text-sm font-medium">{steepnessThreshold}%</span>
                 </div>
                 <Slider
                     id="steepness-threshold"
                     min={0}
-                    max={45}
+                    max={100}
                     step={1}
                     value={[steepnessThreshold]}
                     onValueChange={([val]) => setSteepnessThreshold(val)}
                 />
             </div>
 
-            {elevationGrid && (
+            {elevationGrid && elevationGrid.cells.length > 0 && (
                 <div className="space-y-4 pt-2">
                     <h4 className="font-medium text-sm flex items-center gap-2">
                         <Percent className="h-4 w-4" /> Slope Breakdown
@@ -103,15 +103,23 @@ export function ElevationAnalysis({
                     <div className="flex justify-around text-center">
                         <div>
                             <p className="text-2xl font-bold text-green-600">{analysis.flatPercent.toFixed(0)}%</p>
-                            <p className="text-xs text-muted-foreground">Flat</p>
+                            <p className="text-xs text-muted-foreground">Gentle</p>
                         </div>
                         <div>
                             <p className="text-2xl font-bold text-red-600">{analysis.steepPercent.toFixed(0)}%</p>
                             <p className="text-xs text-muted-foreground">Steep</p>
                         </div>
                     </div>
+                     <CardDescription className="text-xs text-center pt-2">
+                        Analysis based on {elevationGrid.cells.length} grid cells.
+                    </CardDescription>
                 </div>
             )}
+             {elevationGrid && elevationGrid.cells.length === 0 && (
+                <CardDescription className="text-center pt-2">
+                    Could not generate slope analysis for this area. Try a larger area or different resolution.
+                </CardDescription>
+             )}
         </CardContent>
     </Card>
   );

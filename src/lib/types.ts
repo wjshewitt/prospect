@@ -24,7 +24,8 @@ export type ElevationPoint = {
 
 export type ElevationGridCell = {
     bounds: Bounds;
-    slope: number;
+    path: LatLng[];
+    slope: number; // as percent grade
     aspect: number;
 }
 

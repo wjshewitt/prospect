@@ -17,8 +17,8 @@ export default function Home() {
   const [selectedTool, setSelectedTool] = useState<Tool>('pan');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
-  const [gridResolution, setGridResolution] = useState<number>(20); // default 20 meters
-  const [steepnessThreshold, setSteepnessThreshold] = useState<number>(15); // default 15 degrees
+  const [gridResolution, setGridResolution] = useState<number>(12); // default 12 meters
+  const [steepnessThreshold, setSteepnessThreshold] = useState<number>(8); // default 8 percent
   const [elevationGrid, setElevationGrid] = useState<ElevationGrid | null>(null);
 
 
