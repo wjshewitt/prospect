@@ -1,6 +1,7 @@
+
 'use client';
 
-import type { Shape, Tool } from '@/lib/types';
+import type { Shape, Tool, ElevationGrid } from '@/lib/types';
 import { useState } from 'react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import Header from '@/components/layout/header';
@@ -16,6 +17,11 @@ export default function Home() {
   const [selectedTool, setSelectedTool] = useState<Tool>('pan');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
+  const [gridResolution, setGridResolution] = useState<number>(20); // default 20 meters
+  const [steepnessThreshold, setSteepnessThreshold] = useState<number>(15); // default 15 degrees
+  const [elevationGrid, setElevationGrid] = useState<ElevationGrid | null>(null);
+
+
   if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -32,7 +38,7 @@ export default function Home() {
   return (
     <APIProvider 
       apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-      libraries={['drawing', 'geometry']}
+      libraries={['drawing', 'geometry', 'elevation']}
     >
       <div id="capture-area" className="flex flex-col h-screen bg-background text-foreground font-body">
         <Header shapes={shapes} setShapes={setShapes} />
@@ -44,6 +50,10 @@ export default function Home() {
               setShapes={setShapes}
               selectedTool={selectedTool}
               setSelectedTool={setSelectedTool}
+              gridResolution={gridResolution}
+              steepnessThreshold={steepnessThreshold}
+              elevationGrid={elevationGrid}
+              setElevationGrid={setElevationGrid}
             />
             <Button 
               size="icon" 
@@ -54,7 +64,15 @@ export default function Home() {
               {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
             </Button>
           </main>
-          <StatisticsSidebar shapes={shapes} isOpen={isSidebarOpen} />
+          <StatisticsSidebar 
+            shapes={shapes} 
+            isOpen={isSidebarOpen}
+            gridResolution={gridResolution}
+            setGridResolution={setGridResolution}
+            steepnessThreshold={steepnessThreshold}
+            setSteepnessThreshold={setSteepnessThreshold}
+            elevationGrid={elevationGrid}
+          />
         </div>
       </div>
     </APIProvider>

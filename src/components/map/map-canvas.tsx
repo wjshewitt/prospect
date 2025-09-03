@@ -3,9 +3,10 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import {Map, useMap, useApiIsLoaded} from '@vis.gl/react-google-maps';
-import type { LatLng, Shape, Tool } from '@/lib/types';
+import type { LatLng, Shape, Tool, ElevationGrid } from '@/lib/types';
 import { ShapeContextMenu } from './shape-context-menu';
 import { useToast } from '@/hooks/use-toast';
+import { getElevationGrid } from '@/services/elevation';
 
 interface MapCanvasProps {
   selectedTool: Tool;
@@ -13,6 +14,10 @@ interface MapCanvasProps {
   shapes: Shape[];
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
   className?: string;
+  gridResolution: number;
+  steepnessThreshold: number;
+  elevationGrid: ElevationGrid | null;
+  setElevationGrid: (grid: ElevationGrid | null) => void;
 }
 
 interface ContextMenuState {
@@ -89,26 +94,16 @@ const DrawingManagerComponent: React.FC<{
         const sw = bounds.getSouthWest();
         
         const path = [
-          { lat: ne.lat(), lng: ne.lng() },
           { lat: ne.lat(), lng: sw.lng() },
-          { lat: sw.lat(), lng: sw.lng() },
+          { lat: ne.lat(), lng: ne.lng() },
           { lat: sw.lat(), lng: ne.lng() },
+          { lat: sw.lat(), lng: sw.lng() },
         ];
-
-        // Ensure the path is clockwise for consistent area calculation
-        if (google.maps.geometry.spherical.computeArea(path) > 0) {
-            path.reverse();
-        }
         
         setShapes(prev => [...prev, {
             id: uuid(),
             type: 'rectangle',
-            bounds: {
-                north: ne.lat(),
-                south: sw.lat(),
-                east: ne.lng(),
-                west: sw.lng()
-            },
+            path,
             area: google.maps.geometry.spherical.computeArea(path)
         }]);
         rect.setMap(null); 
@@ -161,18 +156,7 @@ const DrawnShapes: React.FC<{
       const newPolygons: {[id: string]: google.maps.Polygon} = {};
 
       shapes.forEach(shape => {
-        let path: LatLng[];
-        if (shape.type === 'rectangle') {
-          const { north, south, east, west } = shape.bounds;
-          path = [
-            { lat: north, lng: west },
-            { lat: north, lng: east },
-            { lat: south, lng: east },
-            { lat: south, lng: west },
-          ];
-        } else {
-          path = shape.path;
-        }
+        const path = shape.path;
   
         const isEditing = shape.id === editingShapeId;
         const isMoving = shape.id === movingShapeId;
@@ -268,7 +252,7 @@ const DrawnShapes: React.FC<{
         
         setShapes(prev => prev.map(s => {
             if (s.id === id) {
-                // Any edit/move converts a rectangle to a polygon
+                // Any edit/move converts the original shape type to a polygon
                 return {
                     id: s.id,
                     type: 'polygon',
@@ -283,12 +267,54 @@ const DrawnShapes: React.FC<{
     return null;
   };
 
+const ElevationGridDisplay: React.FC<{
+  elevationGrid: ElevationGrid | null;
+  steepnessThreshold: number;
+}> = ({ elevationGrid, steepnessThreshold }) => {
+  const map = useMap();
+  const [gridRects, setGridRects] = useState<google.maps.Rectangle[]>([]);
+
+  useEffect(() => {
+    // Clear existing rectangles
+    gridRects.forEach(rect => rect.setMap(null));
+    if (!map || !elevationGrid) {
+      setGridRects([]);
+      return;
+    }
+
+    const newRects = elevationGrid.cells.map(cell => {
+      const isSteep = cell.slope > steepnessThreshold;
+      const rect = new google.maps.Rectangle({
+        map,
+        bounds: cell.bounds,
+        fillColor: isSteep ? '#FF0000' : '#00FF00',
+        fillOpacity: 0.4,
+        strokeWeight: 0,
+      });
+      return rect;
+    });
+
+    setGridRects(newRects);
+    
+    return () => {
+        newRects.forEach(rect => rect.setMap(null));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, elevationGrid, steepnessThreshold]);
+
+  return null;
+};
+
 
 export const MapCanvas: React.FC<MapCanvasProps> = ({
   selectedTool,
   shapes,
   setShapes,
   setSelectedTool,
+  gridResolution,
+  steepnessThreshold,
+  elevationGrid,
+  setElevationGrid,
   className,
 }) => {
   const isLoaded = useApiIsLoaded();
@@ -296,8 +322,29 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [editingShapeId, setEditingShapeId] = useState<string | null>(null);
   const [movingShapeId, setMovingShapeId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const isInteractingWithShape = !!editingShapeId || !!movingShapeId;
+  
+  useEffect(() => {
+    if (shapes.length === 1 && isLoaded) {
+      const shape = shapes[0];
+      getElevationGrid(shape, gridResolution)
+        .then(grid => {
+            setElevationGrid(grid)
+        })
+        .catch(err => {
+            console.error("Error getting elevation grid:", err);
+            toast({
+                variant: 'destructive',
+                title: 'Elevation API Error',
+                description: 'Could not fetch elevation data. Please check your API key and permissions.'
+            })
+        });
+    } else if (shapes.length === 0) {
+      setElevationGrid(null);
+    }
+  }, [shapes, gridResolution, isLoaded, setElevationGrid, toast]);
 
   const handleShapeClick = useCallback((shapeId: string, event: google.maps.MapMouseEvent) => {
     if (!map || !event.domEvent) return;
@@ -389,6 +436,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
       >
         {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} setShapes={setShapes} setSelectedTool={setSelectedTool} />}
         {isLoaded && <DrawnShapes shapes={shapes} setShapes={setShapes} onShapeClick={handleShapeClick} editingShapeId={editingShapeId} setEditingShapeId={setEditingShapeId} movingShapeId={movingShapeId} setMovingShapeId={setMovingShapeId} />}
+        {isLoaded && shapes.length === 1 && elevationGrid && <ElevationGridDisplay elevationGrid={elevationGrid} steepnessThreshold={steepnessThreshold} />}
       </Map>
 
        {contextMenu && (

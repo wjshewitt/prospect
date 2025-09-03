@@ -1,3 +1,4 @@
+
 export type LatLng = { lat: number; lng: number };
 
 export type Bounds = {
@@ -7,20 +8,27 @@ export type Bounds = {
   west: number;
 };
 
-export type RectangleShape = {
+export type Shape = {
   id: string;
-  type: 'rectangle';
-  bounds: Bounds;
+  type: 'rectangle' | 'polygon';
+  path: LatLng[];
   area?: number;
 };
 
-export type PolygonShape = {
-  id:string;
-  type: 'polygon';
-  path: LatLng[];
-  area?: number;
+export type Tool = 'pan' | 'rectangle' | 'polygon';
+
+export type ElevationPoint = {
+    location: LatLng;
+    elevation: number;
 }
 
-export type Shape = RectangleShape | PolygonShape;
+export type ElevationGridCell = {
+    bounds: Bounds;
+    slope: number;
+    aspect: number;
+}
 
-export type Tool = 'pan' | 'rectangle' | 'polygon';
+export type ElevationGrid = {
+    cells: ElevationGridCell[];
+    resolution: number;
+}

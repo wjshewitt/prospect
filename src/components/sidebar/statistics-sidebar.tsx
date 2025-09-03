@@ -1,21 +1,35 @@
 
 'use client';
 
-import type { Shape } from '@/lib/types';
+import type { Shape, ElevationGrid } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { BarChart3, TrendingUp, LandPlot, Waves } from 'lucide-react';
+import { BarChart3, LandPlot, Waves } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ElevationAnalysis } from './elevation-analysis';
 
 type StatisticsSidebarProps = {
   shapes: Shape[];
   isOpen: boolean;
+  gridResolution: number;
+  setGridResolution: (res: number) => void;
+  steepnessThreshold: number;
+  setSteepnessThreshold: (threshold: number) => void;
+  elevationGrid: ElevationGrid | null;
 };
 
 const SQ_METERS_TO_ACRES = 0.000247105;
 
-export default function StatisticsSidebar({ shapes, isOpen }: StatisticsSidebarProps) {
+export default function StatisticsSidebar({ 
+    shapes, 
+    isOpen,
+    gridResolution,
+    setGridResolution,
+    steepnessThreshold,
+    setSteepnessThreshold,
+    elevationGrid
+}: StatisticsSidebarProps) {
   const totalAreaMeters = shapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
   const totalAreaAcres = totalAreaMeters * SQ_METERS_TO_ACRES;
 
@@ -52,20 +66,14 @@ export default function StatisticsSidebar({ shapes, isOpen }: StatisticsSidebarP
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center justify-between">
-                <span>Elevation Analysis</span>
-                <TrendingUp className="h-5 w-5 text-muted-foreground" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm text-muted-foreground space-y-2">
-                <p>Elevation data not available.</p>
-                <p>Draw a shape to analyze elevation changes.</p>
-              </div>
-            </CardContent>
-          </Card>
+          <ElevationAnalysis
+            shape={shapes.length === 1 ? shapes[0] : null}
+            gridResolution={gridResolution}
+            setGridResolution={setGridResolution}
+            steepnessThreshold={steepnessThreshold}
+            setSteepnessThreshold={setSteepnessThreshold}
+            elevationGrid={elevationGrid}
+          />
 
            <Card>
             <CardHeader>
