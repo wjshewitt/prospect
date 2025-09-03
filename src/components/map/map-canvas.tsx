@@ -554,7 +554,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
         mapTypeId="satellite"
         tilt={0}
-        gestureHandling={(selectedTool === 'pan' || selectedTool === 'freehand') && !isInteractingWithShape ? 'greedy' : 'none'}
+        gestureHandling={selectedTool === 'pan' && !isInteractingWithShape ? 'greedy' : 'none'}
         zoomControl={selectedTool === 'pan' && !isInteractingWithShape}
         disableDoubleClickZoom={selectedTool !== 'pan'}
         streetViewControl={false}
@@ -580,3 +580,5 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
+
+    
