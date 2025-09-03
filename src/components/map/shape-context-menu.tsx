@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -8,10 +9,11 @@ interface ShapeContextMenuProps {
   position: { x: number; y: number };
   shapeId: string;
   onDelete: (shapeId: string) => void;
+  onEdit: (shapeId: string) => void;
   onClose: () => void;
 }
 
-export function ShapeContextMenu({ position, shapeId, onDelete }: ShapeContextMenuProps) {
+export function ShapeContextMenu({ position, shapeId, onDelete, onEdit }: ShapeContextMenuProps) {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDelete(shapeId);
@@ -19,8 +21,7 @@ export function ShapeContextMenu({ position, shapeId, onDelete }: ShapeContextMe
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Edit functionality to be implemented
-    alert('Edit feature coming soon!');
+    onEdit(shapeId);
   };
 
   return (
@@ -46,7 +47,6 @@ export function ShapeContextMenu({ position, shapeId, onDelete }: ShapeContextMe
         size="sm"
         onClick={handleEdit}
         className="justify-start px-2 py-1 h-auto"
-        disabled
       >
         <Pencil className="mr-2 h-4 w-4" />
         <span>Edit</span>

@@ -137,21 +137,20 @@ const DrawingManagerComponent: React.FC<{
 
 const DrawnShapes: React.FC<{
   shapes: Shape[],
-  onShapeClick: (shapeId: string, event: google.maps.MapMouseEvent) => void,
-}> = ({ shapes, onShapeClick }) => {
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  onShapeClick: (shapeId: string, event: google.maps.MapMouseEvent) => void;
+  editingShapeId: string | null;
+  setEditingShapeId: (id: string | null) => void;
+}> = ({ shapes, setShapes, onShapeClick, editingShapeId, setEditingShapeId }) => {
     const map = useMap();
     const [polygons, setPolygons] = useState<{[id: string]: google.maps.Polygon}>({});
   
+    // Effect to create and manage polygon instances on the map
     useEffect(() => {
-      // Clean up old polygons
-      Object.values(polygons).forEach(p => p.setMap(null));
-      
-      if (!map) {
-          setPolygons({});
-          return;
-      };
+      if (!map) return;
   
       const newPolygons: {[id: string]: google.maps.Polygon} = {};
+
       shapes.forEach(shape => {
         let path: LatLng[];
         if (shape.type === 'rectangle') {
@@ -166,6 +165,7 @@ const DrawnShapes: React.FC<{
           path = shape.path;
         }
   
+        const isEditing = shape.id === editingShapeId;
         const poly = new google.maps.Polygon({
           paths: path,
           strokeColor: 'hsl(var(--primary))',
@@ -174,20 +174,38 @@ const DrawnShapes: React.FC<{
           fillColor: 'hsl(var(--primary))',
           fillOpacity: 0.3,
           map: map,
-          clickable: true
+          clickable: true,
+          editable: isEditing,
         });
 
         poly.addListener('rightclick', (e: google.maps.MapMouseEvent) => onShapeClick(shape.id, e));
         poly.addListener('click', (e: google.maps.MapMouseEvent) => {
-            // Check for middle click (button 1)
-            if (e.domEvent.button === 1) {
+            if (e.domEvent.button === 1) { // Middle click
                 onShapeClick(shape.id, e);
+            } else if (editingShapeId && editingShapeId !== shape.id) {
+                // If another shape is being edited, clicking this one stops the other edit
+                setEditingShapeId(null);
             }
         });
+
+        if (isEditing) {
+            const path = poly.getPath();
+            // Listen for changes to the polygon's path
+            google.maps.event.addListener(path, 'set_at', () => updateShape(shape.id, poly));
+            google.maps.event.addListener(path, 'insert_at', () => updateShape(shape.id, poly));
+        }
         
         newPolygons[shape.id] = poly;
       });
   
+      // Clean up polygons that are no longer in the shapes array
+      Object.keys(polygons).forEach(id => {
+        if (!newPolygons[id]) {
+          polygons[id].setMap(null);
+          google.maps.event.clearInstanceListeners(polygons[id]);
+        }
+      });
+      
       setPolygons(newPolygons);
   
       return () => {
@@ -197,7 +215,40 @@ const DrawnShapes: React.FC<{
         });
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [shapes, map, onShapeClick]);
+    }, [shapes, map, editingShapeId, onShapeClick]);
+
+
+    // Effect to update the editable property of polygons when editingShapeId changes
+    useEffect(() => {
+        Object.entries(polygons).forEach(([id, poly]) => {
+            const isEditing = id === editingShapeId;
+            if (poly.getEditable() !== isEditing) {
+                poly.setEditable(isEditing);
+            }
+        });
+    }, [editingShapeId, polygons]);
+
+
+    const updateShape = (id: string, poly: google.maps.Polygon) => {
+        const newPath = poly.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
+        const newArea = google.maps.geometry.spherical.computeArea(newPath);
+        
+        setShapes(prev => prev.map(s => {
+            if (s.id === id) {
+                if (s.type === 'polygon') {
+                    return { ...s, path: newPath, area: newArea };
+                }
+                // Handle rectangle update (it becomes a polygon)
+                return {
+                    id: s.id,
+                    type: 'polygon',
+                    path: newPath,
+                    area: newArea
+                };
+            }
+            return s;
+        }));
+    };
   
     return null;
   };
@@ -213,11 +264,15 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   const isLoaded = useApiIsLoaded();
   const map = useMap();
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [editingShapeId, setEditingShapeId] = useState<string | null>(null);
 
   const handleShapeClick = useCallback((shapeId: string, event: google.maps.MapMouseEvent) => {
     if (!map || !event.domEvent) return;
     event.domEvent.preventDefault();
     event.domEvent.stopPropagation();
+    
+    // Stop editing other shapes when opening context menu
+    setEditingShapeId(null);
     
     const mapContainer = map.getDiv();
     const projection = map.getProjection();
@@ -251,12 +306,24 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
 
   const handleDeleteShape = (shapeId: string) => {
     setShapes(prev => prev.filter(s => s.id !== shapeId));
+    if (editingShapeId === shapeId) {
+      setEditingShapeId(null);
+    }
     closeContextMenu();
   };
+  
+  const handleEditShape = (shapeId: string) => {
+    setEditingShapeId(shapeId);
+    closeContextMenu();
+  }
 
   useEffect(() => {
+    const handleClickOutside = () => {
+      closeContextMenu();
+      setEditingShapeId(null); // Stop editing when clicking the map
+    };
     if (map) {
-      map.addListener('click', closeContextMenu);
+      map.addListener('click', handleClickOutside);
       map.addListener('dragstart', closeContextMenu);
     }
     return () => {
@@ -273,17 +340,16 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         defaultCenter={{lat: 53.483959, lng: -2.244644}}
         defaultZoom={7}
         mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
-        gestureHandling={selectedTool === 'pan' ? 'greedy' : 'none'}
-        zoomControl={selectedTool === 'pan'}
+        gestureHandling={selectedTool === 'pan' && !editingShapeId ? 'greedy' : 'none'}
+        zoomControl={selectedTool === 'pan' && !editingShapeId}
         disableDoubleClickZoom={selectedTool !== 'pan'}
         streetViewControl={false}
         mapTypeControl={false}
         fullscreenControl={false}
         className="w-full h-full"
-        onClick={closeContextMenu}
       >
         {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} setShapes={setShapes} setSelectedTool={setSelectedTool} />}
-        {isLoaded && <DrawnShapes shapes={shapes} onShapeClick={handleShapeClick} />}
+        {isLoaded && <DrawnShapes shapes={shapes} setShapes={setShapes} onShapeClick={handleShapeClick} editingShapeId={editingShapeId} setEditingShapeId={setEditingShapeId} />}
       </Map>
 
        {contextMenu && (
@@ -291,6 +357,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
           position={contextMenu.position}
           shapeId={contextMenu.shapeId}
           onDelete={handleDeleteShape}
+          onEdit={handleEditShape}
           onClose={closeContextMenu}
         />
       )}
