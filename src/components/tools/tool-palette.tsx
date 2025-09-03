@@ -18,11 +18,11 @@ const tools: { id: Tool; label: string; icon: React.ReactNode }[] = [
   { id: 'rectangle', label: 'Rectangle Tool', icon: <Square /> },
 ];
 
-const disabledTools: { id: Tool; label: string; icon: React.ReactNode }[] = [
+const disabledTools: { id: Tool | string; label: string; icon: React.ReactNode }[] = [
     { id: 'pen', label: 'Pen Tool', icon: <Pen /> },
     { id: 'circle', label: 'Circle Tool', icon: <Circle /> },
     { id: 'text', label: 'Text Tool', icon: <Type /> },
-    { id: 'pen', label: 'Boundary Tool', icon: <Spline /> },
+    { id: 'boundary', label: 'Boundary Tool', icon: <Spline /> },
 ];
 
 
