@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { TrendingUp, Percent, Eye, EyeOff } from 'lucide-react';
 import { useMemo } from 'react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 
 type ElevationAnalysisProps = {
   shape: Shape | null;
@@ -78,49 +79,55 @@ export function ElevationAnalysis({
             <TrendingUp className="h-5 w-5 text-muted-foreground" />
             </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-            <div className="flex items-center justify-between space-x-2">
-                <div className="flex items-center gap-2">
-                    {isAnalysisVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                    <Label htmlFor="analysis-visibility">Show Grid</Label>
+        <CardContent className="space-y-4">
+            <Collapsible open={isAnalysisVisible} onOpenChange={setIsAnalysisVisible}>
+              <div className="flex items-center justify-between space-x-2">
+                  <div className="flex items-center gap-2">
+                      {isAnalysisVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                      <Label htmlFor="analysis-visibility">Show Grid</Label>
+                  </div>
+                  <CollapsibleTrigger asChild>
+                    <Switch 
+                        id="analysis-visibility"
+                        checked={isAnalysisVisible}
+                        onCheckedChange={setIsAnalysisVisible}
+                    />
+                  </CollapsibleTrigger>
+              </div>
+              <CollapsibleContent className="space-y-6 pt-6">
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <Label htmlFor="grid-resolution">Grid Resolution</Label>
+                        <span className="text-sm font-medium">{gridResolution}m</span>
+                    </div>
+                    <Slider
+                        id="grid-resolution"
+                        min={5}
+                        max={50}
+                        step={1}
+                        value={[gridResolution]}
+                        onValueChange={([val]) => setGridResolution(val)}
+                    />
                 </div>
-                <Switch 
-                    id="analysis-visibility"
-                    checked={isAnalysisVisible}
-                    onCheckedChange={setIsAnalysisVisible}
-                />
-            </div>
-            <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                    <Label htmlFor="grid-resolution">Grid Resolution</Label>
-                    <span className="text-sm font-medium">{gridResolution}m</span>
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                        <Label htmlFor="steepness-threshold">Steepness Threshold</Label>
+                        <span className="text-sm font-medium">{steepnessThreshold}%</span>
+                    </div>
+                    <Slider
+                        id="steepness-threshold"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={[steepnessThreshold]}
+                        onValueChange={([val]) => setSteepnessThreshold(val)}
+                    />
                 </div>
-                <Slider
-                    id="grid-resolution"
-                    min={5}
-                    max={50}
-                    step={1}
-                    value={[gridResolution]}
-                    onValueChange={([val]) => setGridResolution(val)}
-                />
-            </div>
-            <div className="space-y-4">
-                 <div className="flex justify-between items-center">
-                    <Label htmlFor="steepness-threshold">Steepness Threshold</Label>
-                    <span className="text-sm font-medium">{steepnessThreshold}%</span>
-                </div>
-                <Slider
-                    id="steepness-threshold"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={[steepnessThreshold]}
-                    onValueChange={([val]) => setSteepnessThreshold(val)}
-                />
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             {elevationGrid && analysis.totalCells > 0 && (
-                <div className="space-y-4 pt-2">
+                <div className="space-y-4 pt-4">
                     <h4 className="font-medium text-sm flex items-center gap-2">
                         <Percent className="h-4 w-4" /> Slope Breakdown
                     </h4>
@@ -137,7 +144,7 @@ export function ElevationAnalysis({
                      <CardDescription className="text-xs text-center pt-2">
                         Analysis based on {analysis.totalCells} grid cells.
                         {analysis.invalidCells > 0 && ` (${analysis.invalidCells} invalid cells ignored).`}
-                        Click a grid cell to see its slope.
+                        {isAnalysisVisible && " Click a grid cell to see its slope."}
                     </CardDescription>
                 </div>
             )}
