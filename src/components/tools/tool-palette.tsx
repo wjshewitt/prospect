@@ -12,7 +12,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { BuildingPlacementDialog } from '@/components/ai/building-placement-dialog';
-import { MousePointer2, Square, Pen, Circle, Type, Spline, Shapes } from 'lucide-react';
+import { MousePointer2, Square, Pen, Circle, Type, Spline, Shapes, PenTool } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type ToolPaletteProps = {
@@ -28,7 +28,8 @@ const panTool: { id: Tool; label: string; icon: React.ReactNode } = {
 
 const drawingTools: { id: Tool; label: string; icon: React.ReactNode }[] = [
   { id: 'rectangle', label: 'Rectangle', icon: <Square /> },
-  { id: 'polygon', label: 'Freehand / Polygon', icon: <Pen /> },
+  { id: 'polygon', label: 'Polygon (Click to Plot)', icon: <Pen /> },
+  { id: 'freehand', label: 'Freehand (Drag to Draw)', icon: <PenTool /> },
 ];
 
 const disabledTools: { id: string; label: string; icon: React.ReactNode }[] = [
@@ -50,16 +51,21 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
           {/* Pan Tool */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                className={cn(
-                  'w-14 h-14 flex justify-center items-center',
-                  selectedTool === panTool.id && 'bg-accent text-accent-foreground'
-                )}
-                onClick={() => setSelectedTool(panTool.id)}
-              >
-                {panTool.icon}
-              </Button>
+              <div className="w-full px-2 group/button">
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    'w-full justify-center group-hover/button:justify-start group-hover/button:px-4 gap-2 px-0 h-14',
+                    selectedTool === panTool.id && 'bg-accent text-accent-foreground'
+                  )}
+                  onClick={() => setSelectedTool(panTool.id)}
+                >
+                  {panTool.icon}
+                  <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
+                    {panTool.label}
+                  </span>
+                </Button>
+              </div>
             </TooltipTrigger>
             <TooltipContent side="right">
               <p>{panTool.label}</p>
@@ -70,17 +76,22 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      'w-14 h-14 flex justify-center items-center',
-                      isDrawingToolSelected && 'bg-accent text-accent-foreground'
-                    )}
-                  >
-                    <Shapes />
-                  </Button>
-                </DropdownMenuTrigger>
+                <div className="w-full px-2 group/button">
+                   <DropdownMenuTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        className={cn(
+                        'w-full justify-center group-hover/button:justify-start group-hover/button:px-4 gap-2 px-0 h-14',
+                        isDrawingToolSelected && 'bg-accent text-accent-foreground'
+                        )}
+                    >
+                        <Shapes />
+                         <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
+                            Draw Tools
+                        </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                </div>
               </TooltipTrigger>
               <TooltipContent side="right">
                 <p>Drawing Tools</p>
@@ -105,9 +116,14 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
           {disabledTools.map(tool => (
             <Tooltip key={tool.id}>
               <TooltipTrigger asChild>
-                <Button variant="ghost" className="w-14 h-14" disabled>
-                  {tool.icon}
-                </Button>
+                 <div className="w-full px-2 group/button">
+                    <Button variant="ghost" className="w-full justify-center group-hover/button:justify-start group-hover/button:px-4 gap-2 px-0 h-14" disabled>
+                        {tool.icon}
+                        <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
+                            {tool.label}
+                        </span>
+                    </Button>
+                 </div>
               </TooltipTrigger>
               <TooltipContent side="right">
                 <p>{tool.label} (coming soon)</p>
@@ -118,7 +134,7 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
 
         <div className="flex-grow" />
 
-        <div className="w-full px-2 group/button hover:w-40 transition-all duration-300">
+        <div className="w-full px-2 group/button">
           <BuildingPlacementDialog />
         </div>
       </TooltipProvider>

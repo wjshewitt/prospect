@@ -10,12 +10,12 @@ export type Bounds = {
 
 export type Shape = {
   id: string;
-  type: 'rectangle' | 'polygon';
+  type: 'rectangle' | 'polygon' | 'freehand';
   path: LatLng[];
   area?: number;
 };
 
-export type Tool = 'pan' | 'rectangle' | 'polygon';
+export type Tool = 'pan' | 'rectangle' | 'polygon' | 'freehand';
 
 export type ElevationPoint = {
     location: LatLng;

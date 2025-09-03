@@ -1,9 +1,9 @@
 
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {Map, useMap, useApiIsLoaded, InfoWindow} from '@vis.gl/react-google-maps';
-import type { Shape, Tool, ElevationGrid, ElevationGridCell } from '@/lib/types';
+import type { Shape, Tool, ElevationGrid, ElevationGridCell, LatLng } from '@/lib/types';
 import { ShapeContextMenu } from './shape-context-menu';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeElevation } from '@/services/elevation';
@@ -75,11 +75,13 @@ const DrawingManagerComponent: React.FC<{
   useEffect(() => {
     if (!drawingManager) return;
     
-    const drawingMode = selectedTool === 'rectangle' 
+    const isStandardDrawingTool = selectedTool === 'rectangle' || selectedTool === 'polygon';
+    
+    const drawingMode = isStandardDrawingTool
+      ? selectedTool === 'rectangle'
         ? google.maps.drawing.OverlayType.RECTANGLE
-        : selectedTool === 'polygon'
-        ? google.maps.drawing.OverlayType.POLYGON
-        : null;
+        : google.maps.drawing.OverlayType.POLYGON
+      : null;
 
     drawingManager.setDrawingMode(drawingMode);
 
@@ -222,9 +224,9 @@ const DrawnShapes: React.FC<{
       setPolygons(newPolygons);
   
       return () => {
-        Object.values(newPolygons).forEach(p => {
-            google.maps.event.clearInstanceListeners(p);
-            p.setMap(null)
+        Object.values(newPolygons).forEach(poly => {
+            google.maps.event.clearInstanceListeners(poly);
+            poly.setMap(null)
         });
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -353,6 +355,79 @@ const ElevationGridDisplay: React.FC<{
   );
 };
 
+const FreehandDrawingTool: React.FC<{
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  setSelectedTool: (tool: Tool) => void;
+}> = ({ setShapes, setSelectedTool }) => {
+  const map = useMap();
+  const [isDrawing, setIsDrawing] = useState(false);
+  const pathRef = useRef<LatLng[]>([]);
+  const polylineRef = useRef<google.maps.Polyline | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+
+    const onMouseDown = (e: google.maps.MapMouseEvent) => {
+      setIsDrawing(true);
+      pathRef.current = [];
+      if (e.latLng) {
+        pathRef.current.push(e.latLng.toJSON());
+      }
+      
+      // Create a temporary polyline for visual feedback
+      polylineRef.current = new google.maps.Polyline({
+        map,
+        path: pathRef.current,
+        strokeColor: 'hsl(var(--primary))',
+        strokeWeight: 3,
+        strokeOpacity: 0.7,
+      });
+    };
+
+    const onMouseMove = (e: google.maps.MapMouseEvent) => {
+      if (!isDrawing || !e.latLng) return;
+      pathRef.current.push(e.latLng.toJSON());
+      polylineRef.current?.setPath(pathRef.current);
+    };
+
+    const onMouseUp = () => {
+      if (!isDrawing || pathRef.current.length < 3) {
+        setIsDrawing(false);
+        polylineRef.current?.setMap(null); // Clean up temp line
+        return;
+      }
+
+      const finalPath = [...pathRef.current];
+      const area = google.maps.geometry.spherical.computeArea(finalPath);
+      
+      setShapes(prev => [...prev, {
+        id: uuid(),
+        type: 'freehand',
+        path: finalPath,
+        area
+      }]);
+      
+      setIsDrawing(false);
+      pathRef.current = [];
+      polylineRef.current?.setMap(null); // Clean up temp line
+      setSelectedTool('pan');
+    };
+
+    const downListener = map.addListener('mousedown', onMouseDown);
+    const moveListener = map.addListener('mousemove', onMouseMove);
+    const upListener = map.addListener('mouseup', onMouseUp);
+
+    return () => {
+      downListener.remove();
+      moveListener.remove();
+      upListener.remove();
+      polylineRef.current?.setMap(null); // Cleanup on unmount
+    };
+  }, [map, isDrawing, setShapes, setSelectedTool]);
+
+  return null;
+};
+
 
 export const MapCanvas: React.FC<MapCanvasProps> = ({
   selectedTool,
@@ -479,7 +554,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
         mapTypeId="satellite"
         tilt={0}
-        gestureHandling={selectedTool === 'pan' && !isInteractingWithShape ? 'greedy' : 'none'}
+        gestureHandling={(selectedTool === 'pan' || selectedTool === 'freehand') && !isInteractingWithShape ? 'greedy' : 'none'}
         zoomControl={selectedTool === 'pan' && !isInteractingWithShape}
         disableDoubleClickZoom={selectedTool !== 'pan'}
         streetViewControl={false}
@@ -488,6 +563,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         className="w-full h-full"
       >
         {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} setShapes={setShapes} setSelectedTool={setSelectedTool} />}
+        {isLoaded && selectedTool === 'freehand' && <FreehandDrawingTool setShapes={setShapes} setSelectedTool={setSelectedTool} />}
         {isLoaded && <DrawnShapes shapes={shapes} setShapes={setShapes} onShapeClick={handleShapeClick} editingShapeId={editingShapeId} setEditingShapeId={setEditingShapeId} movingShapeId={movingShapeId} setMovingShapeId={setMovingShapeId} />}
         {isLoaded && shapes.length === 1 && elevationGrid && <ElevationGridDisplay elevationGrid={elevationGrid} steepnessThreshold={steepnessThreshold} />}
       </Map>
