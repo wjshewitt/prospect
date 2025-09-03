@@ -93,6 +93,11 @@ function computeSlopePointGrid(z: Float64Array, nx: number, ny: number, dx: numb
     for (let j = 0; j < ny; j++) {
         for (let i = 0; i < nx; i++) {
             const idx = j * nx + i;
+            
+            if (!isFinite(z[idx])) {
+                out[idx] = NaN;
+                continue;
+            }
 
             // Central difference for interior points, forward/backward for edges
             const zl = z[j * nx + Math.max(0, i - 1)];
@@ -193,14 +198,22 @@ export async function analyzeElevation(
             }
             
             // Average slope from the four corners of the cell
-            const s00 = slopesPoint[j * nx + i] || 0;
-            const s10 = slopesPoint[j * nx + (i + 1)] || 0;
-            const s01 = slopesPoint[(j + 1) * nx + i] || 0;
-            const s11 = slopesPoint[(j + 1) * nx + (i + 1)] || 0;
-            const avgSlope = (s00 + s10 + s01 + s11) / 4;
+            const s00 = slopesPoint[j * nx + i];
+            const s10 = slopesPoint[j * nx + (i + 1)];
+            const s01 = slopesPoint[(j + 1) * nx + i];
+            const s11 = slopesPoint[(j + 1) * nx + (i + 1)];
+            const corners = [s00, s10, s01, s11];
+            
+            const validCorners = corners.filter(s => isFinite(s));
+            const avgSlope = validCorners.length > 0
+                ? validCorners.reduce((a, b) => a + b, 0) / validCorners.length
+                : NaN;
+
+            const cellCenter = proj.xyToLL(x + dx / 2, y + dy / 2);
             
             cells.push({
                 path: cellPath,
+                center: cellCenter,
                 bounds: { // Not strictly needed, but can be useful
                     north: cellPath[2].lat,
                     south: cellPath[0].lat,

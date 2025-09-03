@@ -2,8 +2,8 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import {Map, useMap, useApiIsLoaded} from '@vis.gl/react-google-maps';
-import type { Shape, Tool, ElevationGrid } from '@/lib/types';
+import {Map, useMap, useApiIsLoaded, InfoWindow} from '@vis.gl/react-google-maps';
+import type { Shape, Tool, ElevationGrid, ElevationGridCell } from '@/lib/types';
 import { ShapeContextMenu } from './shape-context-menu';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeElevation } from '@/services/elevation';
@@ -273,39 +273,84 @@ const ElevationGridDisplay: React.FC<{
 }> = ({ elevationGrid, steepnessThreshold }) => {
   const map = useMap();
   const [gridPolygons, setGridPolygons] = useState<google.maps.Polygon[]>([]);
+  const [activeCell, setActiveCell] = useState<ElevationGridCell | null>(null);
 
   useEffect(() => {
     // Clear existing polygons
-    gridPolygons.forEach(poly => poly.setMap(null));
+    gridPolygons.forEach(poly => {
+        google.maps.event.clearInstanceListeners(poly);
+        poly.setMap(null);
+    });
     if (!map || !elevationGrid || !elevationGrid.cells) {
       setGridPolygons([]);
       return;
     }
 
     const newPolys = elevationGrid.cells.map(cell => {
-      const isSteep = cell.slope > steepnessThreshold;
+      const isValid = isFinite(cell.slope);
+      const isSteep = isValid && cell.slope > steepnessThreshold;
+      
+      let fillColor = '#808080'; // Grey for invalid data
+      let strokeColor = '#606060';
+      if (isValid) {
+        fillColor = isSteep ? '#ef4444' : '#22c55e';
+        strokeColor = isSteep ? '#dc2626' : '#16a34a';
+      }
+
       const poly = new google.maps.Polygon({
         map,
         paths: cell.path,
-        fillColor: isSteep ? '#ef4444' : '#22c55e',
-        strokeColor: isSteep ? '#dc2626' : '#16a34a',
+        fillColor,
+        strokeColor,
         fillOpacity: 0.45,
         strokeWeight: 0.5,
         strokeOpacity: 0.6,
-        clickable: false,
+        clickable: true,
       });
+
+      poly.addListener('click', () => {
+        setActiveCell(cell);
+      });
+
       return poly;
     });
 
     setGridPolygons(newPolys);
     
     return () => {
-        newPolys.forEach(poly => poly.setMap(null));
+        newPolys.forEach(poly => {
+            google.maps.event.clearInstanceListeners(poly);
+            poly.setMap(null)
+        });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, elevationGrid, steepnessThreshold]);
 
-  return null;
+  const handleInfoWindowClose = () => {
+    setActiveCell(null);
+  };
+
+  return (
+    <>
+      {activeCell && (
+        <InfoWindow
+          position={activeCell.center}
+          onCloseClick={handleInfoWindowClose}
+        >
+          <div className="text-center p-1">
+            {isFinite(activeCell.slope) ? (
+              <>
+                <p className="text-lg font-bold">{activeCell.slope.toFixed(1)}%</p>
+                <p className="text-xs text-muted-foreground">Steepness</p>
+              </>
+            ) : (
+              <p className="text-sm font-medium">No data</p>
+            )}
+          </div>
+        </InfoWindow>
+      )}
+    </>
+  );
 };
 
 

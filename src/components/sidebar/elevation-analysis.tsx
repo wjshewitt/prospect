@@ -27,18 +27,23 @@ export function ElevationAnalysis({
 }: ElevationAnalysisProps) {
 
   const analysis = useMemo(() => {
-    if (!elevationGrid || !elevationGrid.gridData || !elevationGrid.gridData.cells || elevationGrid.gridData.cells.length === 0) {
+    if (!elevationGrid || !elevationGrid.cells) {
       return { flatPercent: 0, steepPercent: 0, totalCells: 0 };
     }
     
-    const { cells } = elevationGrid.gridData;
-    const flatCount = cells.filter(cell => cell.slope <= steepnessThreshold).length;
-    const steepCount = cells.length - flatCount;
+    const validCells = elevationGrid.cells.filter(cell => isFinite(cell.slope));
+    if (validCells.length === 0) {
+      return { flatPercent: 0, steepPercent: 0, totalCells: 0, invalidCells: elevationGrid.cells.length };
+    }
+
+    const flatCount = validCells.filter(cell => cell.slope <= steepnessThreshold).length;
+    const steepCount = validCells.length - flatCount;
     
     return {
-      flatPercent: (flatCount / cells.length) * 100,
-      steepPercent: (steepCount / cells.length) * 100,
-      totalCells: cells.length,
+      flatPercent: (flatCount / validCells.length) * 100,
+      steepPercent: (steepCount / validCells.length) * 100,
+      totalCells: validCells.length,
+      invalidCells: elevationGrid.cells.length - validCells.length,
     }
   }, [elevationGrid, steepnessThreshold]);
 
@@ -115,6 +120,8 @@ export function ElevationAnalysis({
                     </div>
                      <CardDescription className="text-xs text-center pt-2">
                         Analysis based on {analysis.totalCells} grid cells.
+                        {analysis.invalidCells > 0 && ` (${analysis.invalidCells} invalid cells ignored).`}
+                        Click a grid cell to see its slope.
                     </CardDescription>
                 </div>
             )}
