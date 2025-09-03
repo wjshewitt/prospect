@@ -191,14 +191,15 @@ export function DrawingOverlay({ shapes, setShapes, selectedTool }: DrawingOverl
     const ne = projection.fromDivPixelToLatLng(currentPos);
 
     if (sw && ne) {
-      const newPath: google.maps.LatLngLiteral[] = [
-        { lat: Math.min(sw.lat(), ne.lat()), lng: Math.min(sw.lng(), ne.lng()) },
-        { lat: newPath[0].lat, lng: Math.max(sw.lng(), ne.lng())},
-        { lat: Math.max(sw.lat(), ne.lat()), lng: Math.max(sw.lng(), ne.lng()) },
-        { lat: Math.max(sw.lat(), ne.lat()), lng: Math.min(sw.lng(), ne.lng()) }
+      const pathPoints = [
+        sw,
+        new google.maps.LatLng(sw.lat(), ne.lng()),
+        ne,
+        new google.maps.LatLng(ne.lat(), sw.lng()),
       ];
+      const newPath: google.maps.LatLngLiteral[] = pathPoints.map(p => p.toJSON());
 
-      const areaInMeters = apiIsLoaded ? google.maps.geometry.spherical.computeArea(newPath.map(p => new google.maps.LatLng(p))) : 0;
+      const areaInMeters = apiIsLoaded ? google.maps.geometry.spherical.computeArea(pathPoints) : 0;
 
       const newShape: Shape = {
         id: new Date().toISOString(),
