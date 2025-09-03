@@ -283,8 +283,9 @@ const ElevationGridDisplay: React.FC<{
         google.maps.event.clearInstanceListeners(poly);
         poly.setMap(null);
     });
+    setGridPolygons([]); // Reset state
+
     if (!map || !elevationGrid || !elevationGrid.cells) {
-      setGridPolygons([]);
       return;
     }
 
@@ -322,7 +323,7 @@ const ElevationGridDisplay: React.FC<{
     return () => {
         newPolys.forEach(poly => {
             google.maps.event.clearInstanceListeners(poly);
-            poly.setMap(null)
+            poly.setMap(null);
         });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -457,23 +458,29 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   }, [isLoaded]);
 
   useEffect(() => {
-    if (shapes.length === 1 && isLoaded && elevationService) {
-      analyzeElevation(shapes[0], elevationService, gridResolution)
-        .then(grid => {
-            setElevationGrid(grid)
-        })
-        .catch(err => {
-            console.error("Error getting elevation grid:", err);
-            toast({
-                variant: 'destructive',
-                title: 'Elevation API Error',
-                description: 'Could not fetch elevation data. Please check your API key and permissions.'
-            })
-        });
-    } else if (shapes.length !== 1) { // Also clear if more than one shape
-      setElevationGrid(null);
-    }
-  }, [shapes, gridResolution, isLoaded, setElevationGrid, toast, elevationService]);
+    const runAnalysis = async () => {
+        if (shapes.length === 1 && isLoaded && elevationService) {
+            try {
+                const grid = await analyzeElevation(shapes[0], elevationService, gridResolution);
+                setElevationGrid(grid);
+            } catch (err) {
+                console.error("Error getting elevation grid:", err);
+                toast({
+                    variant: 'destructive',
+                    title: 'Elevation API Error',
+                    description: 'Could not fetch elevation data. Please check your API key and permissions.'
+                });
+                setElevationGrid(null); // Clear grid on error
+            }
+        } else {
+            // If not exactly one shape, clear the grid
+            if (elevationGrid !== null) {
+                setElevationGrid(null);
+            }
+        }
+    };
+    runAnalysis();
+  }, [shapes, gridResolution, isLoaded, elevationService, setElevationGrid, toast, elevationGrid]);
 
   const handleShapeClick = useCallback((shapeId: string, event: google.maps.MapMouseEvent) => {
     if (!map || !event.domEvent) return;
@@ -580,5 +587,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
+
+    
 
     
