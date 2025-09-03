@@ -1,7 +1,4 @@
-
-'use server';
-
-import type { Shape, ElevationPoint, ElevationGrid, LatLng, Bounds } from '@/lib/types';
+import type { Shape, ElevationGrid, LatLng, Bounds } from '@/lib/types';
 
 const MAX_ELEVATION_BATCH_SIZE = 512;
 
@@ -22,9 +19,11 @@ function makeLocalProjection(lat0: number, lon0: number, h0: number) {
     const z0 = ((1 - E2) * N0 + h0) * sinLat0;
 
     return {
-        toXY: (p: google.maps.LatLng) => {
-            const latRad = p.lat() * (Math.PI / 180);
-            const lonRad = p.lng() * (Math.PI / 180);
+        toXY: (p: google.maps.LatLng | LatLng) => {
+            const lat = 'lat' in p ? p.lat() : p.lat;
+            const lng = 'lng' in p ? p.lng() : p.lng;
+            const latRad = lat * (Math.PI / 180);
+            const lonRad = lng * (Math.PI / 180);
             const sinLat = Math.sin(latRad);
             const cosLat = Math.cos(latRad);
             const N = EARTH_RADIUS_MAJOR / Math.sqrt(1 - E2 * sinLat * sinLat);
@@ -35,7 +34,7 @@ function makeLocalProjection(lat0: number, lon0: number, h0: number) {
             
             return { x: x - x0, y: y - y0 };
         },
-        xyToLL: (x: number, y: number) => {
+        xyToLL: (x: number, y: number): LatLng => {
             const xp = x + x0;
             const yp = y + y0;
             const zp = z0; 
@@ -85,15 +84,13 @@ async function fetchElevationsInBatches(locations: LatLng[]): Promise<(google.ma
             });
             
             if (response.status !== google.maps.ElevationStatus.OK) {
-                console.error(`Elevation batch failed: ${response.status}`);
-                // Fill batch with nulls on error
-                results.push(...Array(batch.length).fill(null));
-                continue;
+                console.error(`Elevation service failed due to: ${response.status}`);
+                throw new Error(`Elevation service failed due to: ${response.status}`);
             }
             results.push(...response.results);
         } catch (error) {
             console.error('Error fetching elevation batch:', error);
-            results.push(...Array(batch.length).fill(null));
+            throw error;
         }
     }
     return results;
@@ -135,8 +132,8 @@ export async function getElevationGrid(shape: Shape, resolution: number): Promis
     let width = xyB.maxX - xyB.minX;
     let height = xyB.maxY - xyB.minY;
 
-    let nx = Math.floor(width / resolution) + 1;
-    let ny = Math.floor(height / resolution) + 1;
+    let nx = Math.max(2, Math.floor(width / resolution) + 1);
+    let ny = Math.max(2, Math.floor(height / resolution) + 1);
 
     const locations: LatLng[] = [];
     for (let j = 0; j < ny; j++) {
@@ -196,7 +193,7 @@ export async function getElevationGrid(shape: Shape, resolution: number): Promis
             };
 
             cells.push({
-                bounds: cellBounds, // Note: these bounds are for the polygon, not the grid cell itself.
+                bounds: cellBounds,
                 path: cellLatLngs,
                 slope: slope,
                 aspect: 0 // Aspect calculation can be added here if needed
