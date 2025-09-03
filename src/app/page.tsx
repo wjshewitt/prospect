@@ -6,7 +6,7 @@ import { APIProvider } from '@vis.gl/react-google-maps';
 import Header from '@/components/layout/header';
 import ToolPalette from '@/components/tools/tool-palette';
 import StatisticsSidebar from '@/components/sidebar/statistics-sidebar';
-import MapCanvas from '@/components/map/map-canvas';
+import { MapCanvas } from '@/components/map/map-canvas';
 import { Button } from '@/components/ui/button';
 import { PanelRightClose, PanelLeftClose } from 'lucide-react';
 import { cn } from '@/lib/utils';

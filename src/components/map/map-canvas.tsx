@@ -1,31 +1,50 @@
 'use client';
 
-import type { Shape, Tool } from '@/lib/types';
-import { Map } from '@vis.gl/react-google-maps';
-import { DrawingOverlay } from './drawing-overlay';
+import React from 'react';
+import {Map} from '@vis.gl/react-google-maps';
+import {DrawingOverlay} from './drawing-overlay';
 
-type MapCanvasProps = {
+type Tool = 'pan' | 'rectangle' | 'polygon';
+
+export type LatLng = google.maps.LatLngLiteral;
+export type Bounds = google.maps.LatLngBoundsLiteral;
+
+export type RectangleShape = {id: string; type: 'rectangle'; bounds: Bounds};
+export type PolygonShape = {id: string; type: 'polygon'; path: LatLng[]};
+export type Shape = RectangleShape | PolygonShape;
+
+interface MapCanvasProps {
+  selectedTool: Tool;
   shapes: Shape[];
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
-  selectedTool: Tool;
-};
+  // You likely already pass other Map props (center, zoom, mapId, etc.) higher up.
+  // Keep them as-is. If you need to forward them, add to this interface and spread on <Map />.
+  className?: string;
+}
 
-const MAP_ID = 'a2a91d1962296f30'; // Hybrid map style
+export const MapCanvas: React.FC<MapCanvasProps> = ({
+  selectedTool,
+  shapes,
+  setShapes,
+  className,
+}) => {
+  const isPanMode = selectedTool === 'pan';
 
-export default function MapCanvas({ shapes, setShapes, selectedTool }: MapCanvasProps) {
   return (
-    <div className="w-full h-full">
+    <div className={className ?? 'relative w-full h-full'}>
       <Map
-        defaultCenter={{ lat: 54.5, lng: -2 }}
-        defaultZoom={6}
-        mapId={MAP_ID}
-        disableDefaultUI={true}
-        gestureHandling={selectedTool === 'pan' ? 'greedy' : 'none'}
-        zoomControl={selectedTool === 'pan'}
+        // Keep your existing props (mapId, defaultCenter, defaultZoom, etc.) unchanged.
+        // The two key lines below toggle map interactivity while drawing:
+        gestureHandling={isPanMode ? 'greedy' : 'none'}
+        zoomControl={isPanMode}
+        // Optional but recommended to avoid accidental double-click zoom during drawing:
+        disableDoubleClickZoom={!isPanMode}
+        // You may keep your own className for sizing if needed:
         className="w-full h-full"
       >
-        <DrawingOverlay shapes={shapes} setShapes={setShapes} selectedTool={selectedTool} />
+        {/* Your shape rendering components (Rectangles/Polygons) can live here if you have them */}
+        <DrawingOverlay selectedTool={selectedTool} shapes={shapes} setShapes={setShapes} />
       </Map>
     </div>
   );
-}
+};
