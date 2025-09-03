@@ -5,7 +5,8 @@ import type { Shape, ElevationGrid } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { TrendingUp, Percent } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { TrendingUp, Percent, Eye, EyeOff } from 'lucide-react';
 import { useMemo } from 'react';
 
 type ElevationAnalysisProps = {
@@ -15,6 +16,8 @@ type ElevationAnalysisProps = {
   steepnessThreshold: number;
   setSteepnessThreshold: (threshold: number) => void;
   elevationGrid: ElevationGrid | null;
+  isAnalysisVisible: boolean;
+  setIsAnalysisVisible: (visible: boolean) => void;
 };
 
 export function ElevationAnalysis({
@@ -24,6 +27,8 @@ export function ElevationAnalysis({
   steepnessThreshold,
   setSteepnessThreshold,
   elevationGrid,
+  isAnalysisVisible,
+  setIsAnalysisVisible,
 }: ElevationAnalysisProps) {
 
   const analysis = useMemo(() => {
@@ -74,6 +79,17 @@ export function ElevationAnalysis({
             </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+            <div className="flex items-center justify-between space-x-2">
+                <div className="flex items-center gap-2">
+                    {isAnalysisVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    <Label htmlFor="analysis-visibility">Show Grid</Label>
+                </div>
+                <Switch 
+                    id="analysis-visibility"
+                    checked={isAnalysisVisible}
+                    onCheckedChange={setIsAnalysisVisible}
+                />
+            </div>
             <div className="space-y-4">
                 <div className="flex justify-between items-center">
                     <Label htmlFor="grid-resolution">Grid Resolution</Label>

@@ -40,6 +40,7 @@ export default function Home() {
   
   const [steepnessThreshold, setSteepnessThreshold] = useState<number>(8); // default 8 percent
   const [elevationGrid, setElevationGrid] = useState<ElevationGrid | null>(null);
+  const [isAnalysisVisible, setIsAnalysisVisible] = useState(true);
 
 
   if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
@@ -74,6 +75,7 @@ export default function Home() {
               steepnessThreshold={steepnessThreshold}
               elevationGrid={elevationGrid}
               setElevationGrid={setElevationGrid}
+              isAnalysisVisible={isAnalysisVisible}
             />
             <Button 
               size="icon" 
@@ -92,6 +94,8 @@ export default function Home() {
             steepnessThreshold={steepnessThreshold}
             setSteepnessThreshold={setSteepnessThreshold}
             elevationGrid={elevationGrid}
+            isAnalysisVisible={isAnalysisVisible}
+            setIsAnalysisVisible={setIsAnalysisVisible}
           />
         </div>
       </div>

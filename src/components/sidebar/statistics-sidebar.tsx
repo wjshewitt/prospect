@@ -17,6 +17,8 @@ type StatisticsSidebarProps = {
   steepnessThreshold: number;
   setSteepnessThreshold: (threshold: number) => void;
   elevationGrid: ElevationGrid | null;
+  isAnalysisVisible: boolean;
+  setIsAnalysisVisible: (visible: boolean) => void;
 };
 
 const SQ_METERS_TO_ACRES = 0.000247105;
@@ -28,7 +30,9 @@ export default function StatisticsSidebar({
     setGridResolution,
     steepnessThreshold,
     setSteepnessThreshold,
-    elevationGrid
+    elevationGrid,
+    isAnalysisVisible,
+    setIsAnalysisVisible,
 }: StatisticsSidebarProps) {
   const totalAreaMeters = shapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
   const totalAreaAcres = totalAreaMeters * SQ_METERS_TO_ACRES;
@@ -73,6 +77,8 @@ export default function StatisticsSidebar({
             steepnessThreshold={steepnessThreshold}
             setSteepnessThreshold={setSteepnessThreshold}
             elevationGrid={elevationGrid}
+            isAnalysisVisible={isAnalysisVisible}
+            setIsAnalysisVisible={setIsAnalysisVisible}
           />
 
            <Card>

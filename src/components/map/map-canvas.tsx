@@ -18,6 +18,7 @@ interface MapCanvasProps {
   steepnessThreshold: number;
   elevationGrid: ElevationGrid | null;
   setElevationGrid: (grid: ElevationGrid | null) => void;
+  isAnalysisVisible: boolean;
 }
 
 interface ContextMenuState {
@@ -439,6 +440,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   steepnessThreshold,
   elevationGrid,
   setElevationGrid,
+  isAnalysisVisible,
   className,
 }) => {
   const isLoaded = useApiIsLoaded();
@@ -480,7 +482,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         }
     };
     runAnalysis();
-  }, [shapes, gridResolution, isLoaded, elevationService, setElevationGrid, toast, elevationGrid]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shapes, gridResolution, isLoaded, elevationService, setElevationGrid, toast]);
 
   const handleShapeClick = useCallback((shapeId: string, event: google.maps.MapMouseEvent) => {
     if (!map || !event.domEvent) return;
@@ -572,7 +575,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} setShapes={setShapes} setSelectedTool={setSelectedTool} />}
         {isLoaded && selectedTool === 'freehand' && <FreehandDrawingTool setShapes={setShapes} setSelectedTool={setSelectedTool} />}
         {isLoaded && <DrawnShapes shapes={shapes} setShapes={setShapes} onShapeClick={handleShapeClick} editingShapeId={editingShapeId} setEditingShapeId={setEditingShapeId} movingShapeId={movingShapeId} setMovingShapeId={setMovingShapeId} />}
-        {isLoaded && shapes.length === 1 && elevationGrid && <ElevationGridDisplay elevationGrid={elevationGrid} steepnessThreshold={steepnessThreshold} />}
+        {isLoaded && shapes.length === 1 && elevationGrid && isAnalysisVisible && <ElevationGridDisplay elevationGrid={elevationGrid} steepnessThreshold={steepnessThreshold} />}
       </Map>
 
        {contextMenu && (
