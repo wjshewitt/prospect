@@ -43,7 +43,7 @@ const findPlaceTool = ai.defineTool(
     outputSchema: PlaceInfoSchema,
   },
   async ({ location, type }) => {
-    const mapsClient = new Client({});
+    const mapsClient = new Client();
     try {
       const response = await mapsClient.placesNearby({
         params: {
