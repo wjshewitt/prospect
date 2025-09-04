@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
@@ -7,7 +6,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Shape, LatLng, ElevationGrid } from '@/lib/types';
 import { ArrowUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
 
 interface ThreeDVisualizationProps {
   assets: Shape[];
@@ -18,56 +16,54 @@ interface ThreeDVisualizationProps {
 
 // Helper to calculate the center of a polygon - MUST be inside useEffect
 const getPolygonCenter = (path: LatLng[]): LatLng => {
-    if (!window.google || !window.google.maps) {
-      // Return a default if google maps is not loaded
-      return path[0] || { lat: 0, lng: 0};
-    }
-    const bounds = new google.maps.LatLngBounds();
-    path.forEach(p => bounds.extend(p));
-    return bounds.getCenter().toJSON();
+  if (!window.google || !window.google.maps) {
+    // Return a default if google maps is not loaded
+    return path[0] || { lat: 0, lng: 0 };
+  }
+  const bounds = new google.maps.LatLngBounds();
+  path.forEach(p => bounds.extend(p));
+  return bounds.getCenter().toJSON();
 };
 
 const Compass = ({ camera }: { camera: THREE.Camera | null }) => {
-    const [rotation, setRotation] = useState(0);
+  const [rotation, setRotation] = useState(0);
 
-    useEffect(() => {
-        if (!camera) return;
+  useEffect(() => {
+    if (!camera) return;
 
-        const updateCompass = () => {
-            const vector = new THREE.Vector3();
-            camera.getWorldDirection(vector);
-            const angle = Math.atan2(vector.x, vector.z);
-            setRotation(angle);
-        };
-        
-        updateCompass();
+    const updateCompass = () => {
+      const vector = new THREE.Vector3();
+      camera.getWorldDirection(vector);
+      const angle = Math.atan2(vector.x, vector.z);
+      setRotation(angle);
+    };
 
-        const controls = (camera as any).__orbitControls;
-        if(controls) {
-            controls.addEventListener('change', updateCompass);
-            return () => controls.removeEventListener('change', updateCompass);
-        }
+    updateCompass();
 
-    }, [camera]);
+    const controls = (camera as any).__orbitControls;
+    if (controls) {
+      controls.addEventListener('change', updateCompass);
+      return () => controls.removeEventListener('change', updateCompass);
+    }
+  }, [camera]);
 
-
-    return (
-        <div className="absolute bottom-4 right-4 w-16 h-16 bg-background/50 rounded-full flex items-center justify-center text-foreground backdrop-blur-sm shadow-lg">
-            <div 
-                className="relative w-full h-full"
-                style={{ transform: `rotate(${-rotation}rad)` }}
-            >
-                <div className="absolute top-1 left-1/2 -translate-x-1/2 font-bold text-lg">N</div>
-                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-sm">S</div>
-                <div className="absolute left-1 top-1/2 -translate-y-1/2 text-sm">W</div>
-                <div className="absolute right-1 top-1/2 -translate-y-1/2 text-sm">E</div>
-            </div>
-             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                 <ArrowUp className="w-6 h-6 text-red-500" />
-            </div>
-        </div>
-    )
-}
+  return (
+    <div className="absolute bottom-4 right-4 w-16 h-16 bg-background/50 rounded-full flex items-center justify-center text-foreground backdrop-blur-sm shadow-lg">
+      <div
+        className="relative w-full h-full"
+        style={{ transform: `rotate(${-rotation}rad)` }}
+      >
+        <div className="absolute top-1 left-1/2 -translate-x-1/2 font-bold text-lg">N</div>
+        <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-sm">S</div>
+        <div className="absolute left-1 top-1/2 -translate-y-1/2 text-sm">W</div>
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 text-sm">E</div>
+      </div>
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <ArrowUp className="w-6 h-6 text-red-500" />
+      </div>
+    </div>
+  );
+};
 
 export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGrid }: ThreeDVisualizationProps) {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -77,239 +73,366 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     if (!mountRef.current || !boundary || !elevationGrid || !elevationGrid.pointGrid) return;
 
     const mountNode = mountRef.current;
-    
-    // --- Scene Setup ---
+
+    // Scene Setup
     const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB);
     
-    const camera = new THREE.PerspectiveCamera(60, mountNode.clientWidth / mountNode.clientHeight, 1, 20000);
+    const camera = new THREE.PerspectiveCamera(65, mountNode.clientWidth / mountNode.clientHeight, 0.1, 10000);
     setCamera(camera);
-    
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      powerPreference: "high-performance"
+    });
     renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
-    // --- Rendering Quality Improvements ---
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
-    renderer.toneMapping = THREE.ACESFilmicToneMapping; // More realistic lighting
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
     
     const canvasElement = renderer.domElement;
     mountNode.appendChild(canvasElement);
 
-    // --- Skybox Background ---
-    const loader = new THREE.CubeTextureLoader();
-    // IMPORTANT: Replace these with paths to your actual skybox images
-    const skyboxTexture = loader.load([
-        '/textures/skybox/px.jpg', // right
-        '/textures/skybox/nx.jpg', // left
-        '/textures/skybox/py.jpg', // top
-        '/textures/skybox/ny.jpg', // bottom
-        '/textures/skybox/pz.jpg', // front
-        '/textures/skybox/nz.jpg'  // back
-    ], () => {
-        scene.background = skyboxTexture;
-    }, undefined, () => {
-        // Fallback if textures fail to load
-        scene.background = new THREE.Color(0x1a2638);
-    });
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0x4A90E2, 0.4);
+    scene.add(ambientLight);
 
+    const sunLight = new THREE.DirectionalLight(0xFFF8DC, 1.2);
+    sunLight.position.set(150, 300, 100);
+    sunLight.castShadow = true;
+    sunLight.shadow.camera.near = 10;
+    sunLight.shadow.camera.far = 1000;
+    sunLight.shadow.camera.top = 400;
+    sunLight.shadow.camera.bottom = -400;
+    sunLight.shadow.camera.left = -400;
+    sunLight.shadow.camera.right = 400;
+    sunLight.shadow.mapSize.width = 4096;
+    sunLight.shadow.mapSize.height = 4096;
+    sunLight.shadow.bias = -0.0005;
+    scene.add(sunLight);
 
-    // --- Lighting ---
-    // Use HemisphereLight for more natural ambient light
-    const hemisphereLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 1.2);
-    scene.add(hemisphereLight);
+    const fillLight = new THREE.DirectionalLight(0x87CEEB, 0.3);
+    fillLight.position.set(-50, 100, -50);
+    scene.add(fillLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    directionalLight.position.set(-250, 300, 200);
-    directionalLight.castShadow = true;
-    // Configure shadow properties for better quality
-    directionalLight.shadow.mapSize.width = 4096;
-    directionalLight.shadow.mapSize.height = 4096;
-    directionalLight.shadow.camera.near = 0.5;
-    directionalLight.shadow.camera.far = 1000;
-    scene.add(directionalLight);
-    
-    // --- Controls ---
+    const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x8B4513, 0.3);
+    scene.add(hemiLight);
+
+    // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = false;
+    controls.minDistance = 10;
+    controls.maxDistance = 1000;
+    controls.maxPolarAngle = Math.PI / 2.1;
     (camera as any).__orbitControls = controls;
-    
-    // --- Coordinate System & Projections ---
+
+    // Coordinate System & Projections
     const siteCenter = getPolygonCenter(boundary.path);
     const proj = {
-        toLocal: (p: LatLng) => {
-            const R = 6371e3;
-            const φ1 = siteCenter.lat * Math.PI/180;
-            const dLat = (p.lat-siteCenter.lat) * Math.PI/180;
-            const dLng = (p.lng-siteCenter.lng) * Math.PI/180;
-            const x = dLng * R * Math.cos(φ1);
-            const y = dLat * R;
-            return { x, y: -y };
-        },
+      toLocal: (p: LatLng) => {
+        const R = 6371e3;
+        const φ1 = siteCenter.lat * Math.PI / 180;
+        const dLat = (p.lat - siteCenter.lat) * Math.PI / 180;
+        const dLng = (p.lng - siteCenter.lng) * Math.PI / 180;
+        const x = dLng * R * Math.cos(φ1);
+        const y = dLat * R;
+        return { x, y: -y };
+      },
     };
 
-    // --- Elevation Data Interpolation ---
+    // Elevation Data
     const { grid, nx, ny } = elevationGrid.pointGrid!;
     const { minX, maxX, minY, maxY } = elevationGrid.xyBounds!;
-    
+
     const getElevationAt = (x: number, y: number): number => {
-        if (!grid || nx < 2 || ny < 2) return 0;
-        const u = ((x - minX) / (maxX - minX)) * (nx - 1);
-        const v = ((y - minY) / (maxY - minY)) * (ny - 1);
-        const i = Math.floor(u);
-        const j = Math.floor(v);
-        if (i < 0 || i >= nx - 1 || j < 0 || j >= ny - 1) return 0;
-        const s = u - i;
-        const t = v - j;
-        const z00 = grid[j * nx + i];
-        const z10 = grid[j * nx + i + 1];
-        const z01 = grid[(j + 1) * nx + i];
-        const z11 = grid[(j + 1) * nx + i + 1];
-        if (!isFinite(z00) || !isFinite(z10) || !isFinite(z01) || !isFinite(z11)) return 0;
-        const z0 = z00 * (1 - s) + z10 * s;
-        const z1 = z01 * (1 - s) + z11 * s;
-        return z0 * (1 - t) + z1 * t;
+      if (!grid || nx < 2 || ny < 2) return 0;
+
+      const u = ((x - minX) / (maxX - minX)) * (nx - 1);
+      const v = ((y - minY) / (maxY - minY)) * (ny - 1);
+
+      const i = Math.floor(u);
+      const j = Math.floor(v);
+
+      if (i < 0 || i >= nx - 1 || j < 0 || j >= ny - 1) return 0;
+
+      const s = u - i;
+      const t = v - j;
+
+      const z00 = grid[j * nx + i];
+      const z10 = grid[j * nx + i + 1];
+      const z01 = grid[(j + 1) * nx + i];
+      const z11 = grid[(j + 1) * nx + i + 1];
+
+      if (!isFinite(z00) || !isFinite(z10) || !isFinite(z01) || !isFinite(z11)) return 0;
+
+      const z0 = z00 * (1 - s) + z10 * s;
+      const z1 = z01 * (1 - s) + z11 * s;
+      return z0 * (1 - t) + z1 * t;
     };
+
+    // Create Terrain - FIXED COORDINATE SYSTEM
+    const terrainDivisionsX = 150;
+    const terrainDivisionsY = 150;
+    const terrainWidth = maxX - minX;
+    const terrainHeight = maxY - minY;
+
+    const terrainGeometry = new THREE.PlaneGeometry(terrainWidth, terrainHeight, terrainDivisionsX, terrainDivisionsY);
     
-    // --- Create Topographic Terrain Mesh ---
-    const terrainDivisions = 200;
-    const terrainGeometry = new THREE.PlaneGeometry(
-        maxX - minX, maxY - minY, terrainDivisions, terrainDivisions
-    );
+    // CRITICAL: Rotate terrain to be horizontal
     terrainGeometry.rotateX(-Math.PI / 2);
+
+    // Apply elevation to terrain vertices
     const positions = terrainGeometry.attributes.position;
     for (let i = 0; i < positions.count; i++) {
-        const x = positions.getX(i) + minX + (maxX-minX)/2;
-        const z = positions.getZ(i) - minY - (maxY-minY)/2;
-        const y = getElevationAt(x, -z);
-        positions.setY(i, y);
+      const x = positions.getX(i);
+      const z = positions.getZ(i);
+      
+      // Convert local terrain coordinates to world coordinates
+      const worldX = x + (maxX + minX) / 2;
+      const worldY = -z + (maxY + minY) / 2; // Z becomes Y after rotation
+      
+      const elevation = getElevationAt(worldX, worldY);
+      positions.setY(i, elevation);
     }
     terrainGeometry.computeVertexNormals();
 
-    // --- Create Terrain Texture with Grass and Zones ---
-    const textureLoader = new THREE.TextureLoader();
+    // Create terrain texture
+    const textureCanvas = document.createElement('canvas');
+    const textureSize = 2048;
+    textureCanvas.width = textureSize;
+    textureCanvas.height = textureSize;
+    const textureContext = textureCanvas.getContext('2d')!;
+
+    // Base grass texture
+    textureContext.fillStyle = '#2D5016';
+    textureContext.fillRect(0, 0, textureSize, textureSize);
+    
+    // Add texture variation
+    for (let i = 0; i < 5000; i++) {
+      const x = Math.random() * textureSize;
+      const y = Math.random() * textureSize;
+      const size = Math.random() * 3;
+      textureContext.fillStyle = `rgba(${45 + Math.random() * 30}, ${80 + Math.random() * 40}, ${22 + Math.random() * 20}, 0.3)`;
+      textureContext.fillRect(x, y, size, size);
+    }
+
+    // Function to transform world XY to texture UV
+    const worldToTexture = (x: number, y: number) => {
+      const u = (x - minX) / (maxX - minX);
+      const v = 1 - ((y - minY) / (maxY - minY));
+      return { u: u * textureSize, v: v * textureSize };
+    };
+
+    // Render zones on texture
+    zones.forEach(zone => {
+      const kind = zone.zoneMeta?.kind;
+      let color = 'rgba(255, 255, 255, 0.3)';
+      let borderColor = 'rgba(255, 255, 255, 0.8)';
+      
+      if (kind === 'residential') {
+        color = 'rgba(134, 239, 172, 0.4)';
+        borderColor = 'rgba(34, 197, 94, 0.8)';
+      }
+      if (kind === 'commercial') {
+        color = 'rgba(147, 197, 253, 0.4)';
+        borderColor = 'rgba(59, 130, 246, 0.8)';
+      }
+      if (kind === 'amenity') {
+        color = 'rgba(252, 211, 77, 0.4)';
+        borderColor = 'rgba(245, 158, 11, 0.8)';
+      }
+
+      textureContext.fillStyle = color;
+      textureContext.beginPath();
+      zone.path.forEach((p, index) => {
+        const local = proj.toLocal(p);
+        const texCoords = worldToTexture(local.x, local.y);
+        if (index === 0) {
+          textureContext.moveTo(texCoords.u, texCoords.v);
+        } else {
+          textureContext.lineTo(texCoords.u, texCoords.v);
+        }
+      });
+      textureContext.closePath();
+      textureContext.fill();
+
+      textureContext.strokeStyle = borderColor;
+      textureContext.lineWidth = 2;
+      textureContext.stroke();
+    });
+
+    const terrainTexture = new THREE.CanvasTexture(textureCanvas);
     const groundMaterial = new THREE.MeshStandardMaterial({
-        color: 0x556B2F, // Fallback color
-        side: THREE.DoubleSide 
+      map: terrainTexture,
+      side: THREE.DoubleSide,
+      roughness: 0.8,
+      metalness: 0.1
     });
-
-    // IMPORTANT: Replace this with the path to your grass texture
-    const grassTexture = textureLoader.load('/textures/grass.jpg', (texture) => {
-        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-        const textureCanvas = document.createElement('canvas');
-        const textureSize = 2048;
-        textureCanvas.width = textureSize;
-        textureCanvas.height = textureSize;
-        const textureContext = textureCanvas.getContext('2d')!;
-        
-        // Create a repeating pattern from the grass image and fill the canvas
-        const pattern = textureContext.createPattern(texture.image, 'repeat');
-        textureContext.fillStyle = pattern!;
-        textureContext.fillRect(0, 0, textureSize, textureSize);
-
-        const worldToTexture = (x: number, y: number) => {
-            const u = (x - minX) / (maxX - minX);
-            const v = 1 - ((y - minY) / (maxY - minY));
-            return { u: u * textureSize, v: v * textureSize };
-        };
-
-        // Draw zones on top of the grass
-        zones.forEach(zone => {
-            const kind = zone.zoneMeta?.kind;
-            let color = 'rgba(255, 255, 255, 0.4)';
-            if (kind === 'residential') color = 'rgba(134, 239, 172, 0.4)';
-            if (kind === 'commercial') color = 'rgba(147, 197, 253, 0.4)';
-            if (kind === 'amenity') color = 'rgba(252, 211, 77, 0.4)';
-            
-            textureContext.fillStyle = color;
-            textureContext.beginPath();
-            zone.path.forEach((p, index) => {
-                const local = proj.toLocal(p);
-                const texCoords = worldToTexture(local.x, local.y);
-                if (index === 0) textureContext.moveTo(texCoords.u, texCoords.v);
-                else textureContext.lineTo(texCoords.u, texCoords.v);
-            });
-            textureContext.closePath();
-            textureContext.fill();
-        });
-
-        const finalTexture = new THREE.CanvasTexture(textureCanvas);
-        groundMaterial.map = finalTexture;
-        groundMaterial.needsUpdate = true;
-    });
-
+    
     const terrainMesh = new THREE.Mesh(terrainGeometry, groundMaterial);
     terrainMesh.receiveShadow = true;
+    terrainMesh.position.set((maxX + minX) / 2, 0, (maxY + minY) / 2);
     scene.add(terrainMesh);
 
-    // --- Camera and Shadow Frustum Adjustment ---
+    // Building materials
+    const createBuildingMaterial = (assetKey: string) => {
+      let baseColor = '#E6E6FA';
+      let roughness = 0.7;
+      let metalness = 0.1;
+
+      if (assetKey.includes('house') || assetKey.includes('bungalow')) {
+        baseColor = '#D2B48C';
+        roughness = 0.8;
+        metalness = 0.0;
+      } else if (assetKey.includes('flat_block')) {
+        baseColor = '#C0C0C0';
+        roughness = 0.3;
+        metalness = 0.2;
+      }
+
+      return new THREE.MeshStandardMaterial({
+        color: baseColor,
+        roughness,
+        metalness,
+        transparent: false,
+      });
+    };
+
+    // FIXED: Render buildings using their actual footprints and positions
+    assets.forEach(asset => {
+      if (!asset.assetMeta) return;
+
+      // Get building center
+      const assetCenter = getPolygonCenter(asset.path);
+      const localCenter = proj.toLocal(assetCenter);
+      const elevation = getElevationAt(localCenter.x, localCenter.y);
+
+      // Create building shape from actual footprint (relative to center)
+      const assetVertices = asset.path.map(p => {
+        const local = proj.toLocal(p);
+        return new THREE.Vector2(local.x - localCenter.x, local.y - localCenter.y);
+      });
+      
+      const assetShape = new THREE.Shape(assetVertices);
+      const floors = asset.assetMeta.floors ?? 1;
+      const height = floors * 3.2;
+      
+      const geometry = new THREE.ExtrudeGeometry(assetShape, { 
+        depth: height, 
+        bevelEnabled: false
+      });
+      
+      const material = createBuildingMaterial(asset.assetMeta.key || '');
+      const mesh = new THREE.Mesh(geometry, material);
+
+      // Position and orient building correctly
+      mesh.rotation.x = -Math.PI / 2; // Make building vertical
+      mesh.position.set(localCenter.x, elevation, localCenter.y);
+      
+      // Apply building rotation
+      const rotationDegrees = asset.assetMeta.rotation ?? 0;
+      mesh.rotation.z = -rotationDegrees * (Math.PI / 180);
+      
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+
+      // Add rooftop details
+      if (floors > 2) {
+        const hvacCount = Math.floor(floors / 3);
+        for (let i = 0; i < hvacCount; i++) {
+          const hvacGeometry = new THREE.BoxGeometry(1.5, 0.8, 1.2);
+          const hvacMaterial = new THREE.MeshStandardMaterial({ color: '#696969' });
+          const hvacMesh = new THREE.Mesh(hvacGeometry, hvacMaterial);
+          
+          const offsetX = (Math.random() - 0.5) * 4;
+          const offsetZ = (Math.random() - 0.5) * 4;
+          hvacMesh.position.set(
+            localCenter.x + offsetX, 
+            elevation + height + 0.4, 
+            localCenter.y + offsetZ
+          );
+          hvacMesh.castShadow = true;
+          scene.add(hvacMesh);
+        }
+      }
+    });
+
+    // Position camera
     const terrainBbox = new THREE.Box3().setFromObject(terrainMesh);
     const terrainCenter = terrainBbox.getCenter(new THREE.Vector3());
     const terrainSize = terrainBbox.getSize(new THREE.Vector3());
-    const cameraDistance = Math.max(terrainSize.x, terrainSize.z) * 1.5;
-    
-    camera.position.copy(terrainCenter);
-    camera.position.y += cameraDistance / 1.5;
-    camera.position.z += cameraDistance;
+    const cameraDistance = Math.max(terrainSize.x, terrainSize.z) * 1.2;
+
+    camera.position.set(
+      terrainCenter.x - cameraDistance * 0.7,
+      cameraDistance * 0.8,
+      terrainCenter.z + cameraDistance * 0.7
+    );
     camera.lookAt(terrainCenter);
     controls.target.copy(terrainCenter);
 
-    // Tighten the shadow camera frustum around the terrain for better shadow quality
-    const shadowCamSize = Math.max(terrainSize.x, terrainSize.z);
-    directionalLight.shadow.camera.left = -shadowCamSize / 2;
-    directionalLight.shadow.camera.right = shadowCamSize / 2;
-    directionalLight.shadow.camera.top = shadowCamSize / 2;
-    directionalLight.shadow.camera.bottom = -shadowCamSize / 2;
-    directionalLight.shadow.camera.updateProjectionMatrix();
+    // Add trees and vegetation
+    const createTree = (x: number, y: number, z: number, scale = 1) => {
+      const treeGroup = new THREE.Group();
+      
+      const trunkGeometry = new THREE.CylinderGeometry(0.3 * scale, 0.5 * scale, 3 * scale, 6);
+      const trunkMaterial = new THREE.MeshStandardMaterial({ 
+        color: new THREE.Color().setHSL(0.06, 0.4, 0.3),
+        roughness: 0.9 
+      });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      trunk.position.y = (1.5 * scale);
+      trunk.castShadow = true;
+      treeGroup.add(trunk);
 
-    // --- Render Assets on the terrain ---
-    assets.forEach(asset => {
-        if (!asset.assetMeta) return;
-
-        const assetCenter = getPolygonCenter(asset.path);
-        const localPos = proj.toLocal(assetCenter);
-        const elevation = getElevationAt(localPos.x, localPos.y);
-
-        const assetVertices = asset.path.map(p => {
-            const local = proj.toLocal(p);
-            return new THREE.Vector2(local.x - localPos.x, local.y - localPos.y);
+      const foliageLevels = 2 + Math.floor(Math.random() * 2);
+      for (let level = 0; level < foliageLevels; level++) {
+        const levelScale = 1 - (level * 0.3);
+        const foliageGeometry = new THREE.SphereGeometry(2 * scale * levelScale, 8, 6);
+        const hue = 0.25 + (Math.random() - 0.5) * 0.1;
+        const foliageMaterial = new THREE.MeshStandardMaterial({ 
+          color: new THREE.Color().setHSL(hue, 0.6, 0.3 + Math.random() * 0.2),
+          roughness: 0.8 
         });
-        const assetShape = new THREE.Shape(assetVertices);
+        const foliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+        foliage.position.y = (3 + level * 1.5) * scale;
+        foliage.castShadow = true;
+        foliage.receiveShadow = true;
+        treeGroup.add(foliage);
+      }
 
-        const floors = asset.assetMeta.floors ?? 1;
-        const height = floors * 3.5; // Slightly increased height
-        const extrudeSettings = { depth: height, bevelEnabled: true, bevelSize: 0.1, bevelThickness: 0.1, bevelSegments: 2 };
-        const geometry = new THREE.ExtrudeGeometry(assetShape, extrudeSettings);
-        
-        const material = new THREE.MeshStandardMaterial({
-            color: asset.assetMeta.key?.includes('house') ? 0x8B4513 : 0xB0B0B0,
-            metalness: 0.1,
-            roughness: 0.8
-        });
+      treeGroup.position.set(x, y, z);
+      return treeGroup;
+    };
 
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        
-        // --- ROTATION FIX ---
-        // 1. Orient the extruded geometry to stand up (it's created in XY plane, we want it on XZ)
-        mesh.rotation.x = -Math.PI / 2;
-        
-        // 2. Use a group to handle world position and rotation correctly
-        const group = new THREE.Object3D();
-        group.add(mesh);
-        
-        // 3. Position the group at the asset's location
-        group.position.set(localPos.x, elevation, localPos.y);
-        
-        // 4. Apply the 'yaw' rotation around the world Y-axis to the group
-        const rotationDegrees = asset.assetMeta.rotation ?? 0;
-        group.rotation.y = -rotationDegrees * (Math.PI / 180);
+    // Place trees around the site
+    const placedTrees: { x: number, y: number }[] = [];
+    const minTreeDistance = 8;
 
-        scene.add(group);
-    });
+    for (let i = 0; i < 30; i++) {
+      const x = minX + Math.random() * (maxX - minX);
+      const y = minY + Math.random() * (maxY - minY);
+      
+      const tooClose = placedTrees.some(tree => 
+        Math.sqrt(Math.pow(tree.x - x, 2) + Math.pow(tree.y - y, 2)) < minTreeDistance
+      );
+      
+      if (!tooClose) {
+        const elevation = getElevationAt(x, y);
+        const treeScale = 0.7 + Math.random() * 0.6;
+        const tree = createTree(x, elevation, y, treeScale);
+        scene.add(tree);
+        placedTrees.push({ x, y });
+      }
+    }
 
-    // --- Animation Loop ---
+    // Animation loop
     let animationFrameId: number;
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
@@ -318,42 +441,40 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     };
     animate();
 
-    // --- Resize Listener ---
+    // Resize handler
     const handleResize = () => {
       if (!mountNode) return;
       camera.aspect = mountNode.clientWidth / mountNode.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     };
     window.addEventListener('resize', handleResize);
 
-    // --- Cleanup ---
+    // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationFrameId);
       controls.dispose();
-      
-      if (scene.background && scene.background instanceof THREE.Texture) {
-        scene.background.dispose();
-      }
-      grassTexture.dispose();
-      
+
       scene.traverse(object => {
         if (object instanceof THREE.Mesh) {
-            if (object.geometry) object.geometry.dispose();
-            if (Array.isArray(object.material)) {
-                object.material.forEach(material => {
-                    if (material.map) material.map.dispose();
-                    material.dispose();
-                });
-            } else if (object.material) {
-                const material = object.material as THREE.Material & { map?: THREE.Texture };
-                if (material.map) material.map.dispose();
-                material.dispose();
-            }
+          if (object.geometry) {
+            object.geometry.dispose();
+          }
+          if (Array.isArray(object.material)) {
+            object.material.forEach(material => {
+              if (material.map) material.map.dispose();
+              material.dispose();
+            });
+          } else if (object.material) {
+            const material = object.material as THREE.Material & { map?: THREE.Texture };
+            if (material.map) material.map.dispose();
+            material.dispose();
+          }
         }
       });
-      
+
       if (mountNode && mountNode.contains(canvasElement)) {
         mountNode.removeChild(canvasElement);
       }
@@ -364,8 +485,8 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
 
   return (
     <div className="relative w-full h-full bg-black">
-        <div ref={mountRef} className="w-full h-full" />
-        <Compass camera={camera} />
+      <div ref={mountRef} className="w-full h-full" />
+      <Compass camera={camera} />
     </div>
   );
 }

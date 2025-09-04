@@ -15,9 +15,9 @@ import { ThreeDVisualizationModal } from '@/components/dev-viz/three-d-modal';
 import { NameSiteDialog } from '@/components/map/name-site-dialog';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { TutorialGuide } from '@/components/tutorial/tutorial-guide';
-import { layoutAssetsInZone } from '@/services/procedural-generation';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeElevation } from '@/services/elevation';
+import { generateBuildingLayout } from '@/ai/flows/generate-building-layout-flow';
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -182,24 +182,60 @@ export default function VisionPage() {
   };
 
 
-  const handleGenerateLayout = (zoneId: string) => {
+  const handleGenerateLayout = async (zoneId: string) => {
     const zone = shapes.find(s => s.id === zoneId && !!s.zoneMeta);
     if (!zone) return;
 
-    // Remove existing assets within that zone first
-    const assetsInZone = assets.filter(asset => {
-        const assetCenter = new google.maps.LatLng(asset.path[0].lat, asset.path[0].lng);
-        const zonePolygon = new google.maps.Polygon({ paths: zone.path });
-        return google.maps.geometry.poly.containsLocation(assetCenter, zonePolygon);
+    toast({
+      title: 'Generating AI Layout...',
+      description: 'The AI is designing the building layout. This may take a moment.',
     });
-    const assetIdsInZone = new Set(assetsInZone.map(a => a.id));
 
-    const newAssets = layoutAssetsInZone(zone);
-    
-    setShapes(prev => {
-        const shapesWithoutOldAssets = prev.filter(s => !assetIdsInZone.has(s.id));
-        return [...shapesWithoutOldAssets, ...newAssets];
-    });
+    try {
+      const result = await generateBuildingLayout({ zonePolygon: zone.path });
+      
+      const newAssets: Shape[] = result.buildings.map(b => {
+        const path = b.footprint.map(p => ({ lat: p.lat, lng: p.lng }));
+        const area = google.maps.geometry.spherical.computeArea(path);
+        return {
+          id: uuid(),
+          type: 'rectangle', // The asset is a rectangular shape
+          path,
+          area,
+          assetMeta: {
+            key: b.type,
+            floors: b.floors,
+            rotation: b.rotation,
+          },
+        }
+      });
+      
+      // Remove existing assets within that zone first
+      const assetsInZone = assets.filter(asset => {
+          const assetCenter = new google.maps.LatLng(asset.path[0].lat, asset.path[0].lng);
+          const zonePolygon = new google.maps.Polygon({ paths: zone.path });
+          return google.maps.geometry.poly.containsLocation(assetCenter, zonePolygon);
+      });
+      const assetIdsInZone = new Set(assetsInZone.map(a => a.id));
+
+      setShapes(prev => {
+          const shapesWithoutOldAssets = prev.filter(s => !assetIdsInZone.has(s.id));
+          return [...shapesWithoutOldAssets, ...newAssets];
+      });
+
+      toast({
+        title: 'AI Layout Generated',
+        description: `${newAssets.length} buildings have been placed in the zone.`,
+      });
+
+    } catch (error) {
+      console.error("AI Layout generation failed:", error);
+      toast({
+        variant: 'destructive',
+        title: 'AI Layout Failed',
+        description: 'The AI could not generate a layout. Please try again.',
+      });
+    }
   }
 
   const handleNameSite = (name: string) => {
@@ -392,3 +428,5 @@ export default function VisionPage() {
     </APIProvider>
   );
 }
+
+    
