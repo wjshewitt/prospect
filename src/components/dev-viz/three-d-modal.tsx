@@ -4,7 +4,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import type { Shape, LatLng, ElevationGrid } from '@/lib/types';
 import { ArrowUp, Orbit, MousePointer, X } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -75,8 +74,6 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<{mesh: THREE.Mesh, shape: Shape} | null>(null);
-  const [isPointerLocked, setIsPointerLocked] = useState(false);
-  const [controlMode, setControlMode] = useState<'orbit' | 'fly'>('orbit');
 
   const onKeyDown = useCallback((event: KeyboardEvent) => {
       if ((event.key === 'Delete' || event.key === 'Backspace') && selectedAsset) {
@@ -152,30 +149,6 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     orbitControls.maxPolarAngle = Math.PI / 2.1;
     (camera as any)._controls = orbitControls;
 
-    const pointerLockControls = new PointerLockControls(camera, renderer.domElement);
-    pointerLockControls.addEventListener('lock', () => setIsPointerLocked(true));
-    pointerLockControls.addEventListener('unlock', () => setIsPointerLocked(false));
-    scene.add(pointerLockControls.getObject());
-
-    const keys = new Set<string>();
-    const onFlyKeyDown = (event: KeyboardEvent) => keys.add(event.code);
-    const onFlyKeyUp = (event: KeyboardEvent) => keys.delete(event.code);
-
-    const switchControls = (mode: 'orbit' | 'fly') => {
-        setControlMode(mode);
-        if (mode === 'orbit') {
-            orbitControls.enabled = true;
-            pointerLockControls.unlock();
-            document.removeEventListener('keydown', onFlyKeyDown);
-            document.removeEventListener('keyup', onFlyKeyUp);
-        } else {
-            orbitControls.enabled = false;
-            pointerLockControls.lock();
-            document.addEventListener('keydown', onFlyKeyDown);
-            document.addEventListener('keyup', onFlyKeyUp);
-        }
-    };
-    (mountNode as any).switchControls = switchControls;
 
     // Raycasting for object selection
     const raycaster = new THREE.Raycaster();
@@ -183,8 +156,6 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     let selectableMeshes: THREE.Mesh[] = [];
 
     const onMouseClick = (event: MouseEvent) => {
-        if(controlMode === 'fly') return;
-
         const rect = renderer.domElement.getBoundingClientRect();
         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -351,8 +322,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     const clock = new THREE.Clock();
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-
+      
       selectableMeshes.forEach(mesh => {
         if (selectedAsset?.mesh === mesh) {
             mesh.material = selectedMaterial;
@@ -361,19 +331,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
         }
       });
       
-      if (controlMode === 'fly') {
-        const speed = 50.0 * delta;
-        const camObject = pointerLockControls.getObject();
-        if (keys.has('KeyW')) camObject.translateZ(-speed);
-        if (keys.has('KeyS')) camObject.translateZ(speed);
-        if (keys.has('KeyA')) camObject.translateX(-speed);
-        if (keys.has('KeyD')) camObject.translateX(speed);
-        if (keys.has('Space')) camObject.position.y += speed;
-        if (keys.has('ShiftLeft')) camObject.position.y -= speed;
-      } else {
-        orbitControls.update();
-      }
-
+      orbitControls.update();
       renderer.render(scene, camera);
     };
     animate();
@@ -391,13 +349,10 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
-      document.removeEventListener('keydown', onFlyKeyDown);
-      document.removeEventListener('keyup', onFlyKeyUp);
       mountNode.removeEventListener('click', onMouseClick);
       cancelAnimationFrame(animationFrameId);
 
       orbitControls.dispose();
-      pointerLockControls.dispose();
 
       scene.traverse(object => {
         if (object instanceof THREE.Mesh) {
@@ -418,46 +373,10 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
   }, [assets, zones, boundary, elevationGrid]);
 
 
-  const handleSwitchControls = (mode: 'orbit' | 'fly') => {
-      if (mountRef.current && (mountRef.current as any).switchControls) {
-          (mountRef.current as any).switchControls(mode);
-      }
-  };
-
   return (
     <div className="relative w-full h-full bg-black">
       <div ref={mountRef} className="w-full h-full" />
       <Compass camera={cameraRef.current} />
-
-      <div className="absolute bottom-4 left-4 flex gap-2">
-         <Button
-            variant={controlMode === 'orbit' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => handleSwitchControls('orbit')}
-            title="Orbit Controls"
-          >
-            <Orbit className="mr-2 h-4 w-4" /> Orbit
-          </Button>
-           <Button
-            variant={controlMode === 'fly' ? 'default' : 'secondary'}
-            size="sm"
-            onClick={() => handleSwitchControls('fly')}
-            title="Fly Controls (W, A, S, D)"
-          >
-            <MousePointer className="mr-2 h-4 w-4" /> Fly
-          </Button>
-      </div>
-
-       {controlMode === 'fly' && !isPointerLocked && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white text-center pointer-events-none">
-            <div>
-                <h3 className="text-2xl font-bold">Fly Mode</h3>
-                <p>Click to control the camera</p>
-                 <p className="text-sm mt-2">Use W, A, S, D to move, Space/Shift to go up/down, and Mouse to look.</p>
-                 <p className="text-xs mt-4">Press ESC to exit.</p>
-            </div>
-        </div>
-      )}
 
       {selectedAsset && (
         <div className="absolute top-4 left-4 bg-background/80 p-2 rounded-md shadow-lg text-foreground text-sm flex items-center gap-2">
@@ -468,5 +387,3 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     </div>
   );
 }
-
-    
