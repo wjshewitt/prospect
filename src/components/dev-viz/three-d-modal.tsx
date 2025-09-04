@@ -28,19 +28,21 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
 
   useEffect(() => {
     if (!isOpen || !mountRef.current || !boundary) return;
+    
+    const mountNode = mountRef.current;
 
     // --- Scene Setup ---
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     scene.background = new THREE.Color(0x1a2638);
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(75, mountNode.clientWidth / mountNode.clientHeight, 0.1, 1000);
     camera.position.set(0, 100, 150);
     camera.lookAt(0,0,0);
     
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
     renderer.shadowMap.enabled = true;
-    mountRef.current.appendChild(renderer.domElement);
+    mountNode.appendChild(renderer.domElement);
 
     // --- Lighting ---
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -115,12 +117,14 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
         geometries.push(geometry);
 
         // 4. Create Mesh and Material
-        let color = '#ADD8E6'; // Default (commercial, community)
+        let color = '#ADD8E6'; // Default (commercial)
         const assetKey = (asset as any).typeKey || '';
         if (assetKey.includes('house') || assetKey.includes('bungalow')) {
             color = '#8B4513'; // Brownish
         } else if (assetKey.includes('flat_block')) {
             color = '#B0B0B0'; // Light grey
+        } else if (assetKey.includes('community')) {
+            color = '#ADD8E6';
         }
         const material = new THREE.MeshStandardMaterial({ color });
         materials.push(material);
@@ -150,9 +154,9 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
 
     // --- Resize Listener ---
     const handleResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.aspect = mountNode.clientWidth / mountNode.clientHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
     };
     window.addEventListener('resize', handleResize);
 
@@ -166,11 +170,15 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
       scene.children.forEach(child => {
         if(child instanceof THREE.Mesh) {
             child.geometry.dispose();
-            (child.material as THREE.Material).dispose();
+            if (Array.isArray(child.material)) {
+                child.material.forEach(m => m.dispose());
+            } else {
+                (child.material as THREE.Material).dispose();
+            }
         }
       });
-      if(mountRef.current && renderer.domElement){
-          mountRef.current.removeChild(renderer.domElement);
+      if(mountNode && renderer.domElement){
+          mountNode.removeChild(renderer.domElement);
       }
       renderer.dispose();
       sceneRef.current = null;
