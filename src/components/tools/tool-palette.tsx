@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { BuildingPlacementDialog } from '@/components/ai/building-placement-dialog';
 import { MousePointer2, Square, Pen, Circle, Type, Spline, Shapes, PenTool } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMemo } from 'react';
 
 type ToolPaletteProps = {
   selectedTool: Tool;
@@ -26,10 +27,10 @@ const panTool: { id: Tool; label: string; icon: React.ReactNode } = {
   icon: <MousePointer2 />,
 };
 
-const drawingTools: { id: Tool; label: string; icon: React.ReactNode }[] = [
-  { id: 'rectangle', label: 'Rectangle', icon: <Square /> },
-  { id: 'polygon', label: 'Polygon (Click to Plot)', icon: <Pen /> },
-  { id: 'freehand', label: 'Freehand (Drag to Draw)', icon: <PenTool /> },
+const drawingTools: { id: Tool; label:string; icon: React.ReactNode }[] = [
+    { id: 'rectangle', label: 'Rectangle', icon: <Square /> },
+    { id: 'polygon', label: 'Polygon (Click to Plot)', icon: <Pen /> },
+    { id: 'freehand', label: 'Freehand (Drag to Draw)', icon: <PenTool /> },
 ];
 
 const disabledTools: { id: string; label: string; icon: React.ReactNode }[] = [
@@ -39,7 +40,11 @@ const disabledTools: { id: string; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPaletteProps) {
-  const isDrawingToolSelected = drawingTools.some(t => t.id === selectedTool);
+
+  const activeDrawingTool = useMemo(() => 
+    drawingTools.find(t => t.id === selectedTool),
+    [selectedTool]
+  );
 
   return (
     <aside
@@ -82,10 +87,10 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
                         variant="ghost"
                         className={cn(
                         'w-full justify-center group-hover/button:justify-start group-hover/button:px-4 gap-2 px-0 h-14',
-                        isDrawingToolSelected && 'bg-accent text-accent-foreground'
+                        !!activeDrawingTool && 'bg-accent text-accent-foreground'
                         )}
                     >
-                        <Shapes />
+                        {activeDrawingTool?.icon ?? <Shapes />}
                          <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
                             Draw Tools
                         </span>

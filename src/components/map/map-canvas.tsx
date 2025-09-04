@@ -404,7 +404,8 @@ const FreehandDrawingTool: React.FC<{
     const onMouseMove = (e: google.maps.MapMouseEvent) => {
       if (!isDrawing || !e.latLng) return;
       pathRef.current.push(e.latLng.toJSON());
-      polylineRef.current?.setPath(pathRef.current);
+      // Create a new array to force a re-render of the polyline
+      polylineRef.current?.setPath([...pathRef.current]);
     };
 
     const onMouseUp = () => {
@@ -472,7 +473,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
 
   useEffect(() => {
     if (map) {
-      map.setOptions({ draggableCursor: selectedTool === 'freehand' ? 'crosshair' : null });
+      const newCursor = selectedTool === 'freehand' ? 'crosshair' : null;
+      map.setOptions({ draggableCursor: newCursor });
     }
   }, [map, selectedTool]);
   
@@ -506,7 +508,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     };
     runAnalysis();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shapes, gridResolution, isLoaded, elevationService, setElevationGrid, toast]);
+  }, [shapes, gridResolution, isLoaded, elevationService]);
 
   const handleShapeClick = useCallback((shapeId: string, event: google.maps.MapMouseEvent) => {
     if (!map || !event.domEvent) return;
