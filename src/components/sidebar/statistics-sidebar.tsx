@@ -40,7 +40,11 @@ export default function StatisticsSidebar({
     selectedShapeIds,
     onGenerateLayout,
 }: StatisticsSidebarProps) {
-  const totalAreaMeters = shapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
+
+  const projectBoundary = shapes.find(s => s.type !== 'buffer' && !s.zoneMeta && !s.assetMeta);
+  const zones = shapes.filter(s => !!s.zoneMeta);
+
+  const totalAreaMeters = projectBoundary?.area || 0;
   const totalAreaAcres = totalAreaMeters * SQ_METERS_TO_ACRES;
 
   const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
@@ -69,30 +73,31 @@ export default function StatisticsSidebar({
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
-                <span>Statistics</span>
+                <span>Site Areas</span>
                 <LandPlot className="h-5 w-5 text-muted-foreground" />
               </CardTitle>
-              {selectedShapeIds.length > 0 && (
+              {selectedShapeIds.length > 0 && selectedAreaAcres > 0 && (
                  <CardDescription>
-                    {selectedShapeIds.length} shape{selectedShapeIds.length > 1 ? 's' : ''} selected
+                    {selectedAreaAcres.toFixed(3)} acres in selection
                 </CardDescription>
               )}
             </CardHeader>
-            <CardContent>
-              {selectedAreaAcres > 0 ? (
-                <>
-                  <p className="text-3xl font-bold">{selectedAreaAcres.toFixed(3)}</p>
-                  <p className="text-sm text-muted-foreground">acres in selection</p>
-                  <Separator className="my-2" />
-                  <p className="text-lg font-semibold">{totalAreaAcres.toFixed(3)}</p>
-                  <p className="text-xs text-muted-foreground">acres total</p>
-                </>
-              ) : (
-                <>
-                  <p className="text-3xl font-bold">{totalAreaAcres.toFixed(3)}</p>
-                  <p className="text-sm text-muted-foreground">total acres</p>
-                </>
-              )}
+            <CardContent className="space-y-3 text-sm">
+                {projectBoundary && (
+                    <div className="flex justify-between items-baseline">
+                        <span className="font-medium text-muted-foreground">Total Site</span>
+                        <span className="font-mono font-semibold">{totalAreaAcres.toFixed(3)} acres</span>
+                    </div>
+                )}
+                 {zones.map(zone => (
+                     <div key={zone.id} className="flex justify-between items-baseline">
+                        <span className="text-muted-foreground truncate pr-2">{zone.zoneMeta?.name}</span>
+                        <span className="font-mono font-semibold">{(zone.area! * SQ_METERS_TO_ACRES).toFixed(3)} acres</span>
+                    </div>
+                 ))}
+                 {!projectBoundary && zones.length === 0 && (
+                    <CardDescription className="text-center">Draw a boundary to see area statistics.</CardDescription>
+                 )}
             </CardContent>
           </Card>
 

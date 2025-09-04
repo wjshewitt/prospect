@@ -223,7 +223,7 @@ const DrawnShapes: React.FC<{
         if (isZone) {
             fillColor = getZoneColor(shape.zoneMeta!.kind);
             strokeColor = fillColor;
-            fillOpacity = 0.6;
+            fillOpacity = 0.5; // Made slightly more transparent
             strokeWeight = 1.5;
         }
 
@@ -355,11 +355,8 @@ const DrawnShapes: React.FC<{
         setShapes(prev => {
             const newShapes = prev.map(s => {
                 if (s.id === id) {
-                    // When a shape is edited, it becomes a generic polygon,
-                    // but we must preserve its metadata (zoneMeta, etc.)
                     return { 
                         ...s, 
-                        type: 'polygon', 
                         path: newPath, 
                         area: newArea,
                     };
@@ -775,7 +772,6 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     };
     setShapes(prev => [...prev, newZone]);
     setZoneDialogState({ isOpen: false, path: null, area: null });
-    // This is the key fix: select the newly created zone
     setSelectedShapeIds([newZone.id]);
   }, [zoneDialogState, setShapes, setSelectedShapeIds]);
 
@@ -792,6 +788,17 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
       setMovingShapeId(null); // Stop moving when clicking the map
       
       if(selectedTool === 'asset' && e.latLng) {
+        if (!projectBoundary) {
+            toast({ variant: 'destructive', title: 'Action Required', description: 'Please define a site boundary before placing buildings.' });
+            return;
+        }
+
+        const boundaryPoly = new google.maps.Polygon({ paths: projectBoundary.path });
+        if (!google.maps.geometry.poly.containsLocation(e.latLng, boundaryPoly)) {
+            toast({ variant: 'destructive', title: 'Invalid Placement', description: 'Buildings can only be placed inside the defined site boundary.' });
+            return;
+        }
+
         // This is a simplified asset placement. A real implementation would have a modal to select asset type.
         const assetSize = 10; // meters
         const center = e.latLng.toJSON();
@@ -829,7 +836,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         dragListener.remove();
       }
     }
-  }, [map, closeContextMenu, setSelectedShapeIds, selectedTool, setShapes]);
+  }, [map, closeContextMenu, setSelectedShapeIds, selectedTool, setShapes, projectBoundary, toast]);
   
   const handleCameraChange = () => {
       if (!map) return;
