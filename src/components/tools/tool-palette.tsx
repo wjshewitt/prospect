@@ -39,9 +39,9 @@ const drawingTools: { id: Tool; label:string; icon: React.ReactNode }[] = [
     { id: 'freehand', label: 'Freehand (Drag to Draw)', icon: <PenTool /> },
 ];
 
-const advancedTools: { id: string; label: string; icon: React.ReactNode; action: 'union' | 'difference' }[] = [
-    { id: 'union', label: 'Union (Merge)', icon: <Combine />, action: 'union' },
-    { id: 'difference', label: 'Difference (Subtract)', icon: <Diff />, action: 'difference' },
+const advancedTools: { id: string; label: string; tooltip: string; icon: React.ReactNode; action: 'union' | 'difference' }[] = [
+    { id: 'union', label: 'Union (Merge)', tooltip: 'Combine two selected shapes into one.', icon: <Combine />, action: 'union' },
+    { id: 'difference', label: 'Difference (Subtract)', tooltip: 'Subtract one shape from another.', icon: <Diff />, action: 'difference' },
 ];
 
 export default function ToolPalette({ 
@@ -180,7 +180,8 @@ export default function ToolPalette({
                         </div>
                     </TooltipTrigger>
                     <TooltipContent side="right" className="md:block hidden">
-                        <p>{tool.label} (requires 2 shapes)</p>
+                        <p className="font-semibold">{tool.label}</p>
+                        <p className="text-muted-foreground">{tool.tooltip}</p>
                     </TooltipContent>
                  </Tooltip>
             ))}
@@ -204,4 +205,3 @@ export default function ToolPalette({
     </aside>
   );
 }
-
