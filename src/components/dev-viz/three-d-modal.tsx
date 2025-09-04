@@ -183,15 +183,24 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
 
     // Coordinate System & Projections (local tangent plane)
     const siteCenter = getPolygonCenter(boundary.path);
+    const R_EARTH = 6371e3; // meters
+    const COS_LAT = Math.cos(siteCenter.lat * Math.PI / 180);
+
     const proj = {
       toLocal: (p: LatLng) => {
-        const R = 6371e3;
-        const φ1 = siteCenter.lat * Math.PI / 180;
         const dLat = (p.lat - siteCenter.lat) * Math.PI / 180;
         const dLng = (p.lng - siteCenter.lng) * Math.PI / 180;
-        const x = dLng * R * Math.cos(φ1);
-        const y = -dLat * R;
+        const x = dLng * R_EARTH * COS_LAT;
+        const y = -dLat * R_EARTH;
         return { x, y };
+      },
+       xyToLL: (x: number, y: number): LatLng => {
+        const dLat = -y / R_EARTH;
+        const dLng = x / (R_EARTH * COS_LAT);
+        return {
+            lat: siteCenter.lat + dLat * 180 / Math.PI,
+            lng: siteCenter.lng + dLng * 180 / Math.PI,
+        };
       },
     };
 
@@ -242,14 +251,6 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     
     // --- Zone Coloring Logic ---
-    const zonePolygons = zones.map(zone => {
-      const zonePath = zone.path.map(p => proj.toLocal(p));
-      return {
-        path: zonePath,
-        kind: zone.zoneMeta?.kind,
-      }
-    });
-
     const getZoneMaterial = (kind: Shape['zoneMeta']['kind']) => {
         let color: THREE.ColorRepresentation = 0x555555; // Default grey
         switch(kind) {
@@ -270,8 +271,6 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
 
     // Check which zone each face belongs to
     const faceCount = triangles.length / 3;
-    let defaultGroupStart = 0;
-    let defaultGroupCount = 0;
 
     for (let i = 0; i < faceCount; i++) {
         const vA = new THREE.Vector3(positions[i*9 + 0], positions[i*9 + 1], positions[i*9 + 2]);
