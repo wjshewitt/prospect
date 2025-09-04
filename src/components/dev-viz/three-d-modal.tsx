@@ -169,7 +169,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
         switch(zone.zoneMeta?.kind) {
             case 'residential': color = '#86efac'; break;
             case 'commercial': color = '#93c5fd'; break;
-A            case 'amenity': color = '#fcd34d'; break;
+            case 'amenity': color = '#fcd34d'; break;
             case 'green_space': color = '#22c55e'; break;
         }
         const zoneMaterial = new THREE.MeshStandardMaterial({ 
