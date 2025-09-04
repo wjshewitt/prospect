@@ -62,12 +62,9 @@ export default function HomePage() {
                 </Button>
               </div>
               <div className="lg:col-span-2 relative">
-                <Image 
-                  src="https://picsum.photos/600/450"
-                  alt="Topographical map"
-                  width={600}
-                  height={450}
-                  className="w-full aspect-[4/3] object-cover rounded-2xl shadow-2xl"
+                <div 
+                  className="w-full aspect-[4/3] bg-cover bg-center rounded-2xl shadow-2xl"
+                  style={{ backgroundImage: "url('https://picsum.photos/800/600')" }}
                   data-ai-hint="topographical map abstract"
                 />
                 <div className="absolute -bottom-8 -left-8 bg-white/70 backdrop-blur-md p-4 rounded-lg shadow-lg">
