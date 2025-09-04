@@ -71,8 +71,8 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
             const dLat = (p.lat-siteCenter.lat) * Math.PI/180;
             const dLng = (p.lng-siteCenter.lng) * Math.PI/180;
             const x = dLng * R * Math.cos(φ1);
-            const y = -y; // y is inverted for Three.js (z becomes negative)
-            return { x, y };
+            const y = dLat * R;
+            return { x, y: -y }; // y is inverted for Three.js (z becomes negative)
         },
     };
 
