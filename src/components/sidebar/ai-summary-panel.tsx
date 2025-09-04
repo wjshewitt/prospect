@@ -3,10 +3,12 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Shape, ElevationGrid } from '@/lib/types';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, FileSearch } from 'lucide-react';
 import { summarizeSite } from '@/ai/flows/summarize-site-flow';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { SiteAssessmentDialog } from '../assessment/site-assessment-dialog';
+import { Button } from '../ui/button';
 
 const SQ_METERS_TO_ACRES = 0.000247105;
 
@@ -67,7 +69,7 @@ export function AiSummaryPanel({ siteName, shapes, elevationGrid }: AiSummaryPan
   }, [isReady, siteName]); // Re-run when readiness changes
 
   return (
-    <div className="p-4">
+    <div className="p-4 space-y-4">
         <Card className="border-0 shadow-none bg-transparent">
             <CardHeader>
                 <CardTitle className="text-base flex items-center justify-between">
@@ -104,6 +106,25 @@ export function AiSummaryPanel({ siteName, shapes, elevationGrid }: AiSummaryPan
                         Draw a project boundary and select it to enable the AI summary.
                     </CardDescription>
                 )}
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base flex items-center justify-between">
+                    <span>Full Report</span>
+                    <FileSearch className="h-5 w-5 text-muted-foreground" />
+                </CardTitle>
+                <CardDescription>
+                    Generate a comprehensive, exportable PDF report including proximity analysis, topography, and the AI summary.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <SiteAssessmentDialog 
+                    shapes={shapes} 
+                    elevationGrid={elevationGrid}
+                    siteName={siteName}
+                    aiSummary={summary}
+                />
             </CardContent>
         </Card>
     </div>

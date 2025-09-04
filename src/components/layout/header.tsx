@@ -86,7 +86,6 @@ export default function Header({ siteName, onSiteNameClick, onClear, onSave, onL
       </div>
       <div className="flex items-center gap-2">
         {children}
-        <AiSummaryDialog siteName={siteName} shapes={shapes} elevationGrid={elevationGrid} />
         <Button variant="outline" size="sm" onClick={onLoad}>
             <FolderOpen className="h-4 w-4 mr-2" />
             Load
@@ -99,7 +98,6 @@ export default function Header({ siteName, onSiteNameClick, onClear, onSave, onL
             <Trash2 className="h-4 w-4 mr-2" />
             Clear
         </Button>
-        <SiteAssessmentDialog shapes={shapes} elevationGrid={elevationGrid} />
       </div>
     </header>
   );

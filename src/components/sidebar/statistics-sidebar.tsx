@@ -75,11 +75,12 @@ export default function StatisticsSidebar({
             className={cn("h-8 w-8 rounded-sm", view === 'stats' ? 'text-muted-foreground/50 cursor-default' : 'hover:bg-primary/20')}
             onClick={() => setView('stats')}
             disabled={view === 'stats'}
+            title="Show Statistics"
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div className="w-24 text-center">
-            <h3 className="font-semibold">{view === 'stats' ? 'Statistics' : 'AI Summary'}</h3>
+            <h3 className="font-semibold">{view === 'stats' ? 'Statistics' : 'Summary'}</h3>
           </div>
            <Button 
             size="icon" 
@@ -87,6 +88,7 @@ export default function StatisticsSidebar({
             className={cn("h-8 w-8 rounded-sm", view === 'summary' ? 'text-muted-foreground/50 cursor-default' : 'hover:bg-primary/20')}
             onClick={() => setView('summary')}
             disabled={view === 'summary'}
+            title="Show Summary"
           >
             <ChevronRight className="h-5 w-5" />
           </Button>

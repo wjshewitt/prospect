@@ -13,7 +13,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, FileSearch, LandPlot, Mountain, ArrowUp, ArrowDown, Building, Plane, FileDown } from 'lucide-react';
+import { Loader2, FileSearch, LandPlot, Mountain, ArrowUp, ArrowDown, Building, Plane, FileDown, Sparkles } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { findNearbyPlaces, FindNearbyPlacesOutput } from '@/ai/flows/find-nearby-places-flow';
 import html2canvas from 'html2canvas';
@@ -25,6 +25,8 @@ const SQ_METERS_TO_ACRES = 0.000247105;
 interface SiteAssessmentDialogProps {
     shapes: Shape[];
     elevationGrid: ElevationGrid | null;
+    siteName: string;
+    aiSummary: string | null;
 }
 
 function getCenterOfShape(shape: Shape): {lat: number, lng: number} {
@@ -56,7 +58,7 @@ function expandBounds(bounds: google.maps.LatLngBounds, factor: number) {
 }
 
 
-export function SiteAssessmentDialog({ shapes, elevationGrid }: SiteAssessmentDialogProps) {
+export function SiteAssessmentDialog({ shapes, elevationGrid, siteName, aiSummary }: SiteAssessmentDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [assessmentData, setAssessmentData] = useState<FindNearbyPlacesOutput | null>(null);
@@ -139,7 +141,7 @@ export function SiteAssessmentDialog({ shapes, elevationGrid }: SiteAssessmentDi
           format: [canvas.width, canvas.height],
         });
         pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-        pdf.save('site-assessment-report.pdf');
+        pdf.save(`${siteName.replace(/\s/g, '_')}_Site_Assessment.pdf`);
     } catch (error) {
         console.error('Failed to export PDF:', error);
         alert('Could not export to PDF. Please try again.');
@@ -150,19 +152,20 @@ export function SiteAssessmentDialog({ shapes, elevationGrid }: SiteAssessmentDi
   
   const totalAreaMeters = projectBoundary?.area || 0;
   const totalAreaAcres = totalAreaMeters * SQ_METERS_TO_ACRES;
+  const isDisabled = !projectBoundary || !elevationGrid;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="default" disabled={!projectBoundary}>
+         <Button size="sm" variant="default" className="w-full" disabled={isDisabled}>
             <FileSearch className="h-4 w-4 mr-2" />
-            Site Assessment
+            Generate Full Report
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle className="text-2xl flex items-center gap-2">
-             <FileSearch /> Site Assessment Report
+             <FileSearch /> Site Assessment Report: {siteName}
           </DialogTitle>
           <DialogDescription>
             A summary of the selected property including area, elevation, and proximity to points of interest.
@@ -183,70 +186,83 @@ export function SiteAssessmentDialog({ shapes, elevationGrid }: SiteAssessmentDi
         )}
 
         {!isLoading && !error && projectBoundary && (
-            <div id="assessment-report" className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-background">
-                {/* Left Column - Image and Area */}
-                <div className="space-y-4">
-                    <h3 className="font-semibold text-lg">Site Overview</h3>
-                    {mapImage && <img src={mapImage} alt="Map of the site" className="rounded-md border" data-ai-hint="map screenshot" />}
-                    <div className="p-4 rounded-md border bg-muted/50">
-                        <h4 className="font-medium flex items-center gap-2 mb-2"><LandPlot className="h-5 w-5" /> Area</h4>
-                        <p className="text-2xl font-bold">{totalAreaAcres.toFixed(3)} acres</p>
-                        <p className="text-sm text-muted-foreground">{totalAreaMeters.toFixed(1)} square meters</p>
+            <div id="assessment-report" className="p-4 bg-background">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+                    {/* Left Column - Image and Area */}
+                    <div className="md:col-span-2 space-y-4">
+                        <h3 className="font-semibold text-lg">Site Overview</h3>
+                        {mapImage && <img src={mapImage} alt="Map of the site" className="rounded-md border" data-ai-hint="map screenshot" />}
+                        <div className="p-4 rounded-md border bg-muted/50">
+                            <h4 className="font-medium flex items-center gap-2 mb-2"><LandPlot className="h-5 w-5" /> Area</h4>
+                            <p className="text-2xl font-bold">{totalAreaAcres.toFixed(3)} acres</p>
+                            <p className="text-sm text-muted-foreground">{totalAreaMeters.toFixed(1)} square meters</p>
+                        </div>
                     </div>
-                </div>
-                
-                {/* Right Column - Proximity and Elevation */}
-                <div className="space-y-4">
-                     <h3 className="font-semibold text-lg">Proximity Analysis</h3>
-                     <div className="p-4 rounded-md border bg-muted/50 space-y-3">
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                                <Plane className="h-5 w-5" />
-                                <h4 className="font-medium">Nearest Airport</h4>
-                            </div>
-                            {assessmentData?.airport ? (
-                                <div className="text-right">
-                                    <p className="font-semibold">{assessmentData.airport.name}</p>
-                                    <p className="text-sm text-muted-foreground">{assessmentData.airport.distanceKm} km / {assessmentData.airport.distanceMiles} miles</p>
+                    
+                    {/* Right Column - Proximity and Elevation */}
+                    <div className="md:col-span-3 space-y-4">
+                         <h3 className="font-semibold text-lg">Proximity Analysis</h3>
+                         <div className="p-4 rounded-md border bg-muted/50 space-y-3">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Plane className="h-5 w-5" />
+                                    <h4 className="font-medium">Nearest Airport</h4>
                                 </div>
-                            ) : <p className="text-sm text-muted-foreground">Not found</p>}
-                        </div>
-                        <Separator />
-                         <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-2">
-                                <Building className="h-5 w-5" />
-                                <h4 className="font-medium">Nearest Town</h4>
+                                {assessmentData?.airport ? (
+                                    <div className="text-right">
+                                        <p className="font-semibold">{assessmentData.airport.name}</p>
+                                        <p className="text-sm text-muted-foreground">{assessmentData.airport.distanceKm} km / {assessmentData.airport.distanceMiles} miles</p>
+                                    </div>
+                                ) : <p className="text-sm text-muted-foreground">Not found</p>}
                             </div>
-                            {assessmentData?.town ? (
-                                <div className="text-right">
-                                    <p className="font-semibold">{assessmentData.town.name}</p>
-                                    <p className="text-sm text-muted-foreground">{assessmentData.town.distanceKm} km / {assessmentData.town.distanceMiles} miles</p>
+                            <Separator />
+                             <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Building className="h-5 w-5" />
+                                    <h4 className="font-medium">Nearest Town</h4>
                                 </div>
-                            ) : <p className="text-sm text-muted-foreground">Not found</p>}
-                        </div>
-                     </div>
+                                {assessmentData?.town ? (
+                                    <div className="text-right">
+                                        <p className="font-semibold">{assessmentData.town.name}</p>
+                                        <p className="text-sm text-muted-foreground">{assessmentData.town.distanceKm} km / {assessmentData.town.distanceMiles} miles</p>
+                                    </div>
+                                ) : <p className="text-sm text-muted-foreground">Not found</p>}
+                            </div>
+                         </div>
 
-                    <h3 className="font-semibold text-lg">Topography Analysis</h3>
-                    <div className="p-4 rounded-md border bg-muted/50">
-                         <h4 className="font-medium flex items-center gap-2 mb-3"><Mountain className="h-5 w-5" /> Slope Extremes</h4>
-                         <div className="flex justify-around text-center">
-                            <div>
+                        <h3 className="font-semibold text-lg">Topography Analysis</h3>
+                        <div className="p-4 rounded-md border bg-muted/50">
+                             <h4 className="font-medium flex items-center gap-2 mb-3"><Mountain className="h-5 w-5" /> Slope Extremes</h4>
+                             <div className="flex justify-around text-center">
+                                <div>
+                                    <p className="text-2xl font-bold flex items-center justify-center gap-1">
+                                        <ArrowDown className="h-5 w-5 text-muted-foreground" />
+                                        {elevationGrid?.minSlope.toFixed(1)}%
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">Lowest</p>
+                                </div>
+                                <div>
                                 <p className="text-2xl font-bold flex items-center justify-center gap-1">
-                                    <ArrowDown className="h-5 w-5 text-muted-foreground" />
-                                    {elevationGrid?.minSlope.toFixed(1)}%
-                                </p>
-                                <p className="text-xs text-muted-foreground">Lowest</p>
-                            </div>
-                            <div>
-                            <p className="text-2xl font-bold flex items-center justify-center gap-1">
-                                    <ArrowUp className="h-5 w-5 text-muted-foreground" />
-                                    {elevationGrid?.maxSlope.toFixed(1)}%
-                                </p>
-                                <p className="text-xs text-muted-foreground">Steepest</p>
+                                        <ArrowUp className="h-5 w-5 text-muted-foreground" />
+                                        {elevationGrid?.maxSlope.toFixed(1)}%
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">Steepest</p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
+                {aiSummary && (
+                    <div className="mt-6">
+                        <h3 className="font-semibold text-lg flex items-center gap-2 mb-2">
+                            <Sparkles className="h-5 w-5 text-primary" />
+                            AI Assessment
+                        </h3>
+                        <div className="p-4 rounded-md border bg-muted/30 text-card-foreground">
+                            <p className="whitespace-pre-wrap leading-relaxed">{aiSummary}</p>
+                        </div>
+                    </div>
+                )}
             </div>
         )}
 
