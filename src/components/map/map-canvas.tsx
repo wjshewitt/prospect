@@ -355,8 +355,16 @@ const DrawnShapes: React.FC<{
         setShapes(prev => {
             const newShapes = prev.map(s => {
                 if (s.id === id) {
-                    // Any edit/move converts the original shape type to a polygon
-                    return { ...s, type: s.zoneMeta ? 'zone' : 'polygon', path: newPath, area: newArea, bufferMeta: undefined };
+                    // When a shape is edited, it becomes a generic polygon,
+                    // but we must preserve its metadata (zoneMeta, etc.)
+                    return { 
+                        ...s, 
+                        type: s.zoneMeta ? 'zone' : 'polygon', 
+                        path: newPath, 
+                        area: newArea,
+                        // This is the key fix: DO NOT reset bufferMeta
+                        // bufferMeta: undefined 
+                    };
                 }
                 return s;
             });
@@ -884,3 +892,5 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
+
+    
