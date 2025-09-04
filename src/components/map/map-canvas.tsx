@@ -220,8 +220,14 @@ const DrawnShapes: React.FC<{
         let strokeColor = 'hsl(var(--primary))';
         let strokeOpacity = isSelected ? 1.0 : 0.8;
         let strokeWeight = isSelected ? 3.5 : 2;
-        let zIndex = isSelected ? 5 : 1; // Default zIndex
+        let strokePosition: google.maps.StrokePosition | undefined = undefined;
+        let zIndex = 1; 
         let icons = undefined;
+        
+        if (isBoundary) {
+            zIndex = 1;
+            strokePosition = google.maps.StrokePosition.OUTSIDE;
+        }
 
         if (isBuffer) {
             fillColor = 'hsl(var(--accent))';
@@ -258,11 +264,16 @@ const DrawnShapes: React.FC<{
             strokeOpacity = 1.0;
         }
 
+        if (isSelected) {
+            zIndex += 5; // Bump selected shapes up
+        }
+
         const polyOptions: google.maps.PolygonOptions = {
           paths: path,
           strokeColor,
           strokeOpacity,
           strokeWeight,
+          strokePosition,
           fillColor,
           fillOpacity,
           map: map,
@@ -903,3 +914,5 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
+
+    
