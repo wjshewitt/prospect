@@ -328,7 +328,9 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
         }
       });
       renderer.dispose();
-      mountNode.innerHTML = "";
+      if (mountNode && mountNode.contains(renderer.domElement)) {
+          mountNode.removeChild(renderer.domElement);
+      }
       setCamera(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
