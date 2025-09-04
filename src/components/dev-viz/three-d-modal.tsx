@@ -43,6 +43,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary }: ThreeDVisu
     renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
     renderer.shadowMap.enabled = true;
     mountNode.appendChild(renderer.domElement);
+    const canvasElement = renderer.domElement; // Capture for cleanup
 
     // --- Lighting ---
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -199,9 +200,9 @@ export function ThreeDVisualizationModal({ assets, zones, boundary }: ThreeDVisu
             }
         }
       });
-
-      if (mountNode && mountNode.contains(renderer.domElement)) {
-        mountNode.removeChild(renderer.domElement);
+      
+      if (mountNode && mountNode.contains(canvasElement)) {
+        mountNode.removeChild(canvasElement);
       }
       renderer.dispose();
     };
