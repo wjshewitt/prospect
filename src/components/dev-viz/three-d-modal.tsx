@@ -436,7 +436,7 @@ export function ThreeDVisualizationModal({
       for (let i = 0; i < positions.count; i++) {
         const x = positions.getX(i);
         const y = positions.getY(i);
-        const z = getElevationAt(x, y) + 0.1; // Slight offset above terrain
+        const z = getElevationAt(x, y) + 0.25; // Increased offset above terrain
         positions.setZ(i, z);
       }
       
@@ -456,6 +456,7 @@ export function ThreeDVisualizationModal({
         transparent: true,
         opacity: 0.3,
         side: THREE.DoubleSide,
+        depthWrite: false, // Prevent zone from hiding things behind it
       });
       
       const zoneMesh = new THREE.Mesh(zoneGeometry, zoneMaterial);
