@@ -110,14 +110,13 @@ export default function WelcomePage() {
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             <ProjectCard.Skeleton />
                             <ProjectCard.Skeleton />
-                            <ProjectCard.Skeleton />
                         </div>
                     ) : project ? (
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                            <ProjectCard project={project} />
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12 text-center">
+                        <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-white/50 p-12 text-center">
                             <h3 className="text-xl font-medium">No projects yet</h3>
                             <p className="mt-2 text-sm text-muted-foreground">Get started by creating your first project.</p>
                             <Button asChild className="mt-6">

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import type { Shape } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LandPlot, Building, Calendar, ArrowRight } from 'lucide-react';
+import { LandPlot, Building, ArrowRight } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 
 interface Project {
@@ -34,13 +34,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
     const { totalAreaAcres, buildingCount } = calculateStats(project.shapes);
 
     return (
-        <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1">
+        <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 bg-card">
             <CardHeader>
                 <CardTitle className="truncate">{project.siteName}</CardTitle>
                 <CardDescription>
-                    <Link href={`/vision?project=${project.id}`} className="hover:underline">
-                        ID: {project.id}
-                    </Link>
+                     Last opened: {project.lastModified.toLocaleDateString()}
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow space-y-3">
@@ -70,7 +68,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             </CardContent>
             <CardFooter className="border-t bg-muted/50 p-3">
                 <Button asChild variant="ghost" size="sm" className="w-full justify-start">
-                    <Link href={`/vision?project=${project.id}`}>
+                    <Link href={`/vision`}>
                         Open Project
                         <ArrowRight className="ml-auto h-4 w-4" />
                     </Link>
@@ -82,7 +80,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
 ProjectCard.Skeleton = function ProjectCardSkeleton() {
     return (
-        <Card className="flex flex-col overflow-hidden">
+        <Card className="flex flex-col overflow-hidden bg-card">
             <CardHeader>
                 <Skeleton className="h-6 w-3/4" />
                 <Skeleton className="h-4 w-1/2" />
