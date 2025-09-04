@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { analyzeElevation } from '@/services/elevation';
 import { generateBuildingLayout } from '@/ai/flows/generate-building-layout-flow';
 import { generateSolarLayout } from '@/ai/flows/generate-solar-layout-flow';
+import html2canvas from 'html2canvas';
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -39,6 +40,29 @@ function useDebounce<T>(value: T, delay: number): T {
 
 const LOCAL_STORAGE_KEY = 'landvision-project';
 
+// Function to expand bounds by a factor. factor=2.25 means new area is ~5x old area.
+function expandBounds(bounds: google.maps.LatLngBounds, factor: number) {
+    const center = bounds.getCenter();
+    const ne = bounds.getNorthEast();
+
+    const newNeLat = center.lat() + (ne.lat() - center.lat()) * factor;
+    const newNeLng = center.lng() + (ne.lng() - center.lng()) * factor;
+    const newSwLat = center.lat() - (center.lat() - bounds.getSouthWest().lat()) * factor;
+    const newSwLng = center.lng() - (center.lng() - bounds.getSouthWest().lng()) * factor;
+
+    return new google.maps.LatLngBounds(
+        new google.maps.LatLng(newSwLat, newSwLng),
+        new google.maps.LatLng(newNeLat, newNeLng)
+    );
+}
+
+function getBoundsOfShape(shape: Shape): google.maps.LatLngBounds {
+    const bounds = new google.maps.LatLngBounds();
+    shape.path.forEach(p => bounds.extend(p));
+    return bounds;
+}
+
+
 function VisionPageContent() {
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
@@ -52,6 +76,8 @@ function VisionPageContent() {
   const [elevationGrid, setElevationGrid] = useState<ElevationGrid | null>(null);
   const [isAnalysisVisible, setIsAnalysisVisible] = useState(true);
   const [is3DView, setIs3DView] = useState(false);
+  const [mapScreenshot, setMapScreenshot] = useState<string | null>(null);
+
 
   const [siteName, setSiteName] = useState<string>('');
   const [isNameSiteDialogOpen, setIsNameSiteDialogOpen] = useState(false);
@@ -325,6 +351,11 @@ function VisionPageContent() {
     setIsTutorialActive(true);
   }
 
+  const handleDeleteAsset = (assetId: string) => {
+    setShapes(prev => prev.filter(s => s.id !== assetId));
+  }
+
+
   const handleToggle3DView = async () => {
     if (!is3DView) {
         // Switching TO 3D view
@@ -336,7 +367,7 @@ function VisionPageContent() {
             });
             return;
         }
-        if (!window.google) {
+        if (!window.google || !map) {
              toast({
               variant: 'destructive',
               title: 'API Error',
@@ -345,12 +376,14 @@ function VisionPageContent() {
             return;
         }
 
+        toast({ title: 'Generating 3D View...', description: 'Please wait, this may take a moment.' });
+        
+        let grid = elevationGrid;
         // If there's no elevation grid, or the grid is for a different shape, calculate it for the boundary
-        if (!elevationGrid || selectedShapeIds[0] !== projectBoundary.id) {
-            toast({ title: 'Generating 3D Terrain...', description: 'Please wait while we fetch elevation data.' });
+        if (!grid || selectedShapeIds[0] !== projectBoundary.id) {
             try {
                 const elevationService = new window.google.maps.ElevationService();
-                const grid = await analyzeElevation(projectBoundary, elevationService, gridResolution);
+                grid = await analyzeElevation(projectBoundary, elevationService, gridResolution);
                 setElevationGrid(grid);
             } catch(e) {
                  toast({
@@ -361,6 +394,47 @@ function VisionPageContent() {
                 return; // Don't switch to 3D if data fails
             }
         }
+        
+        // --- Start Screenshot Logic ---
+        const originalCenter = map.getCenter();
+        const originalZoom = map.getZoom();
+
+        // 1. Hide overlays for a clean screenshot
+        setIsAnalysisVisible(false);
+
+        // 2. Fit map to the boundary bounds for a tight shot
+        const shapeBounds = getBoundsOfShape(projectBoundary);
+        map.fitBounds(shapeBounds);
+
+        // Give map time to re-render at new bounds
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        try {
+            const mapContainer = map.getDiv();
+            const canvas = await html2canvas(mapContainer, {
+                useCORS: true,
+                allowTaint: true,
+                logging: false,
+                onclone: (doc) => {
+                    // In the cloned document, hide all drawn Google Maps polygons
+                    const polys = doc.querySelectorAll('canvas ~ div');
+                    polys.forEach(p => {
+                       (p as HTMLElement).style.visibility = 'hidden';
+                    });
+                }
+            });
+            setMapScreenshot(canvas.toDataURL('image/png'));
+        } catch(e) {
+            console.error("Error taking map screenshot:", e);
+            toast({ variant: 'destructive', title: 'Screenshot Failed', description: 'Could not capture map image.' });
+        } finally {
+            // Restore map state and visibility
+            if(originalCenter && originalZoom) {
+                map.moveCamera({center: originalCenter, zoom: originalZoom});
+            }
+            setIsAnalysisVisible(true);
+        }
+        // --- End Screenshot Logic ---
     }
     setIs3DView(!is3DView);
   }
@@ -405,6 +479,8 @@ function VisionPageContent() {
               zones={zones}
               boundary={projectBoundary}
               elevationGrid={elevationGrid}
+              mapScreenshot={mapScreenshot}
+              onDeleteAsset={handleDeleteAsset}
             />
           ) : (
             <MapCanvas
