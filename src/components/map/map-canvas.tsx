@@ -31,7 +31,6 @@ interface MapCanvasProps {
   className?: string;
   mapState: { center: LatLng; zoom: number } | null;
   onMapStateChange: (state: { center: LatLng; zoom: number }) => void;
-  elevationService: google.maps.ElevationService | null;
 }
 
 interface ContextMenuState {
@@ -566,7 +565,6 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   className,
   mapState,
   onMapStateChange,
-  elevationService
 }) => {
   const isLoaded = useApiIsLoaded();
   const map = useMap();
@@ -593,10 +591,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   
   useEffect(() => {
     const runAnalysis = async () => {
-        if (selectedShapeIds.length === 1 && isLoaded && elevationService) {
+        if (selectedShapeIds.length === 1 && isLoaded && map) {
             const shapeToAnalyze = shapes.find(s => s.id === selectedShapeIds[0]);
             if (shapeToAnalyze) {
                 try {
+                    const elevationService = new window.google.maps.ElevationService();
                     const grid = await analyzeElevation(shapeToAnalyze, elevationService, gridResolution);
                     setElevationGrid(grid);
                 } catch (err) {
@@ -620,7 +619,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     };
     runAnalysis();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shapes, gridResolution, isLoaded, elevationService, selectedShapeIds]);
+  }, [shapes, gridResolution, isLoaded, map, selectedShapeIds]);
 
   const handleShapeRightClick = useCallback((shapeId: string, event: google.maps.MapMouseEvent) => {
     if (!map || !event.domEvent) return;

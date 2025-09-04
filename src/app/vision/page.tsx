@@ -62,7 +62,6 @@ export default function VisionPage() {
   // State to preserve map position
   const [mapState, setMapState] = useState<{center: LatLng, zoom: number} | null>(null);
   const { toast } = useToast();
-  const [elevationService, setElevationService] = useState<google.maps.ElevationService | null>(null);
 
   useEffect(() => {
     // This now runs only on the client, after hydration
@@ -71,20 +70,14 @@ export default function VisionPage() {
     }
   }, [hasCompletedTutorial]);
 
-  // Effect to initialize the elevation service once the API is loaded
-  useEffect(() => {
-    if (window.google && window.google.maps && !elevationService) {
-        setElevationService(new window.google.maps.ElevationService());
-    }
-  }, [elevationService]);
-
 
   useEffect(() => {
     const runAnalysis = async () => {
         const shapeToAnalyze = shapes.find(s => s.id === selectedShapeIds[0]);
 
-        if (selectedShapeIds.length === 1 && shapeToAnalyze && elevationService) {
+        if (selectedShapeIds.length === 1 && shapeToAnalyze && window.google) {
             try {
+                const elevationService = new window.google.maps.ElevationService();
                 const grid = await analyzeElevation(shapeToAnalyze, elevationService, debouncedGridResolution);
                 setElevationGrid(grid);
             } catch (err) {
@@ -105,7 +98,7 @@ export default function VisionPage() {
     };
     runAnalysis();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedShapeIds, debouncedGridResolution, elevationService]); // Re-run when selection or resolution changes
+  }, [selectedShapeIds, debouncedGridResolution]); // Re-run when selection or resolution changes
   
 
   if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
@@ -197,11 +190,11 @@ export default function VisionPage() {
             });
             return;
         }
-        if (!elevationService) {
+        if (!window.google) {
              toast({
               variant: 'destructive',
               title: 'API Error',
-              description: 'Elevation service not available yet. Please wait a moment and try again.',
+              description: 'Google Maps API not available yet. Please wait a moment and try again.',
             });
             return;
         }
@@ -210,6 +203,7 @@ export default function VisionPage() {
         if (!elevationGrid || selectedShapeIds[0] !== projectBoundary.id) {
             toast({ title: 'Generating 3D Terrain...', description: 'Please wait while we fetch elevation data.' });
             try {
+                const elevationService = new window.google.maps.ElevationService();
                 const grid = await analyzeElevation(projectBoundary, elevationService, gridResolution);
                 setElevationGrid(grid);
             } catch(e) {
@@ -284,7 +278,6 @@ export default function VisionPage() {
                 onBoundaryDrawn={handleBoundaryDrawn}
                 mapState={mapState}
                 onMapStateChange={setMapState}
-                elevationService={elevationService}
               />
             )}
             
