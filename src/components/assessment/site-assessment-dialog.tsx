@@ -65,10 +65,12 @@ export function SiteAssessmentDialog({ shapes, elevationGrid }: SiteAssessmentDi
   const [mapImage, setMapImage] = useState<string | null>(null);
 
   const map = useMap();
+  const projectBoundary = shapes.find(s => !s.zoneMeta && !s.assetMeta && !s.bufferMeta);
+
 
   const handleOpenChange = async (open: boolean) => {
     setIsOpen(open);
-    if (open && shapes.length === 1 && map) {
+    if (open && projectBoundary && map) {
         setIsLoading(true);
         setError(null);
         setAssessmentData(null);
@@ -80,7 +82,7 @@ export function SiteAssessmentDialog({ shapes, elevationGrid }: SiteAssessmentDi
 
         try {
             // Calculate new bounds for the screenshot
-            const shapeBounds = getBoundsOfShape(shapes[0]);
+            const shapeBounds = getBoundsOfShape(projectBoundary);
             const expandedBounds = expandBounds(shapeBounds, 2.25); // For ~20% area coverage
             map.fitBounds(expandedBounds);
 
@@ -97,7 +99,7 @@ export function SiteAssessmentDialog({ shapes, elevationGrid }: SiteAssessmentDi
             setMapImage(canvas.toDataURL('image/png'));
            
             // Fetch assessment data in parallel
-            const center = getCenterOfShape(shapes[0]);
+            const center = getCenterOfShape(projectBoundary);
             const data = await findNearbyPlaces(center);
             setAssessmentData(data);
 
@@ -146,13 +148,13 @@ export function SiteAssessmentDialog({ shapes, elevationGrid }: SiteAssessmentDi
     }
   }
   
-  const totalAreaMeters = shapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
+  const totalAreaMeters = projectBoundary?.area || 0;
   const totalAreaAcres = totalAreaMeters * SQ_METERS_TO_ACRES;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="sm" variant="default" disabled={shapes.length !== 1}>
+        <Button size="sm" variant="default" disabled={!projectBoundary}>
             <FileSearch className="h-4 w-4 mr-2" />
             Site Assessment
         </Button>
@@ -180,7 +182,7 @@ export function SiteAssessmentDialog({ shapes, elevationGrid }: SiteAssessmentDi
             </div>
         )}
 
-        {!isLoading && !error && shapes.length === 1 && (
+        {!isLoading && !error && projectBoundary && (
             <div id="assessment-report" className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-background">
                 {/* Left Column - Image and Area */}
                 <div className="space-y-4">
