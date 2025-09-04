@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Shape, ElevationGrid } from '@/lib/types';
@@ -5,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { BarChart3, LandPlot, HelpCircle, LayoutGrid, Info } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { BarChart3, LandPlot, HelpCircle, LayoutGrid, Info, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ElevationAnalysis } from './elevation-analysis';
 import { DevelopmentDetails } from './development-details';
@@ -21,7 +23,7 @@ type StatisticsSidebarProps = {
   isAnalysisVisible: boolean;
   setIsAnalysisVisible: (visible: boolean) => void;
   selectedShapeIds: string[];
-  onGenerateLayout: (zoneId: string) => void;
+  onGenerateLayout: (zoneId: string, density: 'low' | 'medium' | 'high') => void;
 };
 
 const SQ_METERS_TO_ACRES = 0.000247105;
@@ -140,9 +142,19 @@ export default function StatisticsSidebar({
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Button className="w-full" onClick={() => onGenerateLayout(selectedShapeIds[0])}>
-                        Generate Layout
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button className="w-full">
+                                Generate Layout
+                                <ChevronDown className="ml-2 h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                             <DropdownMenuItem onSelect={() => onGenerateLayout(selectedShapeIds[0], 'low')}>Low Density</DropdownMenuItem>
+                             <DropdownMenuItem onSelect={() => onGenerateLayout(selectedShapeIds[0], 'medium')}>Medium Density</DropdownMenuItem>
+                             <DropdownMenuItem onSelect={() => onGenerateLayout(selectedShapeIds[0], 'high')}>High Density</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <CardDescription className="text-xs mt-2 text-center">
                         Automatically place buildings in the selected zone. This will replace any existing buildings in this zone.
                     </CardDescription>

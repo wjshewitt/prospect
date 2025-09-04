@@ -3,7 +3,7 @@
 /**
  * @fileOverview A Genkit flow for generating building layouts within a specified zone.
  * This flow uses an AI model to act as an urban planner, placing buildings in a realistic
- * and aesthetically pleasing manner.
+ * and aesthetically pleasing manner based on a specified density.
  */
 
 import { ai } from '@/ai/genkit';
@@ -26,6 +26,7 @@ const BuildingSchema = z.object({
 // Define the input schema for the flow
 const GenerateBuildingLayoutInputSchema = z.object({
   zonePolygon: z.array(PointSchema).describe('An array of points defining the boundary of the zone to place buildings in.'),
+  density: z.enum(['low', 'medium', 'high']).describe('The desired density of the building layout.'),
 });
 export type GenerateBuildingLayoutInput = z.infer<typeof GenerateBuildingLayoutInputSchema>;
 
@@ -38,7 +39,7 @@ export type GenerateBuildingLayoutOutput = z.infer<typeof GenerateBuildingLayout
 
 /**
  * An exported wrapper function that calls the Genkit flow.
- * @param input - The input object containing the zone polygon.
+ * @param input - The input object containing the zone polygon and density.
  * @returns A promise that resolves to the generated building layout.
  */
 export async function generateBuildingLayout(input: GenerateBuildingLayoutInput): Promise<GenerateBuildingLayoutOutput> {
@@ -52,18 +53,23 @@ const generateLayoutPrompt = ai.definePrompt({
   input: { schema: GenerateBuildingLayoutInputSchema },
   output: { schema: GenerateBuildingLayoutOutputSchema },
   prompt: `
-    You are an expert urban planner AI. Your task is to design a realistic and aesthetically pleasing residential building layout within a given polygonal zone.
+    You are an expert urban planner AI. Your task is to design a realistic and aesthetically pleasing residential building layout within a given polygonal zone, according to a specified density.
 
-    Rules and Constraints:
+    General Rules:
     1.  All generated buildings must be strictly inside the provided 'zonePolygon'.
     2.  Generate detached houses ('house_detached'), each with 2 floors.
     3.  The footprint for each house should be approximately 8x10 meters.
-    4.  Arrange the buildings in natural-looking clusters. Avoid placing them in a simple, rigid grid.
-    5.  Introduce slight variations in rotation for each building to make the layout look more organic.
-    6.  Ensure a reasonable distance between buildings for privacy and access.
+    4.  Arrange buildings in natural-looking clusters. Avoid placing them in a simple, rigid grid. Introduce slight variations in rotation for each building.
+    5.  Ensure a reasonable distance between buildings for privacy and access, according to the density specified.
+
+    Density-Specific Instructions:
+    - **low**: Generate a spacious layout with large gaps between buildings, suitable for luxury homes with large yards. Prioritize privacy and open space.
+    - **medium**: Generate a standard suburban layout. Buildings should be regularly spaced but not cramped. Balance density with community feel.
+    - **high**: Generate a dense layout but maintain realism. Do not just pack the area completely. Create organic clusters of buildings, and leave some irregular open space between clusters to simulate pathways or small common areas. The layout should feel dense but thoughtfully planned.
 
     Input:
     - Zone Polygon: {{{json zonePolygon}}}
+    - Desired Density: {{{density}}}
 
     Output the result as a JSON object matching the prescribed output schema.
   `,
@@ -86,5 +92,3 @@ const generateBuildingLayoutFlow = ai.defineFlow(
     return output;
   }
 );
-
-    

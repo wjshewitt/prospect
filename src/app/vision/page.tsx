@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Shape, Tool, ElevationGrid, LatLng } from '@/lib/types';
@@ -169,17 +170,20 @@ function VisionPageContent() {
   };
 
 
-  const handleGenerateLayout = async (zoneId: string) => {
+  const handleGenerateLayout = async (zoneId: string, density: 'low' | 'medium' | 'high') => {
     const zone = shapes.find(s => s.id === zoneId && !!s.zoneMeta);
     if (!zone || !map) return;
 
     toast({
       title: 'Generating AI Layout...',
-      description: 'The AI is designing the building layout. This may take a moment.',
+      description: `The AI is designing a ${density}-density layout. This may take a moment.`,
     });
 
     try {
-      const result = await generateBuildingLayout({ zonePolygon: zone.path });
+      const result = await generateBuildingLayout({ 
+          zonePolygon: zone.path,
+          density,
+      });
       
       const newAssets: Shape[] = result.buildings.map(b => {
         const path = b.footprint.map(p => ({ lat: p.lat, lng: p.lng }));
