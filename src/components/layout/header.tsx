@@ -4,7 +4,7 @@
 import type { Shape, ElevationGrid } from '@/lib/types';
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Map, Trash2, ChevronDown, LandPlot, Waves, Save, FolderOpen, FileSearch } from 'lucide-react';
+import { Map, Trash2, ChevronDown, LandPlot, Waves, Save, FolderOpen, LogOut } from 'lucide-react';
 import { SiteAssessmentDialog } from '../assessment/site-assessment-dialog';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
@@ -17,7 +17,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
-import { AiSummaryDialog } from '../assessment/ai-summary-dialog';
+import { useAuth } from '@/hooks/use-auth';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 type HeaderProps = {
   siteName: string;
@@ -32,6 +35,14 @@ type HeaderProps = {
 };
 
 export default function Header({ siteName, onSiteNameClick, onClear, onSave, onLoad, hasShapes, shapes, elevationGrid, children }: HeaderProps) {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    router.push('/');
+  };
+  
   const projectBoundary = shapes.find(s => s.type !== 'buffer' && !s.zoneMeta && !s.assetMeta);
   const zones = shapes.filter(s => !!s.zoneMeta);
 
@@ -86,18 +97,26 @@ export default function Header({ siteName, onSiteNameClick, onClear, onSave, onL
       </div>
       <div className="flex items-center gap-2">
         {children}
-        <Button variant="outline" size="sm" onClick={onLoad}>
-            <FolderOpen className="h-4 w-4 mr-2" />
-            Load
-        </Button>
-        <Button variant="outline" size="sm" onClick={onSave} disabled={!hasShapes}>
-            <Save className="h-4 w-4 mr-2" />
-            Save
-        </Button>
-        <Button variant="outline" size="sm" onClick={onClear} disabled={!hasShapes} aria-label="Clear all drawings">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Clear
-        </Button>
+        {user && (
+          <>
+            <Button variant="outline" size="sm" onClick={onLoad}>
+                <FolderOpen className="h-4 w-4 mr-2" />
+                Load
+            </Button>
+            <Button variant="outline" size="sm" onClick={onSave} disabled={!hasShapes}>
+                <Save className="h-4 w-4 mr-2" />
+                Save
+            </Button>
+            <Button variant="outline" size="sm" onClick={onClear} disabled={!hasShapes} aria-label="Clear all drawings">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+            </Button>
+          </>
+        )}
       </div>
     </header>
   );

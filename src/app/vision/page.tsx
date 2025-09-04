@@ -3,13 +3,14 @@
 
 import type { Shape, Tool, ElevationGrid, LatLng } from '@/lib/types';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { APIProvider, useMap } from '@vis.gl/react-google-maps';
 import Header from '@/components/layout/header';
 import ToolPalette from '@/components/tools/tool-palette';
 import StatisticsSidebar from '@/components/sidebar/statistics-sidebar';
 import { MapCanvas, uuid } from '@/components/map/map-canvas';
 import { Button } from '@/components/ui/button';
-import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon, HelpCircle } from 'lucide-react';
+import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon, HelpCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThreeDVisualizationModal } from '@/components/dev-viz/three-d-modal';
 import { NameSiteDialog } from '@/components/map/name-site-dialog';
@@ -20,6 +21,10 @@ import { analyzeElevation } from '@/services/elevation';
 import { generateBuildingLayout } from '@/ai/flows/generate-building-layout-flow';
 import { generateSolarLayout } from '@/ai/flows/generate-solar-layout-flow';
 import html2canvas from 'html2canvas';
+
+import { useAuth } from '@/hooks/use-auth';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -37,8 +42,6 @@ function useDebounce<T>(value: T, delay: number): T {
 
   return debouncedValue;
 }
-
-const LOCAL_STORAGE_KEY = 'landvision-project';
 
 // Function to expand bounds by a factor. factor=2.25 means new area is ~5x old area.
 function expandBounds(bounds: google.maps.LatLngBounds, factor: number) {
@@ -64,6 +67,9 @@ function getBoundsOfShape(shape: Shape): google.maps.LatLngBounds {
 
 
 function VisionPageContent() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<Tool>('pan');
@@ -78,7 +84,7 @@ function VisionPageContent() {
   const [is3DView, setIs3DView] = useState(false);
 
 
-  const [siteName, setSiteName] = useState<string>('');
+  const [siteName, setSiteName] = useState<string>('My Project');
   const [isNameSiteDialogOpen, setIsNameSiteDialogOpen] = useState(false);
   const [pendingShape, setPendingShape] = useState<Omit<Shape, 'id'> | null>(null);
 
@@ -90,6 +96,12 @@ function VisionPageContent() {
   const [mapState, setMapState] = useState<{center: LatLng, zoom: number} | null>(null);
   const { toast } = useToast();
   const map = useMap();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     // This now runs only on the client, after hydration
@@ -138,59 +150,70 @@ function VisionPageContent() {
         setShapes([]);
         setSelectedShapeIds([]);
         setElevationGrid(null);
-        setSiteName('');
+        setSiteName('My Project');
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to save a project.' });
+        return;
+    }
     try {
         const projectData = {
             siteName,
             shapes,
             mapState: map ? { center: map.getCenter()!.toJSON(), zoom: map.getZoom()! } : null,
         };
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(projectData));
+        const userDocRef = doc(db, 'projects', user.uid);
+        await setDoc(userDocRef, projectData);
         toast({
             title: 'Project Saved',
-            description: `Project "${siteName}" has been saved successfully.`,
+            description: `Project "${siteName}" has been saved successfully to your account.`,
         });
     } catch (error) {
-        console.error("Failed to save project:", error);
+        console.error("Failed to save project to Firestore:", error);
         toast({
             variant: 'destructive',
             title: 'Save Failed',
-            description: 'Could not save project data to local storage.',
+            description: 'Could not save project data to the database.',
         });
     }
   };
 
-  const handleLoad = () => {
+  const handleLoad = async () => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to load a project.' });
+        return;
+    }
     try {
-        const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (savedData) {
-            const projectData = JSON.parse(savedData);
-            setSiteName(projectData.siteName || '');
+        const userDocRef = doc(db, 'projects', user.uid);
+        const docSnap = await getDoc(userDocRef);
+
+        if (docSnap.exists()) {
+            const projectData = docSnap.data();
+            setSiteName(projectData.siteName || 'My Project');
             setShapes(projectData.shapes || []);
             setMapState(projectData.mapState || null);
             setSelectedShapeIds([]);
             setElevationGrid(null);
             toast({
                 title: 'Project Loaded',
-                description: `Project "${projectData.siteName || 'Untitled'}" has been loaded.`,
+                description: `Project "${projectData.siteName || 'Untitled'}" has been loaded from your account.`,
             });
         } else {
             toast({
                 variant: 'destructive',
                 title: 'No Saved Project',
-                description: 'No saved project data was found in local storage.',
+                description: 'No saved project data was found for your account.',
             });
         }
     } catch (error) {
-        console.error("Failed to load project:", error);
+        console.error("Failed to load project from Firestore:", error);
         toast({
             variant: 'destructive',
             title: 'Load Failed',
-            description: 'Could not load project data from local storage.',
+            description: 'Could not load project data from the database.',
         });
     }
   };
@@ -397,6 +420,13 @@ function VisionPageContent() {
     setIs3DView(!is3DView);
   }
 
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-10 w-10 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div id="capture-area" className="flex flex-col h-screen bg-background text-foreground font-body">

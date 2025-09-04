@@ -1,6 +1,8 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
+import { FirebaseAuthProvider } from '@/components/auth/firebase-auth-provider';
 
 export const metadata: Metadata = {
   title: 'LandVision',
@@ -20,7 +22,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?display=swap&family=Manrope:wght@400;500;700;800&family=Noto+Sans:wght@400;500;700;900" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        {children}
+        <FirebaseAuthProvider>
+          {children}
+        </FirebaseAuthProvider>
         <Toaster />
       </body>
     </html>

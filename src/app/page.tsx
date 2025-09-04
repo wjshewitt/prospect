@@ -1,8 +1,22 @@
 
+'use client';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/use-auth';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 export default function HomePage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    router.push('/');
+  };
+  
   return (
     <div className="relative flex size-full min-h-screen flex-col bg-c-off-white text-c-charcoal font-sans">
       <div className="layout-container flex h-full grow flex-col">
@@ -13,9 +27,24 @@ export default function HomePage() {
             </svg>
             <h2 className="text-2xl font-bold tracking-tight">LandVision</h2>
           </Link>
-          <nav className="flex items-center gap-8">
-            <a className="text-base font-medium text-c-charcoal hover:text-c-green transition-colors" href="#">Features</a>
-            <a className="text-base font-medium text-c-charcoal hover:text-c-green transition-colors" href="#">Resources</a>
+          <nav className="flex items-center gap-4">
+            {loading ? null : user ? (
+              <>
+                <Button variant="outline" asChild>
+                  <Link href="/vision">Go to App</Link>
+                </Button>
+                <Button onClick={handleSignOut}>Sign Out</Button>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" asChild>
+                  <Link href="/login">Log In</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/signup">Sign Up</Link>
+                </Button>
+              </>
+            )}
           </nav>
         </header>
         <main className="flex-1 flex items-center">
