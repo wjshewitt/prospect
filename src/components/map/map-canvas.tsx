@@ -31,6 +31,7 @@ interface MapCanvasProps {
   className?: string;
   mapState: { center: LatLng; zoom: number } | null;
   onMapStateChange: (state: { center: LatLng; zoom: number }) => void;
+  elevationService: google.maps.ElevationService | null;
 }
 
 interface ContextMenuState {
@@ -565,6 +566,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   className,
   mapState,
   onMapStateChange,
+  elevationService
 }) => {
   const isLoaded = useApiIsLoaded();
   const map = useMap();
@@ -572,7 +574,6 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   const [editingShapeId, setEditingShapeId] = useState<string | null>(null);
   const [movingShapeId, setMovingShapeId] = useState<string | null>(null);
   const { toast } = useToast();
-  const [elevationService, setElevationService] = useState<google.maps.ElevationService | null>(null);
   const [bufferState, setBufferState] = useState<BufferState>({ isOpen: false, shapeId: null });
   const [zoneDialogState, setZoneDialogState] = useState<ZoneDialogState>({ isOpen: false, path: null, area: null });
 
@@ -590,12 +591,6 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     }
   }, [map, selectedTool]);
   
-  useEffect(() => {
-    if (isLoaded) {
-        setElevationService(new window.google.maps.ElevationService());
-    }
-  }, [isLoaded]);
-
   useEffect(() => {
     const runAnalysis = async () => {
         if (selectedShapeIds.length === 1 && isLoaded && elevationService) {

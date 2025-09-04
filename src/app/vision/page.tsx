@@ -16,6 +16,8 @@ import { NameSiteDialog } from '@/components/map/name-site-dialog';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { TutorialGuide } from '@/components/tutorial/tutorial-guide';
 import { layoutAssetsInZone } from '@/services/procedural-generation';
+import { useToast } from '@/hooks/use-toast';
+import { analyzeElevation } from '@/services/elevation';
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -41,7 +43,7 @@ export default function VisionPage() {
   const [selectedTool, setSelectedTool] = useState<Tool>('pan');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
-  const [gridResolution, setGridResolution] = useState<number>(12); // UI state
+  const [gridResolution, setGridResolution] = useState<number>(30); // UI state
   const debouncedGridResolution = useDebounce(gridResolution, 1000); // Debounced state for API
   
   const [steepnessThreshold, setSteepnessThreshold] = useState<number>(8); // default 8 percent
@@ -59,6 +61,8 @@ export default function VisionPage() {
 
   // State to preserve map position
   const [mapState, setMapState] = useState<{center: LatLng, zoom: number} | null>(null);
+  const { toast } = useToast();
+  const [elevationService, setElevationService] = useState<google.maps.ElevationService | null>(null);
 
   useEffect(() => {
     // This now runs only on the client, after hydration
@@ -67,6 +71,42 @@ export default function VisionPage() {
     }
   }, [hasCompletedTutorial]);
 
+  // Effect to initialize the elevation service once the API is loaded
+  useEffect(() => {
+    if (window.google && window.google.maps && !elevationService) {
+        setElevationService(new window.google.maps.ElevationService());
+    }
+  }, [elevationService]);
+
+
+  useEffect(() => {
+    const runAnalysis = async () => {
+        const shapeToAnalyze = shapes.find(s => s.id === selectedShapeIds[0]);
+
+        if (selectedShapeIds.length === 1 && shapeToAnalyze && elevationService) {
+            try {
+                const grid = await analyzeElevation(shapeToAnalyze, elevationService, debouncedGridResolution);
+                setElevationGrid(grid);
+            } catch (err) {
+                console.error("Error getting elevation grid:", err);
+                toast({
+                    variant: 'destructive',
+                    title: 'Elevation API Error',
+                    description: 'Could not fetch elevation data. Please check your API key and permissions.'
+                });
+                setElevationGrid(null); // Clear grid on error
+            }
+        } else {
+            // If not exactly one shape is selected, clear the grid
+            if (elevationGrid !== null) {
+                setElevationGrid(null);
+            }
+        }
+    };
+    runAnalysis();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedShapeIds, debouncedGridResolution, elevationService]); // Re-run when selection or resolution changes
+  
 
   if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
     return (
@@ -117,7 +157,9 @@ export default function VisionPage() {
   const handleNameSite = (name: string) => {
     setSiteName(name);
     if (pendingShape) {
-        setShapes(prev => [...prev, { id: `${Date.now()}`, ...pendingShape }]);
+        const newShape = { id: `${Date.now()}`, ...pendingShape };
+        setShapes(prev => [...prev, newShape]);
+        setSelectedShapeIds([newShape.id]); // Auto-select new boundary
         setPendingShape(null);
     }
     setIsNameSiteDialogOpen(false);
@@ -144,6 +186,45 @@ export default function VisionPage() {
     setIsTutorialActive(true);
   }
 
+  const handleToggle3DView = async () => {
+    if (!is3DView) {
+        // Switching TO 3D view
+        if (!projectBoundary) {
+            toast({
+              variant: 'destructive',
+              title: '3D View Error',
+              description: 'A project boundary is required for the 3D view.',
+            });
+            return;
+        }
+        if (!elevationService) {
+             toast({
+              variant: 'destructive',
+              title: 'API Error',
+              description: 'Elevation service not available yet. Please wait a moment and try again.',
+            });
+            return;
+        }
+
+        // If there's no elevation grid, or the grid is for a different shape, calculate it for the boundary
+        if (!elevationGrid || selectedShapeIds[0] !== projectBoundary.id) {
+            toast({ title: 'Generating 3D Terrain...', description: 'Please wait while we fetch elevation data.' });
+            try {
+                const grid = await analyzeElevation(projectBoundary, elevationService, gridResolution);
+                setElevationGrid(grid);
+            } catch(e) {
+                 toast({
+                    variant: 'destructive',
+                    title: 'Elevation API Error',
+                    description: 'Could not fetch elevation data for 3D view.',
+                });
+                return; // Don't switch to 3D if data fails
+            }
+        }
+    }
+    setIs3DView(!is3DView);
+  }
+
 
   return (
     <APIProvider 
@@ -156,13 +237,13 @@ export default function VisionPage() {
           onSiteNameClick={() => setIsNameSiteDialogOpen(true)}
           onClear={handleClear}
           hasShapes={shapes.length > 0}
-          elevationGrid={elevationGrid}
           shapes={shapes}
+          elevationGrid={elevationGrid}
         >
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIs3DView(!is3DView)}
+              onClick={handleToggle3DView}
               disabled={!projectBoundary}
               data-tutorial="step-4"
             >
@@ -180,11 +261,12 @@ export default function VisionPage() {
             setSelectedShapeIds={setSelectedShapeIds}
           />
           <main className="flex-1 relative bg-muted/20">
-            {is3DView && projectBoundary ? (
+            {is3DView && projectBoundary && elevationGrid ? (
               <ThreeDVisualizationModal
                 assets={assets}
                 zones={zones}
                 boundary={projectBoundary}
+                elevationGrid={elevationGrid}
               />
             ) : (
               <MapCanvas
@@ -202,6 +284,7 @@ export default function VisionPage() {
                 onBoundaryDrawn={handleBoundaryDrawn}
                 mapState={mapState}
                 onMapStateChange={setMapState}
+                elevationService={elevationService}
               />
             )}
             

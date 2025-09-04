@@ -5,45 +5,45 @@
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { Shape, LatLng } from '@/lib/types';
+import type { Shape, LatLng, ElevationGrid } from '@/lib/types';
+import { BufferGeometry, Float32BufferAttribute } from 'three';
 
 interface ThreeDVisualizationProps {
   assets: Shape[];
   zones: Shape[];
   boundary: Shape;
+  elevationGrid: ElevationGrid;
 }
 
-export function ThreeDVisualizationModal({ assets, zones, boundary }: ThreeDVisualizationProps) {
+// Helper to calculate the center of a polygon - MUST be inside useEffect
+const getPolygonCenter = (path: LatLng[]): LatLng => {
+    if (!window.google || !window.google.maps) {
+      // Return a default if google maps is not loaded
+      return path[0] || { lat: 0, lng: 0};
+    }
+    const bounds = new google.maps.LatLngBounds();
+    path.forEach(p => bounds.extend(p));
+    return bounds.getCenter().toJSON();
+};
+
+export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGrid }: ThreeDVisualizationProps) {
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!mountRef.current || !boundary) return;
+    if (!mountRef.current || !boundary || !elevationGrid) return;
 
-    // Helper to calculate the center of a polygon - MUST be inside useEffect
-    const getPolygonCenter = (path: LatLng[]): LatLng => {
-        if (!window.google || !window.google.maps) {
-          // Return a default if google maps is not loaded
-          return path[0] || { lat: 0, lng: 0};
-        }
-        const bounds = new google.maps.LatLngBounds();
-        path.forEach(p => bounds.extend(p));
-        return bounds.getCenter().toJSON();
-    };
-    
     const mountNode = mountRef.current;
     
     // --- Scene Setup ---
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1a2638); // Dark blueish grey
+    scene.background = new THREE.Color(0x1a2638);
     const camera = new THREE.PerspectiveCamera(75, mountNode.clientWidth / mountNode.clientHeight, 0.1, 10000);
-    camera.position.set(0, 150, 250);
-    camera.lookAt(0,0,0);
     
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
     renderer.shadowMap.enabled = true;
     mountNode.appendChild(renderer.domElement);
-    const canvasElement = renderer.domElement; // Capture for cleanup
+    const canvasElement = renderer.domElement;
 
     // --- Lighting ---
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -64,37 +64,102 @@ export function ThreeDVisualizationModal({ assets, zones, boundary }: ThreeDVisu
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     
-    // --- Coordinate System ---
+    // --- Coordinate System & Projections ---
     const siteCenter = getPolygonCenter(boundary.path);
-    const toLocal = (p: LatLng) => {
-        const R = 6371e3; // metres
-        const φ1 = siteCenter.lat * Math.PI/180;
-        const φ2 = p.lat * Math.PI/180;
-        const Δφ = (p.lat-siteCenter.lat) * Math.PI/180;
-        const Δλ = (p.lng-siteCenter.lng) * Math.PI/180;
+    const proj = {
+        toLocal: (p: LatLng) => {
+            const R = 6371e3; // metres
+            const φ1 = siteCenter.lat * Math.PI/180;
+            const dLat = (p.lat-siteCenter.lat) * Math.PI/180;
+            const dLng = (p.lng-siteCenter.lng) * Math.PI/180;
+            const x = dLng * R * Math.cos(φ1);
+            const y = dLat * R;
+            return { x, y: -y }; // y is inverted for Three.js (z becomes negative)
+        },
+    };
+
+    // --- Elevation Data Interpolation ---
+    const { grid, nx, ny } = elevationGrid.pointGrid!;
+    const { minX, maxX, minY, maxY } = elevationGrid.xyBounds!;
+    const elevRange = elevationGrid.maxElevation! - elevationGrid.minElevation!;
+
+    const getElevationAt = (x: number, y: number): number => {
+        if (!grid || nx < 2 || ny < 2) return 0;
+
+        const u = ((x - minX) / (maxX - minX)) * (nx - 1);
+        const v = ((y - minY) / (maxY - minY)) * (ny - 1);
+
+        const i = Math.floor(u);
+        const j = Math.floor(v);
+
+        if (i < 0 || i >= nx - 1 || j < 0 || j >= ny - 1) return 0;
+
+        const s = u - i;
+        const t = v - j;
+
+        const z00 = grid[j * nx + i];
+        const z10 = grid[j * nx + i + 1];
+        const z01 = grid[(j + 1) * nx + i];
+        const z11 = grid[(j + 1) * nx + i + 1];
         
-        const y = Δφ * R;
-        const x = Δλ * R * Math.cos(φ1);
-        return { x, y };
+        if (!isFinite(z00) || !isFinite(z10) || !isFinite(z01) || !isFinite(z11)) return 0;
+        
+        // Bilinear interpolation
+        const z0 = z00 * (1 - s) + z10 * s;
+        const z1 = z01 * (1 - s) + z11 * s;
+        return z0 * (1 - t) + z1 * t;
     };
     
     // --- Ground Plane (from boundary) ---
-    const groundPath = boundary.path.map(p => {
-        const local = toLocal(p);
+    const groundShape = new THREE.Shape(boundary.path.map(p => {
+        const local = proj.toLocal(p);
         return new THREE.Vector2(local.x, local.y);
-    });
-    const groundShape = new THREE.Shape(groundPath);
-    const groundGeometry = new THREE.ShapeGeometry(groundShape);
-    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x3a5a40, side: THREE.DoubleSide });
-    const groundMesh = new THREE.Mesh(groundGeometry, groundMaterial);
-    groundMesh.rotation.x = -Math.PI / 2;
-    groundMesh.receiveShadow = true;
-    scene.add(groundMesh);
+    }));
 
-    // --- Render Zones ---
+    // --- Create Topographic Terrain Mesh ---
+    const terrainDivisionsX = 100;
+    const terrainDivisionsY = 100;
+
+    const terrainGeometry = new THREE.PlaneGeometry(
+        maxX - minX,
+        maxY - minY,
+        terrainDivisionsX,
+        terrainDivisionsY
+    );
+    terrainGeometry.rotateX(-Math.PI / 2);
+
+    const positions = terrainGeometry.attributes.position;
+    for (let i = 0; i < positions.count; i++) {
+        const x = positions.getX(i) + minX + (maxX-minX)/2;
+        const z = positions.getZ(i) - minY - (maxY-minY)/2; // z is inverted
+        const y = getElevationAt(x, -z); // use inverted z for lookup
+        positions.setY(i, y);
+    }
+    terrainGeometry.computeVertexNormals();
+    
+    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x3a5a40, side: THREE.DoubleSide });
+    const terrainMesh = new THREE.Mesh(terrainGeometry, groundMaterial);
+    terrainMesh.receiveShadow = true;
+    scene.add(terrainMesh);
+
+
+    // Adjust camera to fit the terrain
+    const terrainBbox = new THREE.Box3().setFromObject(terrainMesh);
+    const terrainCenter = terrainBbox.getCenter(new THREE.Vector3());
+    const terrainSize = terrainBbox.getSize(new THREE.Vector3());
+    const cameraDistance = Math.max(terrainSize.x, terrainSize.y, terrainSize.z) * 1.5;
+    
+    camera.position.copy(terrainCenter);
+    camera.position.y += cameraDistance / 2;
+    camera.position.z += cameraDistance;
+    camera.lookAt(terrainCenter);
+    controls.target.copy(terrainCenter);
+    
+    
+    // --- Render Zones as decals on the terrain ---
     zones.forEach(zone => {
         const zonePath = zone.path.map(p => {
-            const local = toLocal(p);
+            const local = proj.toLocal(p);
             return new THREE.Vector2(local.x, local.y);
         });
         const zoneShape = new THREE.Shape(zonePath);
@@ -102,59 +167,58 @@ export function ThreeDVisualizationModal({ assets, zones, boundary }: ThreeDVisu
 
         let color = '#ffffff';
         switch(zone.zoneMeta?.kind) {
-            case 'residential': color = '#86efac'; break; // green-300
-            case 'commercial': color = '#93c5fd'; break; // blue-300
-            case 'amenity': color = '#fcd34d'; break; // amber-300
-            case 'green_space': color = '#22c55e'; break; // green-500
+            case 'residential': color = '#86efac'; break;
+            case 'commercial': color = '#93c5fd'; break;
+A            case 'amenity': color = '#fcd34d'; break;
+            case 'green_space': color = '#22c55e'; break;
         }
         const zoneMaterial = new THREE.MeshStandardMaterial({ 
             color, 
             side: THREE.DoubleSide, 
             transparent: true, 
-            opacity: 0.6 
+            opacity: 0.6,
+            polygonOffset: true, // Prevents z-fighting
+            polygonOffsetFactor: -1.0,
+            polygonOffsetUnits: -4.0
         });
         const zoneMesh = new THREE.Mesh(zoneGeometry, zoneMaterial);
-        zoneMesh.position.y = 0.1; // Slightly above ground
         zoneMesh.rotation.x = -Math.PI / 2;
+        // No need to set y position, it will be handled by the offset
         scene.add(zoneMesh);
     });
+    
 
-    // --- Render Assets ---
+    // --- Render Assets on the terrain ---
     assets.forEach(asset => {
         if (!asset.assetMeta) return;
 
-        // 1. Calculate local position
         const assetCenter = getPolygonCenter(asset.path);
-        const localPos = toLocal(assetCenter);
+        const localPos = proj.toLocal(assetCenter);
+        const elevation = getElevationAt(localPos.x, localPos.y);
 
-        // 2. Generate 2D shape for extrusion base
         const assetVertices = asset.path.map(p => {
-            const local = toLocal(p);
-            // Translate vertices so they are relative to the asset's own center
+            const local = proj.toLocal(p);
             return new THREE.Vector2(local.x - localPos.x, local.y - localPos.y);
         });
         const assetShape = new THREE.Shape(assetVertices);
 
-        // 3. Create 3D geometry
         const floors = asset.assetMeta.floors ?? 1;
-        const height = floors * 3; // 3m per floor
+        const height = floors * 3;
         const extrudeSettings = { depth: height, bevelEnabled: false };
         const geometry = new THREE.ExtrudeGeometry(assetShape, extrudeSettings);
         
-        // 4. Create Mesh and Material
-        let color = '#ADD8E6'; // Default (commercial)
+        let color = '#ADD8E6';
         const assetKey = asset.assetMeta.key || '';
         if (assetKey.includes('house') || assetKey.includes('bungalow')) {
-            color = '#8B4513'; // Brownish
+            color = '#8B4513';
         } else if (assetKey.includes('flat_block')) {
-            color = '#B0B0B0'; // Light grey
+            color = '#B0B0B0';
         }
         const material = new THREE.MeshStandardMaterial({ color });
 
         const mesh = new THREE.Mesh(geometry, material);
         
-        // 5. Position and Rotate
-        mesh.position.set(localPos.x, height / 2, -localPos.y); // Y is up, Z is negative of local Y
+        mesh.position.set(localPos.x, elevation + height / 2, localPos.y);
         mesh.rotation.x = -Math.PI / 2;
         
         const rotationDegrees = asset.assetMeta.rotation ?? 0;
@@ -189,7 +253,6 @@ export function ThreeDVisualizationModal({ assets, zones, boundary }: ThreeDVisu
       cancelAnimationFrame(animationFrameId);
       controls.dispose();
       
-      // Dispose all scene objects
       scene.traverse(object => {
         if (object instanceof THREE.Mesh) {
             if (object.geometry) {
@@ -208,7 +271,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary }: ThreeDVisu
       }
       renderer.dispose();
     };
-  }, [assets, zones, boundary]); // Re-run when project data changes
+  }, [assets, zones, boundary, elevationGrid]);
 
   return (
     <div className="relative w-full h-full bg-black">

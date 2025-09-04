@@ -1,4 +1,5 @@
 
+
 // src/services/elevation.ts
 import type { Shape, LatLng, ElevationGrid, ElevationGridCell } from '@/lib/types';
 
@@ -256,5 +257,7 @@ export async function analyzeElevation(
         maxSlope: isFinite(maxSlope) ? maxSlope : 0,
         minElevation: isFinite(minElevation) ? minElevation : 0,
         maxElevation: isFinite(maxElevation) ? maxElevation : 0,
+        pointGrid: { grid: z, nx, ny },
+        xyBounds: xyB,
     };
 }

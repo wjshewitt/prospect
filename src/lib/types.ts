@@ -54,4 +54,16 @@ export type ElevationGrid = {
     maxSlope: number;
     minElevation?: number;
     maxElevation?: number;
+    // Data for 3D rendering
+    pointGrid?: {
+      grid: Float64Array;
+      nx: number;
+      ny: number;
+    },
+    xyBounds?: {
+      minX: number,
+      maxX: number,
+      minY: number,
+      maxY: number,
+    }
 }
