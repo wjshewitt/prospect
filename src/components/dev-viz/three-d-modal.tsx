@@ -118,9 +118,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     rendererRef.current = renderer;
-    if (mountNode.children.length === 0) {
-        mountNode.appendChild(renderer.domElement);
-    }
+    mountNode.appendChild(renderer.domElement);
 
 
     // Lighting
@@ -415,7 +413,6 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
       if (mountNode && renderer.domElement && mountNode.contains(renderer.domElement)) {
           mountNode.removeChild(renderer.domElement);
       }
-      cameraRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets, zones, boundary, elevationGrid]);
@@ -471,3 +468,5 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     </div>
   );
 }
+
+    
