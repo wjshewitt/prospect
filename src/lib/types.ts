@@ -10,7 +10,7 @@ export type Bounds = {
 
 export type Shape = {
   id: string;
-  type: 'rectangle' | 'polygon' | 'freehand' | 'buffer';
+  type: 'rectangle' | 'polygon' | 'freehand' | 'buffer' | 'union' | 'difference';
   path: LatLng[];
   area?: number;
   // Optional metadata for buffer shapes

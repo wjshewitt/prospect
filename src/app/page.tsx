@@ -32,6 +32,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export default function Home() {
   const [shapes, setShapes] = useState<Shape[]>([]);
+  const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<Tool>('pan');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
@@ -64,7 +65,14 @@ export default function Home() {
       <div id="capture-area" className="flex flex-col h-screen bg-background text-foreground font-body">
         <Header shapes={shapes} setShapes={setShapes} elevationGrid={elevationGrid} />
         <div className="flex flex-1 overflow-hidden">
-          <ToolPalette selectedTool={selectedTool} setSelectedTool={setSelectedTool} />
+          <ToolPalette 
+            selectedTool={selectedTool} 
+            setSelectedTool={setSelectedTool}
+            selectedShapeIds={selectedShapeIds}
+            shapes={shapes}
+            setShapes={setShapes}
+            setSelectedShapeIds={setSelectedShapeIds}
+          />
           <main className="flex-1 relative bg-muted/20">
             <MapCanvas
               shapes={shapes}
@@ -76,6 +84,8 @@ export default function Home() {
               elevationGrid={elevationGrid}
               setElevationGrid={setElevationGrid}
               isAnalysisVisible={isAnalysisVisible}
+              selectedShapeIds={selectedShapeIds}
+              setSelectedShapeIds={setSelectedShapeIds}
             />
             <Button 
               size="icon" 
@@ -96,6 +106,7 @@ export default function Home() {
             elevationGrid={elevationGrid}
             isAnalysisVisible={isAnalysisVisible}
             setIsAnalysisVisible={setIsAnalysisVisible}
+            selectedShapeIds={selectedShapeIds}
           />
         </div>
       </div>

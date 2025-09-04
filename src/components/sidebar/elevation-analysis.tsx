@@ -67,7 +67,7 @@ export function ElevationAnalysis({
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Draw a single shape to analyze its slope.
+                Select a single shape to analyze its slope.
               </CardDescription>
             </CardContent>
         </Card>

@@ -64,7 +64,7 @@ export function ShapeContextMenu({ position, shapeId, onDelete, onEdit, onBuffer
         className="justify-start px-2 py-1 h-auto text-destructive hover:text-destructive"
       >
         <Trash2 className="mr-2 h-4 w-4" />
-        <span>Delete</span>
+        <span>Delete Selected</span>
       </Button>
     </div>
   );

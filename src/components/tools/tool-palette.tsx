@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Tool } from '@/lib/types';
+import type { Tool, Shape } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,13 +12,20 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { BuildingPlacementDialog } from '@/components/ai/building-placement-dialog';
-import { MousePointer2, Square, Pen, Circle, Type, Spline, Shapes, PenTool } from 'lucide-react';
+import { MousePointer2, Square, Pen, Circle, Type, Spline, Shapes, PenTool, Combine, Diff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { applyUnion, applyDifference } from '@/services/turf-operations';
+import { uuid } from '../map/map-canvas';
 
 type ToolPaletteProps = {
   selectedTool: Tool;
   setSelectedTool: (tool: Tool) => void;
+  selectedShapeIds: string[];
+  shapes: Shape[];
+  setShapes: (shapes: Shape[]) => void;
+  setSelectedShapeIds: (ids: string[]) => void;
 };
 
 const panTool: { id: Tool; label: string; icon: React.ReactNode } = {
@@ -33,18 +40,64 @@ const drawingTools: { id: Tool; label:string; icon: React.ReactNode }[] = [
     { id: 'freehand', label: 'Freehand (Drag to Draw)', icon: <PenTool /> },
 ];
 
-const disabledTools: { id: string; label: string; icon: React.ReactNode }[] = [
-  { id: 'circle', label: 'Circle Tool', icon: <Circle /> },
-  { id: 'text', label: 'Text Tool', icon: <Type /> },
-  { id: 'boundary', label: 'Boundary Tool', icon: <Spline /> },
+const advancedTools: { id: string; label: string; icon: React.ReactNode; action: 'union' | 'difference' }[] = [
+    { id: 'union', label: 'Union (Merge)', icon: <Combine />, action: 'union' },
+    { id: 'difference', label: 'Difference (Subtract)', icon: <Diff />, action: 'difference' },
 ];
 
-export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPaletteProps) {
+export default function ToolPalette({ 
+    selectedTool, 
+    setSelectedTool, 
+    selectedShapeIds,
+    shapes,
+    setShapes,
+    setSelectedShapeIds 
+}: ToolPaletteProps) {
 
   const activeDrawingTool = useMemo(() => 
     drawingTools.find(t => t.id === selectedTool),
     [selectedTool]
   );
+  
+  const { toast } = useToast();
+
+  const handleAdvancedTool = (action: 'union' | 'difference') => {
+    if (selectedShapeIds.length !== 2) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid Selection',
+        description: 'Please select exactly two shapes to use this tool.',
+      });
+      return;
+    }
+    const [shape1, shape2] = selectedShapeIds.map(id => shapes.find(s => s.id === id)!);
+    
+    try {
+      let newShape: Shape | null;
+      if (action === 'union') {
+        newShape = applyUnion(shape1, shape2);
+      } else { // difference
+        // Assume larger shape is the one to subtract from
+        const [minuend, subtrahend] = shape1.area! > shape2.area! ? [shape1, shape2] : [shape2, shape1];
+        newShape = applyDifference(minuend, subtrahend);
+      }
+
+      if (newShape) {
+        // Remove old shapes
+        const remainingShapes = shapes.filter(s => !selectedShapeIds.includes(s.id));
+        // Add new shape
+        setShapes([...remainingShapes, newShape]);
+        // Select the new shape
+        setSelectedShapeIds([newShape.id]);
+      }
+    } catch(e: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Operation Failed',
+            description: e.message || 'Could not perform the operation.',
+        });
+    }
+  }
 
   return (
     <aside
@@ -73,7 +126,7 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
               </div>
             </TooltipTrigger>
             <TooltipContent side="right" className="md:block hidden">
-              <p>{panTool.label}</p>
+              <p>{panTool.label} (Ctrl+Click to multi-select)</p>
             </TooltipContent>
           </Tooltip>
 
@@ -117,24 +170,30 @@ export default function ToolPalette({ selectedTool, setSelectedTool }: ToolPalet
 
         <Separator className="my-4 w-10/12 mx-auto" />
 
+        {/* Advanced Tools */}
         <div className="flex flex-col items-center gap-1">
-          {disabledTools.map(tool => (
-            <Tooltip key={tool.id}>
-              <TooltipTrigger asChild>
-                 <div className="w-full px-2 group/button">
-                    <Button variant="ghost" className="w-full justify-center group-hover/button:justify-start group-hover/button:px-4 gap-2 px-0 h-14" disabled>
-                        {tool.icon}
-                        <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
-                            {tool.label}
-                        </span>
-                    </Button>
-                 </div>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="md:block hidden">
-                <p>{tool.label} (coming soon)</p>
-              </TooltipContent>
-            </Tooltip>
-          ))}
+            {advancedTools.map(tool => (
+                 <Tooltip key={tool.id}>
+                    <TooltipTrigger asChild>
+                        <div className="w-full px-2 group/button">
+                            <Button
+                                variant="ghost"
+                                className="w-full justify-center group-hover/button:justify-start group-hover/button:px-4 gap-2 px-0 h-14"
+                                disabled={selectedShapeIds.length !== 2}
+                                onClick={() => handleAdvancedTool(tool.action)}
+                            >
+                                {tool.icon}
+                                <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
+                                    {tool.label}
+                                </span>
+                            </Button>
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="md:block hidden">
+                        <p>{tool.label} (requires 2 shapes)</p>
+                    </TooltipContent>
+                 </Tooltip>
+            ))}
         </div>
 
         <div className="flex-grow" />

@@ -5,7 +5,7 @@ import type { Shape, ElevationGrid } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { BarChart3, LandPlot, Waves } from 'lucide-react';
+import { BarChart3, LandPlot, Waves, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ElevationAnalysis } from './elevation-analysis';
 
@@ -19,6 +19,7 @@ type StatisticsSidebarProps = {
   elevationGrid: ElevationGrid | null;
   isAnalysisVisible: boolean;
   setIsAnalysisVisible: (visible: boolean) => void;
+  selectedShapeIds: string[];
 };
 
 const SQ_METERS_TO_ACRES = 0.000247105;
@@ -33,9 +34,16 @@ export default function StatisticsSidebar({
     elevationGrid,
     isAnalysisVisible,
     setIsAnalysisVisible,
+    selectedShapeIds,
 }: StatisticsSidebarProps) {
   const totalAreaMeters = shapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
   const totalAreaAcres = totalAreaMeters * SQ_METERS_TO_ACRES;
+
+  const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
+  const selectedAreaMeters = selectedShapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
+  const selectedAreaAcres = selectedAreaMeters * SQ_METERS_TO_ACRES;
+
+  const singleSelectedShape = selectedShapes.length === 1 ? selectedShapes[0] : null;
 
   return (
     <aside 
@@ -60,18 +68,32 @@ export default function StatisticsSidebar({
                 <span>Statistics</span>
                 <LandPlot className="h-5 w-5 text-muted-foreground" />
               </CardTitle>
+              {selectedShapeIds.length > 0 && (
+                 <CardDescription>
+                    {selectedShapeIds.length} shape{selectedShapeIds.length > 1 ? 's' : ''} selected
+                </CardDescription>
+              )}
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{totalAreaAcres.toFixed(3)}</p>
-              <p className="text-sm text-muted-foreground">acres</p>
-              <Separator className="my-2" />
-              <p className="text-lg font-semibold">{totalAreaMeters.toFixed(1)}</p>
-              <p className="text-xs text-muted-foreground">square meters</p>
+              {selectedAreaAcres > 0 ? (
+                <>
+                  <p className="text-3xl font-bold">{selectedAreaAcres.toFixed(3)}</p>
+                  <p className="text-sm text-muted-foreground">acres in selection</p>
+                  <Separator className="my-2" />
+                  <p className="text-lg font-semibold">{totalAreaAcres.toFixed(3)}</p>
+                  <p className="text-xs text-muted-foreground">acres total</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-3xl font-bold">{totalAreaAcres.toFixed(3)}</p>
+                  <p className="text-sm text-muted-foreground">total acres</p>
+                </>
+              )}
             </CardContent>
           </Card>
 
           <ElevationAnalysis
-            shape={shapes.length === 1 ? shapes[0] : null}
+            shape={singleSelectedShape}
             gridResolution={gridResolution}
             setGridResolution={setGridResolution}
             steepnessThreshold={steepnessThreshold}
@@ -84,13 +106,15 @@ export default function StatisticsSidebar({
            <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
-                <span>Water Features</span>
-                <Waves className="h-5 w-5 text-muted-foreground" />
+                <span>Advanced Tools</span>
+                <HelpCircle className="h-5 w-5 text-muted-foreground" />
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <CardDescription>
-                No water features detected.
+              <CardDescription className="text-sm">
+                Select two shapes to use the Union or Difference tools from the tool palette.
+                <br /><br />
+                Use <span className="font-mono bg-muted px-1 py-0.5 rounded">Ctrl/Cmd + Click</span> to select multiple shapes.
               </CardDescription>
             </CardContent>
           </Card>

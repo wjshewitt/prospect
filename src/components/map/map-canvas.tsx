@@ -21,6 +21,8 @@ interface MapCanvasProps {
   elevationGrid: ElevationGrid | null;
   setElevationGrid: (grid: ElevationGrid | null) => void;
   isAnalysisVisible: boolean;
+  selectedShapeIds: string[];
+  setSelectedShapeIds: (ids: string[]) => void;
 }
 
 interface ContextMenuState {
@@ -28,7 +30,7 @@ interface ContextMenuState {
   position: { x: number; y: number };
 }
 
-function uuid() {
+export function uuid() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
@@ -143,12 +145,14 @@ const DrawingManagerComponent: React.FC<{
 const DrawnShapes: React.FC<{
   shapes: Shape[],
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
-  onShapeClick: (shapeId: string, event: google.maps.MapMouseEvent) => void;
+  onShapeRightClick: (shapeId: string, event: google.maps.MapMouseEvent) => void;
+  onShapeClick: (shapeId: string, isCtrlOrMeta: boolean) => void;
+  selectedShapeIds: string[];
   editingShapeId: string | null;
   setEditingShapeId: (id: string | null) => void;
   movingShapeId: string | null;
   setMovingShapeId: (id: string | null) => void;
-}> = ({ shapes, setShapes, onShapeClick, editingShapeId, setEditingShapeId, movingShapeId, setMovingShapeId }) => {
+}> = ({ shapes, setShapes, onShapeRightClick, onShapeClick, selectedShapeIds, editingShapeId, setEditingShapeId, movingShapeId, setMovingShapeId }) => {
     const map = useMap();
     const [polygons, setPolygons] = useState<{[id: string]: google.maps.Polygon}>({});
     const { toast } = useToast();
@@ -165,26 +169,28 @@ const DrawnShapes: React.FC<{
   
         const isEditing = shape.id === editingShapeId;
         const isMoving = shape.id === movingShapeId;
+        const isSelected = selectedShapeIds.includes(shape.id);
         const isBuffer = shape.type === 'buffer';
 
         const poly = new google.maps.Polygon({
           paths: path,
           strokeColor: isBuffer ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
           strokeOpacity: isMoving ? 1.0 : 0.8,
-          strokeWeight: isMoving ? 3 : isBuffer ? 2.5 : 2,
+          strokeWeight: isSelected ? 3.5 : isBuffer ? 2.5 : 2,
           fillColor: isBuffer ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
-          fillOpacity: isMoving ? 0.5 : isBuffer ? 0.25 : 0.3,
+          fillOpacity: isMoving ? 0.5 : isSelected ? 0.45 : isBuffer ? 0.25 : 0.3,
           map: map,
           clickable: true,
           editable: isEditing,
           draggable: isMoving,
+          zIndex: isSelected ? 2 : 1,
         });
 
-        poly.addListener('rightclick', (e: google.maps.MapMouseEvent) => onShapeClick(shape.id, e));
+        poly.addListener('rightclick', (e: google.maps.MapMouseEvent) => onShapeRightClick(shape.id, e));
         poly.addListener('click', (e: google.maps.MapMouseEvent) => {
-            if (e.domEvent.button === 1) { // Middle click
-                onShapeClick(shape.id, e);
-            } else if (editingShapeId && editingShapeId !== shape.id) {
+            onShapeClick(shape.id, e.domEvent.ctrlKey || e.domEvent.metaKey);
+            
+            if (editingShapeId && editingShapeId !== shape.id) {
                 // If another shape is being edited, clicking this one stops the other edit
                 setEditingShapeId(null);
             }
@@ -238,7 +244,7 @@ const DrawnShapes: React.FC<{
         });
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [shapes, map, editingShapeId, movingShapeId]);
+    }, [shapes, map, editingShapeId, movingShapeId, selectedShapeIds]);
 
 
     // Effect to update the editable/draggable properties of polygons when editing/moving state changes
@@ -457,6 +463,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   elevationGrid,
   setElevationGrid,
   isAnalysisVisible,
+  selectedShapeIds,
+  setSelectedShapeIds,
   className,
 }) => {
   const isLoaded = useApiIsLoaded();
@@ -486,9 +494,10 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
 
   useEffect(() => {
     const runAnalysis = async () => {
-        if (shapes.length === 1 && isLoaded && elevationService) {
+        if (shapes.length === 1 && selectedShapeIds.length <= 1 && isLoaded && elevationService) {
+            const shapeToAnalyze = shapes.find(s => s.id === (selectedShapeIds[0] || shapes[0].id)) || shapes[0];
             try {
-                const grid = await analyzeElevation(shapes[0], elevationService, gridResolution);
+                const grid = await analyzeElevation(shapeToAnalyze, elevationService, gridResolution);
                 setElevationGrid(grid);
             } catch (err) {
                 console.error("Error getting elevation grid:", err);
@@ -508,9 +517,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     };
     runAnalysis();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shapes, gridResolution, isLoaded, elevationService]);
+  }, [shapes, gridResolution, isLoaded, elevationService, selectedShapeIds]);
 
-  const handleShapeClick = useCallback((shapeId: string, event: google.maps.MapMouseEvent) => {
+  const handleShapeRightClick = useCallback((shapeId: string, event: google.maps.MapMouseEvent) => {
     if (!map || !event.domEvent) return;
     event.domEvent.preventDefault();
     event.domEvent.stopPropagation();
@@ -518,6 +527,12 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     // Stop editing/moving other shapes when opening context menu
     setEditingShapeId(null);
     setMovingShapeId(null);
+
+    // If the right-clicked shape is not part of the current selection,
+    // make it the only selected shape.
+    if (!selectedShapeIds.includes(shapeId)) {
+        setSelectedShapeIds([shapeId]);
+    }
     
     const projection = map.getProjection();
     if (!projection) return;
@@ -541,24 +556,39 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         }
     });
 
-  }, [map]);
+  }, [map, selectedShapeIds, setSelectedShapeIds]);
+
+  const handleShapeClick = (shapeId: string, isCtrlOrMeta: boolean) => {
+    if (selectedTool !== 'pan') return;
+
+    if (isCtrlOrMeta) {
+      // Add or remove from selection
+      setSelectedShapeIds(
+        selectedShapeIds.includes(shapeId)
+          ? selectedShapeIds.filter((id) => id !== shapeId)
+          : [...selectedShapeIds, shapeId]
+      );
+    } else {
+      // Set as the only selection
+      setSelectedShapeIds([shapeId]);
+    }
+  };
 
   const closeContextMenu = useCallback(() => {
     setContextMenu(null);
   }, []);
 
   const handleDeleteShape = (shapeId: string) => {
-    setShapes(prev => prev.filter(s => s.id !== shapeId));
-    if (editingShapeId === shapeId) {
-      setEditingShapeId(null);
-    }
-    if (movingShapeId === shapeId) {
-      setMovingShapeId(null);
-    }
+    // Delete all selected shapes
+    setShapes(prev => prev.filter(s => !selectedShapeIds.includes(s.id)));
+    setSelectedShapeIds([]);
+    if (editingShapeId === shapeId) setEditingShapeId(null);
+    if (movingShapeId === shapeId) setMovingShapeId(null);
     closeContextMenu();
   };
   
   const handleEditShape = (shapeId: string) => {
+    setSelectedShapeIds([shapeId]);
     setMovingShapeId(null);
     setEditingShapeId(shapeId);
     closeContextMenu();
@@ -602,6 +632,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
       closeContextMenu();
       setEditingShapeId(null); // Stop editing when clicking the map
       setMovingShapeId(null); // Stop moving when clicking the map
+      setSelectedShapeIds([]); // Deselect all shapes
     };
     if (map) {
       const clickListener = map.addListener('click', handleClickOutside);
@@ -611,7 +642,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         dragListener.remove();
       }
     }
-  }, [map, closeContextMenu]);
+  }, [map, closeContextMenu, setSelectedShapeIds]);
 
 
   return (
@@ -629,11 +660,12 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         mapTypeControl={false}
         fullscreenControl={false}
         className="w-full h-full"
+        // onClick={() => setSelectedShapeIds([])}
       >
         {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} setShapes={setShapes} setSelectedTool={setSelectedTool} />}
         {isLoaded && selectedTool === 'freehand' && <FreehandDrawingTool setShapes={setShapes} setSelectedTool={setSelectedTool} />}
-        {isLoaded && <DrawnShapes shapes={shapes} setShapes={setShapes} onShapeClick={handleShapeClick} editingShapeId={editingShapeId} setEditingShapeId={setEditingShapeId} movingShapeId={movingShapeId} setMovingShapeId={setMovingShapeId} />}
-        {isLoaded && shapes.length === 1 && elevationGrid && isAnalysisVisible && <ElevationGridDisplay elevationGrid={elevationGrid} steepnessThreshold={steepnessThreshold} />}
+        {isLoaded && <DrawnShapes shapes={shapes} setShapes={setShapes} onShapeRightClick={handleShapeRightClick} onShapeClick={handleShapeClick} selectedShapeIds={selectedShapeIds} editingShapeId={editingShapeId} setEditingShapeId={setEditingShapeId} movingShapeId={movingShapeId} setMovingShapeId={setMovingShapeId} />}
+        {isLoaded && elevationGrid && isAnalysisVisible && <ElevationGridDisplay elevationGrid={elevationGrid} steepnessThreshold={steepnessThreshold} />}
       </Map>
 
        {contextMenu && (
