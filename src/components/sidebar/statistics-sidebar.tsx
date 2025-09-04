@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { Shape, ElevationGrid } from '@/lib/types';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { BarChart3, LandPlot, Waves, HelpCircle, LayoutGrid } from 'lucide-react';
+import { BarChart3, LandPlot, HelpCircle, LayoutGrid, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ElevationAnalysis } from './elevation-analysis';
 
@@ -43,6 +42,9 @@ export default function StatisticsSidebar({
 
   const projectBoundary = shapes.find(s => s.type !== 'buffer' && !s.zoneMeta && !s.assetMeta);
   const zones = shapes.filter(s => !!s.zoneMeta);
+  const developedAreaMeters = zones.reduce((acc, z) => acc + (z.area || 0), 0);
+  const developedAreaAcres = developedAreaMeters * SQ_METERS_TO_ACRES;
+
 
   const totalAreaMeters = projectBoundary?.area || 0;
   const totalAreaAcres = totalAreaMeters * SQ_METERS_TO_ACRES;
@@ -95,6 +97,15 @@ export default function StatisticsSidebar({
                         <span className="font-mono font-semibold">{(zone.area! * SQ_METERS_TO_ACRES).toFixed(3)} acres</span>
                     </div>
                  ))}
+                 {developedAreaAcres > 0 && (
+                    <>
+                    <Separator />
+                     <div className="flex justify-between items-baseline">
+                        <span className="font-medium text-muted-foreground">Total Developed</span>
+                        <span className="font-mono font-semibold">{developedAreaAcres.toFixed(3)} acres</span>
+                    </div>
+                    </>
+                 )}
                  {!projectBoundary && zones.length === 0 && (
                     <CardDescription className="text-center">Draw a boundary to see area statistics.</CardDescription>
                  )}
@@ -133,6 +144,22 @@ export default function StatisticsSidebar({
             </Card>
           )}
 
+           <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                <span>UK Planning Guidance</span>
+                <Info className="h-5 w-5 text-muted-foreground" />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription className="text-sm">
+                The UK's National Planning Policy Framework (NPPF) prioritizes making effective use of land. Local planning authorities set specific density requirements.
+                <br /><br />
+                Typical residential densities often range from **30-50 dwellings per hectare** (dph), which is equivalent to about **12-20 dwellings per acre**.
+              </CardDescription>
+            </CardContent>
+          </Card>
+          
            <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
