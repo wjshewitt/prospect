@@ -800,7 +800,6 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
       <Map
         defaultCenter={{lat: 53.483959, lng: -2.244644}}
         defaultZoom={7}
-        mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
         mapTypeId="satellite"
         tilt={0}
         gestureHandling={!isDrawing && !isInteractingWithShape ? 'greedy' : 'none'}

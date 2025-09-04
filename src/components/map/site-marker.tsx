@@ -1,10 +1,74 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { Shape, LatLng } from '@/lib/types';
-import { useMap, AdvancedMarker } from '@vis.gl/react-google-maps';
+import { useMap } from '@vis.gl/react-google-maps';
 import { Pin } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+// Custom OverlayView component
+const CustomOverlayView: React.FC<{
+  position: LatLng;
+  map: google.maps.Map;
+  children: React.ReactNode;
+}> = ({ position, map, children }) => {
+  const markerRef = useRef<HTMLDivElement>(null);
+  const [overlay, setOverlay] = useState<google.maps.OverlayView | null>(null);
+
+  useEffect(() => {
+    class CustomMarker extends google.maps.OverlayView {
+      private position: google.maps.LatLng;
+      private container: HTMLDivElement;
+
+      constructor(position: google.maps.LatLng, container: HTMLDivElement) {
+        super();
+        this.position = position;
+        this.container = container;
+      }
+      onAdd() {
+        const panes = this.getPanes();
+        panes?.floatPane?.appendChild(this.container);
+      }
+      onRemove() {
+        if (this.container.parentElement) {
+          this.container.parentElement.removeChild(this.container);
+        }
+      }
+      draw() {
+        const overlayProjection = this.getProjection();
+        if (!overlayProjection) return;
+        const sw = overlayProjection.fromLatLngToDivPixel(this.position);
+        if (sw && this.container) {
+          this.container.style.left = `${sw.x}px`;
+          this.container.style.top = `${sw.y}px`;
+          this.container.style.position = 'absolute';
+          // Center the marker over the position
+          this.container.style.transform = 'translate(-50%, -100%)'; 
+        }
+      }
+    }
+
+    if (markerRef.current) {
+        const ov = new CustomMarker(new google.maps.LatLng(position), markerRef.current);
+        setOverlay(ov);
+    }
+  }, [position]);
+
+  useEffect(() => {
+    if (overlay) {
+        overlay.setMap(map);
+    }
+    return () => {
+        overlay?.setMap(null);
+    }
+  }, [overlay, map]);
+
+
+  return createPortal(<div ref={markerRef}>{children}</div>, document.body);
+};
+
 
 interface SiteMarkerProps {
   boundary: Shape;
@@ -76,15 +140,15 @@ export function SiteMarker({ boundary }: SiteMarkerProps) {
   }, [map, calculateVisibility]);
 
 
-  if (!isVisible || !center) {
+  if (!isVisible || !center || !map) {
     return null;
   }
 
   return (
-    <AdvancedMarker position={center}>
-        <div className="flex flex-col items-center justify-center text-primary/80 transition-all hover:text-primary">
+    <CustomOverlayView position={center} map={map}>
+        <div className="flex flex-col items-center justify-center text-primary/80 transition-all hover:text-primary cursor-pointer">
             <Pin className="h-8 w-8 drop-shadow-lg" fill="currentColor" />
         </div>
-    </AdvancedMarker>
+    </CustomOverlayView>
   );
 }
