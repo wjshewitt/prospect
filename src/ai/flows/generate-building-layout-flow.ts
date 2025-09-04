@@ -68,7 +68,7 @@ const generateLayoutPrompt = ai.definePrompt({
     - **high**: Generate a dense layout but maintain realism. Do not just pack the area completely. Create organic clusters of buildings, and leave some irregular open space between clusters to simulate pathways or small common areas. The layout should feel dense but thoughtfully planned.
 
     Input:
-    - Zone Polygon: {{{json zonePolygon}}}
+    - Zone Polygon: {{{JSON.stringify zonePolygon}}}
     - Desired Density: {{{density}}}
 
     Output the result as a JSON object matching the prescribed output schema.
