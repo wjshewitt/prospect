@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
@@ -196,11 +195,11 @@ const DrawnShapes: React.FC<{
 
       const getZoneColor = (kind: Shape['zoneMeta']['kind']) => {
         switch(kind) {
-            case 'residential': return 'rgba(134, 239, 172, 0.5)'; // green-300
-            case 'commercial': return 'rgba(147, 197, 253, 0.5)'; // blue-300
-            case 'amenity': return 'rgba(252, 211, 77, 0.5)'; // amber-300
-            case 'green_space': return 'rgba(34, 197, 94, 0.5)'; // green-500
-            default: return 'hsl(var(--primary))';
+            case 'residential': return { fill: 'rgba(134, 239, 172, 0.4)', stroke: 'rgb(34, 197, 94)' }; // green
+            case 'commercial': return { fill: 'rgba(147, 197, 253, 0.4)', stroke: 'rgb(59, 130, 246)'}; // blue
+            case 'amenity': return { fill: 'rgba(252, 211, 77, 0.4)', stroke: 'rgb(234, 179, 8)'}; // amber
+            case 'green_space': return { fill: 'rgba(34, 197, 94, 0.3)', stroke: 'rgb(22, 163, 74)'}; // darker green
+            default: return { fill: 'hsl(var(--primary))', stroke: 'hsl(var(--primary))'};
         }
       }
 
@@ -210,36 +209,57 @@ const DrawnShapes: React.FC<{
         const isEditing = shape.id === editingShapeId;
         const isMoving = shape.id === movingShapeId;
         const isSelected = selectedShapeIds.includes(shape.id);
-        const isBuffer = shape.type === 'buffer';
+        const isBuffer = !!shape.bufferMeta;
         const isZone = !!shape.zoneMeta;
         const isAsset = !!shape.assetMeta;
         const isBufferedParent = bufferedParentIds.has(shape.id);
         
-        let fillColor = isBuffer ? 'hsl(var(--accent))' : 'hsl(var(--primary))';
-        let strokeColor = isBuffer ? 'hsl(var(--accent))' : 'hsl(var(--primary))';
-        let fillOpacity = isMoving ? 0.5 : isSelected ? 0.45 : isBuffer ? 0.25 : 0.3;
-        let strokeWeight = isSelected ? 3.5 : isBuffer ? 2.5 : 2;
+        let fillColor = 'hsl(var(--primary))';
+        let strokeColor = 'hsl(var(--primary))';
+        let fillOpacity = 1;
+        let strokeOpacity = isSelected ? 1.0 : 0.8;
+        let strokeWeight = isSelected ? 3.5 : 2;
+        let zIndex = isSelected ? 4 : 1; // Default zIndex
+        let icons = undefined;
+
+        if (isBuffer) {
+            fillColor = 'hsl(var(--accent))';
+            fillOpacity = 0.15;
+            strokeColor = 'hsl(var(--accent))';
+            strokeWeight = 2.5;
+            zIndex = 2;
+            icons = [{
+                icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, strokeWeight, scale: 4 },
+                offset: '0',
+                repeat: '15px'
+            }];
+        } else if(isBufferedParent) {
+            strokeOpacity = 0; // Hide the solid line for the parent of a buffer
+        }
 
         if (isZone) {
-            fillColor = getZoneColor(shape.zoneMeta!.kind);
-            strokeColor = fillColor;
-            fillOpacity = 0.5; // Made slightly more transparent
-            strokeWeight = 1.5;
+            const zoneColors = getZoneColor(shape.zoneMeta!.kind);
+            fillColor = zoneColors.fill;
+            strokeColor = zoneColors.stroke;
+            zIndex = 3;
         }
 
         if (isAsset) {
-            // Asset footprints are just simple outlines
-            fillOpacity = 0.4;
             fillColor = '#334155'; // slate-700
             strokeColor = '#0f172a'; // slate-900
             strokeWeight = 1;
+            zIndex = 5; // Assets on top
         }
 
+        if(isMoving) {
+            fillOpacity = 0.5;
+            strokeOpacity = 1.0;
+        }
 
         const polyOptions: google.maps.PolygonOptions = {
           paths: path,
           strokeColor,
-          strokeOpacity: isMoving ? 1.0 : 0.8,
+          strokeOpacity,
           strokeWeight,
           fillColor,
           fillOpacity,
@@ -247,23 +267,9 @@ const DrawnShapes: React.FC<{
           clickable: true,
           editable: isEditing,
           draggable: isMoving,
-          zIndex: isZone ? 0 : isSelected ? 2 : 1,
+          zIndex,
+          icons,
         };
-
-        if (isBufferedParent) {
-            polyOptions.strokeOpacity = 0; // Make solid line invisible
-            polyOptions.icons = [{
-                icon: {
-                    path: 'M 0,-1 0,1',
-                    strokeOpacity: 1,
-                    strokeWeight: 2.5,
-                    strokeColor: 'hsl(var(--accent))',
-                    scale: 4,
-                },
-                offset: '0',
-                repeat: '15px'
-            }];
-        }
 
         const poly = new google.maps.Polygon(polyOptions);
 
