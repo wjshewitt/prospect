@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThreeDVisualizationModal } from '@/components/dev-viz/three-d-modal';
+import { NameSiteDialog } from '@/components/map/name-site-dialog';
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -45,6 +46,10 @@ export default function VisionPage() {
   const [isAnalysisVisible, setIsAnalysisVisible] = useState(true);
   const [is3DView, setIs3DView] = useState(false);
 
+  const [siteName, setSiteName] = useState<string>('');
+  const [isNameSiteDialogOpen, setIsNameSiteDialogOpen] = useState(false);
+  const [pendingShape, setPendingShape] = useState<Omit<Shape, 'id'> | null>(null);
+
 
   if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
     return (
@@ -63,6 +68,29 @@ export default function VisionPage() {
   const assets = shapes.filter(s => !!s.assetMeta);
   const zones = shapes.filter(s => !!s.zoneMeta);
 
+  const handleClear = () => {
+    if (window.confirm('Are you sure you want to clear all drawings and data? This cannot be undone.')) {
+        setShapes([]);
+        setSelectedShapeIds([]);
+        setElevationGrid(null);
+        setSiteName('');
+    }
+  }
+
+  const handleNameSite = (name: string) => {
+    setSiteName(name);
+    if (pendingShape) {
+        setShapes(prev => [...prev, { id: `${Date.now()}`, ...pendingShape }]);
+        setPendingShape(null);
+    }
+    setIsNameSiteDialogOpen(false);
+  }
+
+  const handleBoundaryDrawn = (shape: Omit<Shape, 'id'>) => {
+    setPendingShape(shape);
+    setIsNameSiteDialogOpen(true);
+  }
+
 
   return (
     <APIProvider 
@@ -71,11 +99,12 @@ export default function VisionPage() {
     >
       <div id="capture-area" className="flex flex-col h-screen bg-background text-foreground font-body">
         <Header 
-          shapes={shapes} 
-          setShapes={setShapes} 
+          siteName={siteName}
+          onSiteNameClick={() => setIsNameSiteDialogOpen(true)}
+          onClear={handleClear}
+          hasShapes={shapes.length > 0}
           elevationGrid={elevationGrid}
-          setSelectedShapeIds={setSelectedShapeIds}
-          setElevationGrid={setElevationGrid}
+          shapes={shapes}
         >
             <Button
               variant="outline"
@@ -116,6 +145,7 @@ export default function VisionPage() {
                 isAnalysisVisible={isAnalysisVisible}
                 selectedShapeIds={selectedShapeIds}
                 setSelectedShapeIds={setSelectedShapeIds}
+                onBoundaryDrawn={handleBoundaryDrawn}
               />
             )}
             
@@ -146,6 +176,12 @@ export default function VisionPage() {
           )}
         </div>
       </div>
+      <NameSiteDialog 
+        isOpen={isNameSiteDialogOpen}
+        onOpenChange={setIsNameSiteDialogOpen}
+        onSubmit={handleNameSite}
+        initialName={siteName}
+      />
     </APIProvider>
   );
 }

@@ -25,6 +25,7 @@ interface MapCanvasProps {
   isAnalysisVisible: boolean;
   selectedShapeIds: string[];
   setSelectedShapeIds: (ids: string[]) => void;
+  onBoundaryDrawn: (shape: Omit<Shape, 'id'>) => void;
   className?: string;
 }
 
@@ -39,11 +40,11 @@ export function uuid() {
 
 const DrawingManagerComponent: React.FC<{
   selectedTool: Tool,
-  setSelectedTool: (tool: Tool) => void,
-  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>,
+  setSelectedTool: (tool: Tool) => void;
   shapes: Shape[],
   onZoneDrawn: (path: LatLng[], area: number) => void;
-}> = ({ selectedTool, setShapes, setSelectedTool, onZoneDrawn, shapes }) => {
+  onBoundaryDrawn: (shape: Omit<Shape, 'id'>) => void;
+}> = ({ selectedTool, setSelectedTool, shapes, onZoneDrawn, onBoundaryDrawn }) => {
   const map = useMap();
   const [drawingManager, setDrawingManager] = useState<google.maps.drawing.DrawingManager | null>(null);
   const { toast } = useToast();
@@ -85,7 +86,7 @@ const DrawingManagerComponent: React.FC<{
   useEffect(() => {
     if (!drawingManager) return;
     
-    const isBoundaryDrawingTool = selectedTool === 'rectangle' || selectedTool === 'polygon';
+    const isBoundaryDrawingTool = selectedTool === 'rectangle' || selectedTool === 'polygon' || selectedTool === 'freehand';
     const isZoneDrawingTool = selectedTool === 'zone';
     
     let drawingMode = null;
@@ -137,7 +138,7 @@ const DrawingManagerComponent: React.FC<{
         if (selectedTool === 'zone') {
             onZoneDrawn(path, area);
         } else {
-            // Check if a boundary already exists. If so, don't add another.
+            // This is a boundary drawing tool
             const hasBoundary = shapes.some(s => !s.zoneMeta && !s.assetMeta && !s.bufferMeta);
             if (hasBoundary && type !== 'zone') {
                 toast({
@@ -146,7 +147,7 @@ const DrawingManagerComponent: React.FC<{
                     description: 'Only one main project boundary can be drawn. Please clear the existing boundary first.',
                 });
             } else {
-                setShapes(prev => [...prev, { id: uuid(), type, path, area }]);
+                onBoundaryDrawn({ type, path, area });
             }
         }
         
@@ -161,7 +162,7 @@ const DrawingManagerComponent: React.FC<{
       google.maps.event.removeListener(rectListener);
       google.maps.event.removeListener(polyListener);
     };
-  }, [drawingManager, setShapes, setSelectedTool, selectedTool, onZoneDrawn, shapes, toast]);
+  }, [drawingManager, setSelectedTool, selectedTool, onZoneDrawn, onBoundaryDrawn, shapes, toast]);
   
   return null;
 }
@@ -459,10 +460,10 @@ const ElevationGridDisplay: React.FC<{
 };
 
 const FreehandDrawingTool: React.FC<{
-  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  onDrawEnd: (path: LatLng[]) => void;
   setSelectedTool: (tool: Tool) => void;
   shapes: Shape[];
-}> = ({ setShapes, setSelectedTool, shapes }) => {
+}> = ({ onDrawEnd, setSelectedTool, shapes }) => {
   const map = useMap();
   const [isDrawing, setIsDrawing] = useState(false);
   const pathRef = useRef<LatLng[]>([]);
@@ -516,14 +517,7 @@ const FreehandDrawingTool: React.FC<{
       }
 
       const finalPath = [...pathRef.current];
-      const area = google.maps.geometry.spherical.computeArea(finalPath);
-      
-      setShapes(prev => [...prev, {
-        id: uuid(),
-        type: 'freehand',
-        path: finalPath,
-        area
-      }]);
+      onDrawEnd(finalPath);
       
       setIsDrawing(false);
       pathRef.current = [];
@@ -541,7 +535,7 @@ const FreehandDrawingTool: React.FC<{
       upListener.remove();
       polylineRef.current?.setMap(null); // Cleanup on unmount
     };
-  }, [map, isDrawing, setShapes, setSelectedTool, shapes, toast]);
+  }, [map, isDrawing, onDrawEnd, setSelectedTool, shapes, toast]);
 
   return null;
 };
@@ -559,6 +553,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   isAnalysisVisible,
   selectedShapeIds,
   setSelectedShapeIds,
+  onBoundaryDrawn,
   className,
 }) => {
   const isLoaded = useApiIsLoaded();
@@ -747,6 +742,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     setZoneDialogState({ isOpen: false, path: null, area: null });
   }, [zoneDialogState, setShapes]);
 
+  const handleFreehandDrawEnd = (path: LatLng[]) => {
+      const area = google.maps.geometry.spherical.computeArea(path);
+      onBoundaryDrawn({ type: 'freehand', path, area });
+  };
+
 
   useEffect(() => {
     const handleClickOutside = (e: google.maps.MapMouseEvent) => {
@@ -810,8 +810,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         fullscreenControl={false}
         className="w-full h-full"
       >
-        {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} shapes={shapes} setShapes={setShapes} setSelectedTool={setSelectedTool} onZoneDrawn={handleZoneDrawn} />}
-        {isLoaded && selectedTool === 'freehand' && <FreehandDrawingTool shapes={shapes} setShapes={setShapes} setSelectedTool={setSelectedTool} />}
+        {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} shapes={shapes} setSelectedTool={setSelectedTool} onZoneDrawn={handleZoneDrawn} onBoundaryDrawn={onBoundaryDrawn} />}
+        {isLoaded && selectedTool === 'freehand' && <FreehandDrawingTool shapes={shapes} onDrawEnd={handleFreehandDrawEnd} setSelectedTool={setSelectedTool} />}
         {isLoaded && <DrawnShapes shapes={shapes} setShapes={setShapes} onShapeRightClick={handleShapeRightClick} onShapeClick={handleShapeClick} selectedShapeIds={selectedShapeIds} editingShapeId={editingShapeId} setEditingShapeId={setEditingShapeId} movingShapeId={movingShapeId} setMovingShapeId={setMovingShapeId} />}
         {isLoaded && elevationGrid && isAnalysisVisible && <ElevationGridDisplay elevationGrid={elevationGrid} steepnessThreshold={steepnessThreshold} />}
         {isLoaded && projectBoundary && <SiteMarker boundary={projectBoundary} />}
