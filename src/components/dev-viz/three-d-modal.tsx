@@ -15,25 +15,23 @@ interface ThreeDVisualizationModalProps {
   boundary?: Shape;
 }
 
-// Helper to calculate the center of a polygon
-const getPolygonCenter = (path: LatLng[]): LatLng => {
-  const bounds = new google.maps.LatLngBounds();
-  path.forEach(p => bounds.extend(p));
-  return bounds.getCenter().toJSON();
-};
-
 export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: ThreeDVisualizationModalProps) {
   const mountRef = useRef<HTMLDivElement>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
 
   useEffect(() => {
     if (!isOpen || !mountRef.current || !boundary) return;
+
+    // Helper to calculate the center of a polygon - MUST be inside useEffect
+    const getPolygonCenter = (path: LatLng[]): LatLng => {
+        const bounds = new google.maps.LatLngBounds();
+        path.forEach(p => bounds.extend(p));
+        return bounds.getCenter().toJSON();
+    };
     
     const mountNode = mountRef.current;
 
     // --- Scene Setup ---
     const scene = new THREE.Scene();
-    sceneRef.current = scene;
     scene.background = new THREE.Color(0x1a2638);
     const camera = new THREE.PerspectiveCamera(75, mountNode.clientWidth / mountNode.clientHeight, 0.1, 1000);
     camera.position.set(0, 100, 150);
@@ -124,7 +122,7 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
         } else if (assetKey.includes('flat_block')) {
             color = '#B0B0B0'; // Light grey
         } else if (assetKey.includes('community')) {
-            color = '#ADD8E6';
+            color = '#ADD8E6'; // Light blue for community
         }
         const material = new THREE.MeshStandardMaterial({ color });
         materials.push(material);
@@ -181,7 +179,6 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
           mountNode.removeChild(renderer.domElement);
       }
       renderer.dispose();
-      sceneRef.current = null;
     };
   }, [isOpen, assets, boundary]);
 
