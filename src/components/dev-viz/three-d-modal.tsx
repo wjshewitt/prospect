@@ -9,7 +9,7 @@ import type { Shape, LatLng, ElevationGrid } from '@/lib/types';
 import { ArrowUp, Orbit, MousePointer, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
-import { earcut } from 'three/src/extras/Earcut';
+import { Earcut } from 'three/src/extras/Earcut';
 
 
 // Helper to calculate the center of a polygon - MUST be inside useEffect
@@ -251,12 +251,11 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
 
     // Create Terrain from boundary shape
     const boundaryPoints = boundary.path.map(p => proj.toLocal(p));
-    const boundaryShape = new THREE.Shape(boundaryPoints.map(p => new THREE.Vector2(p.x, p.y)));
     
     // Triangulate the polygon shape
     const vertices = boundaryPoints.flatMap(p => [p.x, p.y]);
     const holes: number[] = []; // Assuming no holes for simplicity
-    const triangles = earcut(vertices, holes, 2);
+    const triangles = Earcut.triangulate(vertices, holes, 2);
 
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(triangles.length * 3);
