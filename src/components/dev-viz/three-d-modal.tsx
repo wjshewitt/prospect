@@ -156,6 +156,9 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     let selectableMeshes: THREE.Mesh[] = [];
 
     const onMouseClick = (event: MouseEvent) => {
+        if (!renderer.domElement.parentElement?.contains(event.target as Node)) {
+            return;
+        }
         const rect = renderer.domElement.getBoundingClientRect();
         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -211,19 +214,26 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     const getElevationAt = (x: number, y: number): number => {
       if (!grid || nx < 2 || ny < 2) return 0;
       const u = ((x - minX) / (maxX - minX)) * (nx - 1);
-      const v = 1 - ((y - minY) / (maxY - minY)); // Invert v-coordinate
+      const v = 1 - ((y - minY) / (maxY - minY)); // Invert v-coordinate for correct mapping
       const i = Math.floor(u);
-      const j = Math.floor(v * (ny - 1));
+      const j = Math.floor(v * (ny-1));
+
       if (i < 0 || i >= nx - 1 || j < 0 || j >= ny - 1) return 0;
+
+      // Bilinear interpolation
       const s = u - i;
-      const t = v * (ny - 1) - j;
+      const t = v * (ny-1) - j;
+
       const z00 = grid[j * nx + i];
       const z10 = grid[j * nx + i + 1];
       const z01 = grid[(j + 1) * nx + i];
       const z11 = grid[(j + 1) * nx + i + 1];
+      
       if (!isFinite(z00) || !isFinite(z10) || !isFinite(z01) || !isFinite(z11)) return 0;
+
       const z0 = z00 * (1 - s) + z10 * s;
       const z1 = z01 * (1 - s) + z11 * s;
+
       return z0 * (1 - t) + z1 * t;
     };
 
@@ -271,6 +281,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
 
     // Check which zone each face belongs to
     const faceCount = triangles.length / 3;
+    geometry.clearGroups();
 
     for (let i = 0; i < faceCount; i++) {
         const vA = new THREE.Vector3(positions[i*9 + 0], positions[i*9 + 1], positions[i*9 + 2]);
