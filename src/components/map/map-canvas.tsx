@@ -219,7 +219,7 @@ const DrawnShapes: React.FC<{
         }
 
         if (isMoving) {
-            google.maps.event.addListener(poly, 'dragend', () => {
+            poly.addListener('dragend', () => {
                 updateShape(shape.id, poly);
             });
         }
@@ -252,14 +252,19 @@ const DrawnShapes: React.FC<{
         Object.entries(polygons).forEach(([id, poly]) => {
             const isEditing = id === editingShapeId;
             const isMoving = id === movingShapeId;
-            if (poly.getEditable() !== isEditing) {
-                poly.setEditable(isEditing);
+            const shape = shapes.find(s => s.id === id);
+
+            const shouldBeEditable = isEditing && shape?.type !== 'buffer';
+            const shouldBeDraggable = isMoving && shape?.type !== 'buffer';
+
+            if (poly.getEditable() !== shouldBeEditable) {
+                poly.setEditable(shouldBeEditable);
             }
-            if (poly.getDraggable() !== isMoving) {
-                poly.setDraggable(isMoving);
+            if (poly.getDraggable() !== shouldBeDraggable) {
+                poly.setDraggable(shouldBeDraggable);
             }
         });
-    }, [editingShapeId, movingShapeId, polygons]);
+    }, [editingShapeId, movingShapeId, polygons, shapes]);
 
 
     const updateShape = (id: string, poly: google.maps.Polygon) => {
@@ -281,7 +286,7 @@ const DrawnShapes: React.FC<{
                     const originalShape = newShapes.find(os => os.id === id);
                     if (!originalShape) return s; // Should not happen
                     const buffered = applyBuffer(originalShape, s.bufferMeta.distance);
-                    return { ...s, ...buffered, bufferMeta: { ...s.bufferMeta, distance: s.bufferMeta.distance } };
+                    return { ...s, path: buffered.path, area: buffered.area };
                 }
                 return s;
             });
@@ -687,3 +692,5 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
+
+    
