@@ -32,8 +32,8 @@ export default function HomePage() {
               </div>
               <div className="lg:col-span-2 relative">
                 <div 
-                  className="w-full aspect-square bg-cover bg-center rounded-2xl shadow-2xl" 
-                  style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuA3LzZl-yM8-pLg2sZeGIMNl_rZJJHlTjJc_0O1XQ8LqK8cQy9Iu6Z9Z8fX7X6E8Z9R0jJ-9cZ5jY-oG9pX8lB6nZ-dY2gS3tH0wI=s1500-c")'}}
+                  className="w-full aspect-[4/3] bg-cover bg-center rounded-2xl shadow-2xl" 
+                  style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCaX4OmYpjLHgXLI5EyuAeqAkxVcGjI0OCBAtXBeooWkjG0FUP05xRXfi17eVfk7yJzPlfZxm-HaKIoGrJSW2AoF5Dh6Gq40yuAgEPQJQoqc2p2CLfHmSjztb8hpzGNfLmWP-lguoLHNPBJIz9jHWMwvfY7KuZYIGcmhPahYCpY6TjE4Gx_zv7_zL05sB7xhL4eDaE7aWQRB5DeExuLv6TDiOX32JO6wWAqL6q-R4Yeqis5h14u9032h1cwhPqktXP_IoUFuqzlWLIi")'}}
                   data-ai-hint="topographical map abstract"
                 ></div>
                 <div className="absolute -bottom-8 -left-8 bg-white/70 backdrop-blur-md p-4 rounded-lg shadow-lg">
