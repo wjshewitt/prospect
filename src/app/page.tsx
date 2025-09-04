@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { signOut } from 'firebase/auth';
@@ -61,11 +62,14 @@ export default function HomePage() {
                 </Button>
               </div>
               <div className="lg:col-span-2 relative">
-                <div 
-                  className="w-full aspect-[4/3] bg-cover bg-center rounded-2xl shadow-2xl" 
-                  style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCaX4OmYpjLHgXLI5EyuAeqAkxVcGjI0OCBAtXBeooWkjG0FUP05xRXfi17eVfk7yJzPlfZxm-HaKIoGrJSW2AoF5Dh6Gq40yuAgEPQJQoqc2p2CLfHmSjztb8hpzGNfLmWP-lguoLHNPBJIz9jHWMwvfY7KuZYIGcmhPahYCpY6TjE4Gx_zv7_zL05sB7xhL4eDaE7aWQRB5DeExuLv6TDiOX32JO6wWAqL6q-R4Yeqis5h14u9032h1cwhPqktXP_IoUFuqzlWLIi")'}}
+                <Image 
+                  src="https://picsum.photos/600/450"
+                  alt="Topographical map"
+                  width={600}
+                  height={450}
+                  className="w-full aspect-[4/3] object-cover rounded-2xl shadow-2xl"
                   data-ai-hint="topographical map abstract"
-                ></div>
+                />
                 <div className="absolute -bottom-8 -left-8 bg-white/70 backdrop-blur-md p-4 rounded-lg shadow-lg">
                   <p className="text-sm font-semibold text-c-charcoal">Total Area</p>
                   <p className="text-2xl font-bold text-c-green">15.7 Acres</p>
