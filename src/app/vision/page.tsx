@@ -76,7 +76,6 @@ function VisionPageContent() {
   const [elevationGrid, setElevationGrid] = useState<ElevationGrid | null>(null);
   const [isAnalysisVisible, setIsAnalysisVisible] = useState(true);
   const [is3DView, setIs3DView] = useState(false);
-  const [mapScreenshot, setMapScreenshot] = useState<string | null>(null);
 
 
   const [siteName, setSiteName] = useState<string>('');
@@ -394,47 +393,6 @@ function VisionPageContent() {
                 return; // Don't switch to 3D if data fails
             }
         }
-        
-        // --- Start Screenshot Logic ---
-        const originalCenter = map.getCenter();
-        const originalZoom = map.getZoom();
-
-        // 1. Hide overlays for a clean screenshot
-        setIsAnalysisVisible(false);
-
-        // 2. Fit map to the boundary bounds for a tight shot
-        const shapeBounds = getBoundsOfShape(projectBoundary);
-        map.fitBounds(shapeBounds);
-
-        // Give map time to re-render at new bounds
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        try {
-            const mapContainer = map.getDiv();
-            const canvas = await html2canvas(mapContainer, {
-                useCORS: true,
-                allowTaint: true,
-                logging: false,
-                onclone: (doc) => {
-                    // In the cloned document, hide all drawn Google Maps polygons
-                    const polys = doc.querySelectorAll('canvas ~ div');
-                    polys.forEach(p => {
-                       (p as HTMLElement).style.visibility = 'hidden';
-                    });
-                }
-            });
-            setMapScreenshot(canvas.toDataURL('image/png'));
-        } catch(e) {
-            console.error("Error taking map screenshot:", e);
-            toast({ variant: 'destructive', title: 'Screenshot Failed', description: 'Could not capture map image.' });
-        } finally {
-            // Restore map state and visibility
-            if(originalCenter && originalZoom) {
-                map.moveCamera({center: originalCenter, zoom: originalZoom});
-            }
-            setIsAnalysisVisible(true);
-        }
-        // --- End Screenshot Logic ---
     }
     setIs3DView(!is3DView);
   }
@@ -479,7 +437,6 @@ function VisionPageContent() {
               zones={zones}
               boundary={projectBoundary}
               elevationGrid={elevationGrid}
-              mapScreenshot={mapScreenshot}
               onDeleteAsset={handleDeleteAsset}
             />
           ) : (

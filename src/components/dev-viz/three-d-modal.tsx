@@ -6,9 +6,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import type { Shape, LatLng, ElevationGrid } from '@/lib/types';
-import { ArrowUp, Orbit, Grab, MousePointer, X } from 'lucide-react';
+import { ArrowUp, Orbit, MousePointer, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
+import { earcut } from 'three/src/extras/Earcut';
 
 
 // Helper to calculate the center of a polygon - MUST be inside useEffect
@@ -66,11 +67,10 @@ interface ThreeDVisualizationProps {
   zones: Shape[];
   boundary: Shape;
   elevationGrid: ElevationGrid;
-  mapScreenshot: string | null;
   onDeleteAsset: (assetId: string) => void;
 }
 
-export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGrid, mapScreenshot, onDeleteAsset }: ThreeDVisualizationProps) {
+export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGrid, onDeleteAsset }: ThreeDVisualizationProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -118,7 +118,10 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     rendererRef.current = renderer;
-    mountNode.appendChild(renderer.domElement);
+    if (mountNode.children.length === 0) {
+        mountNode.appendChild(renderer.domElement);
+    }
+
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.6);
@@ -246,36 +249,41 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
       return z0 * (1 - t) + z1 * t;
     };
 
-    // Create Terrain
-    const terrainDivisionsX = 150;
-    const terrainDivisionsY = 150;
-    const terrainWidth = maxX - minX;
-    const terrainHeight = maxY - minY;
-    const terrainGeometry = new THREE.PlaneGeometry(terrainWidth, terrainHeight, terrainDivisionsX, terrainDivisionsY);
+    // Create Terrain from boundary shape
+    const boundaryPoints = boundary.path.map(p => proj.toLocal(p));
+    const boundaryShape = new THREE.Shape(boundaryPoints.map(p => new THREE.Vector2(p.x, p.y)));
+    
+    // Triangulate the polygon shape
+    const vertices = boundaryPoints.flatMap(p => [p.x, p.y]);
+    const holes: number[] = []; // Assuming no holes for simplicity
+    const triangles = earcut(vertices, holes, 2);
 
-    const textureLoader = new THREE.TextureLoader();
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(triangles.length * 3);
+    
+    for (let i = 0; i < triangles.length; i++) {
+        const index = triangles[i];
+        const x = vertices[index * 2];
+        const y = vertices[index * 2 + 1];
+        const z = getElevationAt(x, y);
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.computeVertexNormals();
+
+
     const groundMaterial = new THREE.MeshStandardMaterial({
-        color: mapScreenshot ? 0xffffff : 0x2D5016, // white if texture, else green
-        map: mapScreenshot ? textureLoader.load(mapScreenshot) : null,
+        color: 0x2D5016, // Solid green color
         side: THREE.DoubleSide,
         roughness: 0.9,
         metalness: 0.1,
     });
-
-    const positions = terrainGeometry.attributes.position;
-    for (let i = 0; i < positions.count; i++) {
-      const x = positions.getX(i);
-      const y = positions.getY(i);
-      const worldX = x + (maxX + minX) / 2;
-      const worldY = y + (maxY + minY) / 2;
-      const elevation = getElevationAt(worldX, worldY);
-      positions.setZ(i, elevation);
-    }
-    terrainGeometry.computeVertexNormals();
-
-    const terrainMesh = new THREE.Mesh(terrainGeometry, groundMaterial);
+    
+    const terrainMesh = new THREE.Mesh(geometry, groundMaterial);
     terrainMesh.receiveShadow = true;
-    terrainMesh.position.set((maxX + minX) / 2, (maxY + minY) / 2, 0);
     geoGroup.add(terrainMesh);
 
     // Asset materials
@@ -411,7 +419,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
       cameraRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assets, zones, boundary, elevationGrid, mapScreenshot]);
+  }, [assets, zones, boundary, elevationGrid]);
 
 
   const handleSwitchControls = (mode: 'orbit' | 'fly') => {
