@@ -134,7 +134,6 @@ const DrawingManagerComponent: React.FC<{
             type = 'rectangle';
         } else { // Polygon
             path = overlay.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
-            // This is the critical fix: Correctly identify the type as 'zone' when drawing a zone.
             type = selectedTool === 'zone' ? 'zone' : 'polygon';
         }
         
@@ -363,7 +362,6 @@ const DrawnShapes: React.FC<{
                         type: 'polygon', 
                         path: newPath, 
                         area: newArea,
-                        // bufferMeta: undefined // This was the bug causing zones to lose their meta
                     };
                 }
                 return s;
@@ -777,7 +775,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     };
     setShapes(prev => [...prev, newZone]);
     setZoneDialogState({ isOpen: false, path: null, area: null });
-  }, [zoneDialogState, setShapes]);
+    // This is the key fix: select the newly created zone
+    setSelectedShapeIds([newZone.id]);
+  }, [zoneDialogState, setShapes, setSelectedShapeIds]);
 
   const handleFreehandDrawEnd = (path: LatLng[]) => {
       const area = google.maps.geometry.spherical.computeArea(path);
