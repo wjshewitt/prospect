@@ -200,8 +200,8 @@ export function ThreeDVisualizationModal({ assets, zones, boundary }: ThreeDVisu
         }
       });
 
-      if(mountNode && renderer.domElement){
-          mountNode.removeChild(renderer.domElement);
+      if (mountNode && mountNode.contains(renderer.domElement)) {
+        mountNode.removeChild(renderer.domElement);
       }
       renderer.dispose();
     };
