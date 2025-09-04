@@ -46,7 +46,7 @@ export default function StatisticsSidebar({
   const selectedAreaMeters = selectedShapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
   const selectedAreaAcres = selectedAreaMeters * SQ_METERS_TO_ACRES;
 
-  const canGenerate = selectedShapeIds.length === 1 && shapes.find(s => s.id === selectedShapeIds[0])?.zoneMeta;
+  const canGenerate = selectedShapeIds.length === 1 && !!shapes.find(s => s.id === selectedShapeIds[0])?.zoneMeta;
 
   return (
     <aside 

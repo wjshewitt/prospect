@@ -27,6 +27,8 @@ interface MapCanvasProps {
   setSelectedShapeIds: (ids: string[]) => void;
   onBoundaryDrawn: (shape: Omit<Shape, 'id'>) => void;
   className?: string;
+  mapState: { center: LatLng; zoom: number } | null;
+  onMapStateChange: (state: { center: LatLng; zoom: number }) => void;
 }
 
 interface ContextMenuState {
@@ -556,6 +558,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   setSelectedShapeIds,
   onBoundaryDrawn,
   className,
+  mapState,
+  onMapStateChange,
 }) => {
   const isLoaded = useApiIsLoaded();
   const map = useMap();
@@ -794,6 +798,15 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
       }
     }
   }, [map, closeContextMenu, setSelectedShapeIds, selectedTool, setShapes]);
+  
+  const handleCameraChange = () => {
+      if (!map) return;
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      if (center && zoom) {
+        onMapStateChange({ center: center.toJSON(), zoom });
+      }
+  };
 
 
   return (
@@ -801,6 +814,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
       <Map
         defaultCenter={{lat: 53.483959, lng: -2.244644}}
         defaultZoom={7}
+        center={mapState?.center}
+        zoom={mapState?.zoom}
+        onCameraChanged={handleCameraChange}
         mapTypeId="satellite"
         tilt={0}
         gestureHandling={!isDrawing && !isInteractingWithShape ? 'greedy' : 'none'}

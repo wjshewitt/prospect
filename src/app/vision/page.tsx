@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Shape, Tool, ElevationGrid } from '@/lib/types';
+import type { Shape, Tool, ElevationGrid, LatLng } from '@/lib/types';
 import { useState, useEffect } from 'react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import Header from '@/components/layout/header';
@@ -56,6 +56,9 @@ export default function VisionPage() {
   const [hasCompletedTutorial, setHasCompletedTutorial] = useLocalStorage('landvision-tutorial-complete', false);
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
+
+  // State to preserve map position
+  const [mapState, setMapState] = useState<{center: LatLng, zoom: number} | null>(null);
 
   useEffect(() => {
     // This now runs only on the client, after hydration
@@ -197,6 +200,8 @@ export default function VisionPage() {
                 selectedShapeIds={selectedShapeIds}
                 setSelectedShapeIds={setSelectedShapeIds}
                 onBoundaryDrawn={handleBoundaryDrawn}
+                mapState={mapState}
+                onMapStateChange={setMapState}
               />
             )}
             
