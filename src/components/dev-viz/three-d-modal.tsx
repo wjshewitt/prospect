@@ -190,13 +190,15 @@ export function ThreeDVisualizationModal({ assets, zones, boundary }: ThreeDVisu
       controls.dispose();
       
       // Dispose all scene objects
-      scene.children.forEach(child => {
-        if(child instanceof THREE.Mesh) {
-            child.geometry.dispose();
-            if (Array.isArray(child.material)) {
-                child.material.forEach(m => m.dispose());
-            } else {
-                (child.material as THREE.Material).dispose();
+      scene.traverse(object => {
+        if (object instanceof THREE.Mesh) {
+            if (object.geometry) {
+                object.geometry.dispose();
+            }
+            if (Array.isArray(object.material)) {
+                object.material.forEach(material => material.dispose());
+            } else if (object.material) {
+                (object.material as THREE.Material).dispose();
             }
         }
       });
