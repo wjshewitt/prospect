@@ -1,12 +1,10 @@
 
-
 'use client';
 
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Shape, LatLng, ElevationGrid } from '@/lib/types';
-import { BufferGeometry, Float32BufferAttribute } from 'three';
 
 interface ThreeDVisualizationProps {
   assets: Shape[];
@@ -42,8 +40,8 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
     renderer.shadowMap.enabled = true;
-    mountNode.appendChild(renderer.domElement);
     const canvasElement = renderer.domElement;
+    mountNode.appendChild(canvasElement);
 
     // --- Lighting ---
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
@@ -73,8 +71,8 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
             const dLat = (p.lat-siteCenter.lat) * Math.PI/180;
             const dLng = (p.lng-siteCenter.lng) * Math.PI/180;
             const x = dLng * R * Math.cos(φ1);
-            const y = dLat * R;
-            return { x, y: -y }; // y is inverted for Three.js (z becomes negative)
+            const y = -y; // y is inverted for Three.js (z becomes negative)
+            return { x, y };
         },
     };
 
@@ -129,8 +127,51 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
         positions.setY(i, y);
     }
     terrainGeometry.computeVertexNormals();
+
+    // --- Create Terrain Texture with Zones Painted On ---
+    const textureCanvas = document.createElement('canvas');
+    const textureSize = 1024;
+    textureCanvas.width = textureSize;
+    textureCanvas.height = textureSize;
+    const textureContext = textureCanvas.getContext('2d')!;
+
+    // Base terrain color
+    textureContext.fillStyle = '#3a5a40';
+    textureContext.fillRect(0, 0, textureSize, textureSize);
+
+    // Function to transform world XY to texture UV
+    const worldToTexture = (x: number, y: number) => {
+        const u = (x - minX) / (maxX - minX);
+        const v = 1 - ((y - minY) / (maxY - minY)); // Y is inverted for texture space
+        return { u: u * textureSize, v: v * textureSize };
+    };
+
+    zones.forEach(zone => {
+        const kind = zone.zoneMeta?.kind;
+        let color = 'rgba(255, 255, 255, 0.5)'; // Default fallback
+        if (kind === 'residential') color = 'rgba(134, 239, 172, 0.5)'; // green-300
+        if (kind === 'commercial') color = 'rgba(147, 197, 253, 0.5)'; // blue-300
+        if (kind === 'amenity') color = 'rgba(252, 211, 77, 0.5)'; // amber-300
+        
+        textureContext.fillStyle = color;
+        textureContext.beginPath();
+
+        zone.path.forEach((p, index) => {
+            const local = proj.toLocal(p);
+            const texCoords = worldToTexture(local.x, local.y);
+            if (index === 0) {
+                textureContext.moveTo(texCoords.u, texCoords.v);
+            } else {
+                textureContext.lineTo(texCoords.u, texCoords.v);
+            }
+        });
+        textureContext.closePath();
+        textureContext.fill();
+    });
+
+    const terrainTexture = new THREE.CanvasTexture(textureCanvas);
     
-    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x3a5a40, side: THREE.DoubleSide });
+    const groundMaterial = new THREE.MeshStandardMaterial({ map: terrainTexture, side: THREE.DoubleSide });
     const terrainMesh = new THREE.Mesh(terrainGeometry, groundMaterial);
     terrainMesh.receiveShadow = true;
     scene.add(terrainMesh);
@@ -147,42 +188,6 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     camera.position.z += cameraDistance;
     camera.lookAt(terrainCenter);
     controls.target.copy(terrainCenter);
-    
-    
-    // --- Render Zones as decals on the terrain ---
-    zones.forEach(zone => {
-        const zonePath = zone.path.map(p => {
-            const local = proj.toLocal(p);
-            return new THREE.Vector2(local.x, local.y);
-        });
-        const zoneShape = new THREE.Shape(zonePath);
-        const zoneGeometry = new THREE.ShapeGeometry(zoneShape);
-
-        let color = '#ffffff';
-        switch(zone.zoneMeta?.kind) {
-            case 'residential': color = '#86efac'; break;
-            case 'commercial': color = '#93c5fd'; break;
-            case 'amenity': color = '#fcd34d'; break;
-            case 'green_space': color = '#22c55e'; break;
-        }
-        const zoneMaterial = new THREE.MeshStandardMaterial({ 
-            color, 
-            side: THREE.DoubleSide, 
-            transparent: true, 
-            opacity: 0.6,
-        });
-        const zoneMesh = new THREE.Mesh(zoneGeometry, zoneMaterial);
-        zoneMesh.rotation.x = -Math.PI / 2;
-        
-        // Elevate the zone decal slightly above the terrain to avoid z-fighting
-        const zoneCenter = getPolygonCenter(zone.path);
-        const localZoneCenter = proj.toLocal(zoneCenter);
-        const elevation = getElevationAt(localZoneCenter.x, localZoneCenter.y);
-        zoneMesh.position.y = elevation + 0.1; // 10cm above terrain
-
-        scene.add(zoneMesh);
-    });
-    
 
     // --- Render Assets on the terrain ---
     assets.forEach(asset => {
@@ -214,8 +219,6 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
 
         const mesh = new THREE.Mesh(geometry, material);
         
-        // After rotating, the shape's original Z becomes Y.
-        // We set the position AFTER rotation.
         mesh.rotation.x = -Math.PI / 2;
         mesh.position.set(localPos.x, elevation, localPos.y); // Set base at terrain height
         
@@ -257,9 +260,14 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
                 object.geometry.dispose();
             }
             if (Array.isArray(object.material)) {
-                object.material.forEach(material => material.dispose());
+                object.material.forEach(material => {
+                    if (material.map) material.map.dispose();
+                    material.dispose();
+                });
             } else if (object.material) {
-                (object.material as THREE.Material).dispose();
+                const material = object.material as THREE.Material & { map?: THREE.Texture };
+                if (material.map) material.map.dispose();
+                material.dispose();
             }
         }
       });
@@ -277,5 +285,3 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     </div>
   );
 }
-
-    
