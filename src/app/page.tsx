@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { PenTool, BarChart3, LayoutGrid } from 'lucide-react';
 
 export default function HomePage() {
   const { user, loading } = useAuth();
@@ -47,7 +48,7 @@ export default function HomePage() {
             )}
           </nav>
         </header>
-        <main className="flex-1 flex items-center">
+        <main className="flex-1 flex flex-col items-center">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-16 items-center">
               <div className="lg:col-span-3 flex flex-col gap-8">
@@ -73,6 +74,45 @@ export default function HomePage() {
                   <p className="text-sm font-semibold text-c-charcoal">Max Slope</p>
                   <p className="text-2xl font-bold text-c-green">28.5%</p>
                 </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="w-full bg-white py-24">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <div className="text-center mb-16">
+                <h2 className="text-4xl font-extrabold tracking-tight text-c-green">How It Works</h2>
+                <p className="mt-4 text-lg text-c-charcoal max-w-2xl mx-auto">From raw land to a development plan in three simple steps.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center h-16 w-16 rounded-full bg-c-orange text-white mb-6">
+                    <PenTool className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-c-green mb-2">1. Draw Your Site</h3>
+                  <p className="text-c-charcoal">Use our simple drawing tools to outline any property boundary directly on the satellite map.</p>
+                </div>
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center h-16 w-16 rounded-full bg-c-orange text-white mb-6">
+                    <BarChart3 className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-c-green mb-2">2. Analyze & Visualize</h3>
+                  <p className="text-c-charcoal">Instantly generate a 3D model and get a detailed topographic analysis, including slope and elevation data.</p>
+                </div>
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center justify-center h-16 w-16 rounded-full bg-c-orange text-white mb-6">
+                    <LayoutGrid className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-c-green mb-2">3. Generate & Plan</h3>
+                  <p className="text-c-charcoal">Use AI to generate potential building layouts and zoning plans to rapidly prototype your development ideas.</p>
+                </div>
+              </div>
+              <div className="mt-20 text-center">
+                 <Button asChild className="min-w-[84px] max-w-fit cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-c-green text-white text-lg font-bold shadow-md hover:shadow-lg transition-shadow">
+                  <Link href="/signup">
+                    <span className="truncate">Get Started for Free</span>
+                  </Link>
+                </Button>
               </div>
             </div>
           </div>
