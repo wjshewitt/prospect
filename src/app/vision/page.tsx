@@ -348,10 +348,8 @@ function VisionPageContent() {
               setShapes={setShapes}
               selectedTool={selectedTool}
               setSelectedTool={setSelectedTool}
-              gridResolution={debouncedGridResolution} // Use debounced value for analysis
               steepnessThreshold={steepnessThreshold}
               elevationGrid={elevationGrid}
-              setElevationGrid={setElevationGrid}
               isAnalysisVisible={isAnalysisVisible}
               selectedShapeIds={selectedShapeIds}
               setSelectedShapeIds={setSelectedShapeIds}
@@ -441,3 +439,5 @@ export default function VisionPage() {
     </APIProvider>
     )
 }
+
+    

@@ -6,7 +6,6 @@ import {Map, useMap, useApiIsLoaded, InfoWindow} from '@vis.gl/react-google-maps
 import type { Shape, Tool, ElevationGrid, ElevationGridCell, LatLng } from '@/lib/types';
 import { ShapeContextMenu } from './shape-context-menu';
 import { useToast } from '@/hooks/use-toast';
-import { analyzeElevation } from '@/services/elevation';
 import { BufferDialog, type BufferState } from './buffer-dialog';
 import { ZoneDialog, type ZoneDialogState } from './zone-dialog';
 import { applyBuffer } from '@/services/buffer';
@@ -19,10 +18,8 @@ interface MapCanvasProps {
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
   selectedTool: Tool;
   setSelectedTool: (tool: Tool) => void;
-  gridResolution: number;
   steepnessThreshold: number;
   elevationGrid: ElevationGrid | null;
-  setElevationGrid: (grid: ElevationGrid | null) => void;
   isAnalysisVisible: boolean;
   selectedShapeIds: string[];
   setSelectedShapeIds: (ids: string[]) => void;
@@ -574,10 +571,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   shapes,
   setShapes,
   setSelectedTool,
-  gridResolution,
   steepnessThreshold,
   elevationGrid,
-  setElevationGrid,
   isAnalysisVisible,
   selectedShapeIds,
   setSelectedShapeIds,
@@ -609,38 +604,6 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     }
   }, [map, selectedTool]);
   
-  useEffect(() => {
-    const runAnalysis = async () => {
-        if (selectedShapeIds.length === 1 && isLoaded && map) {
-            const shapeToAnalyze = shapes.find(s => s.id === selectedShapeIds[0]);
-            if (shapeToAnalyze) {
-                try {
-                    const elevationService = new window.google.maps.ElevationService();
-                    const grid = await analyzeElevation(shapeToAnalyze, elevationService, gridResolution);
-                    setElevationGrid(grid);
-                } catch (err) {
-                    console.error("Error getting elevation grid:", err);
-                    toast({
-                        variant: 'destructive',
-                        title: 'Elevation API Error',
-                        description: 'Could not fetch elevation data. Please check your API key and permissions.'
-                    });
-                    setElevationGrid(null); // Clear grid on error
-                }
-            } else {
-                setElevationGrid(null);
-            }
-        } else {
-            // If not exactly one shape is selected, clear the grid
-            if (elevationGrid !== null) {
-                setElevationGrid(null);
-            }
-        }
-    };
-    runAnalysis();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shapes, gridResolution, isLoaded, map, selectedShapeIds]);
-
   const handleShapeRightClick = useCallback((shapeId: string, event: google.maps.MapMouseEvent) => {
     if (!map || !event.domEvent) return;
     event.domEvent.preventDefault();
@@ -914,5 +877,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
+
+    
 
     
