@@ -11,13 +11,13 @@ import { analyzeElevation } from '@/services/elevation';
 import { BufferDialog, type BufferState } from './buffer-dialog';
 import { ZoneDialog, type ZoneDialogState } from './zone-dialog';
 import { applyBuffer } from '@/services/buffer';
+import { SiteMarker } from './site-marker';
 
 interface MapCanvasProps {
-  selectedTool: Tool;
-  setSelectedTool: (tool: Tool) => void;
   shapes: Shape[];
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
-  className?: string;
+  selectedTool: Tool;
+  setSelectedTool: (tool: Tool) => void;
   gridResolution: number;
   steepnessThreshold: number;
   elevationGrid: ElevationGrid | null;
@@ -25,6 +25,7 @@ interface MapCanvasProps {
   isAnalysisVisible: boolean;
   selectedShapeIds: string[];
   setSelectedShapeIds: (ids: string[]) => void;
+  className?: string;
 }
 
 interface ContextMenuState {
@@ -134,7 +135,17 @@ const DrawingManagerComponent: React.FC<{
         if (selectedTool === 'zone') {
             onZoneDrawn(path, area);
         } else {
-            setShapes(prev => [...prev, { id: uuid(), type, path, area }]);
+            // Check if a boundary already exists. If so, don't add another.
+            const hasBoundary = shapes.some(s => !s.zoneMeta && !s.assetMeta && !s.bufferMeta);
+            if (hasBoundary && type !== 'zone') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Boundary Exists',
+                    description: 'Only one main project boundary can be drawn. Please clear the existing boundary first.',
+                });
+            } else {
+                setShapes(prev => [...prev, { id: uuid(), type, path, area }]);
+            }
         }
         
         overlay.setMap(null); 
@@ -148,7 +159,7 @@ const DrawingManagerComponent: React.FC<{
       google.maps.event.removeListener(rectListener);
       google.maps.event.removeListener(polyListener);
     };
-  }, [drawingManager, setShapes, setSelectedTool, selectedTool, onZoneDrawn]);
+  }, [drawingManager, setShapes, setSelectedTool, selectedTool, onZoneDrawn, shapes, toast]);
   
   return null;
 }
@@ -448,16 +459,30 @@ const ElevationGridDisplay: React.FC<{
 const FreehandDrawingTool: React.FC<{
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
   setSelectedTool: (tool: Tool) => void;
-}> = ({ setShapes, setSelectedTool }) => {
+  shapes: Shape[];
+}> = ({ setShapes, setSelectedTool, shapes }) => {
   const map = useMap();
   const [isDrawing, setIsDrawing] = useState(false);
   const pathRef = useRef<LatLng[]>([]);
   const polylineRef = useRef<google.maps.Polyline | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!map) return;
 
     const onMouseDown = (e: google.maps.MapMouseEvent) => {
+      // Prevent drawing a boundary if one already exists
+      const hasBoundary = shapes.some(s => !s.zoneMeta && !s.assetMeta && !s.bufferMeta);
+      if (hasBoundary) {
+          toast({
+              variant: 'destructive',
+              title: 'Boundary Exists',
+              description: 'Only one main project boundary can be drawn. Please clear the existing boundary first.',
+          });
+          setSelectedTool('pan');
+          return;
+      }
+
       setIsDrawing(true);
       pathRef.current = [];
       if (e.latLng) {
@@ -514,7 +539,7 @@ const FreehandDrawingTool: React.FC<{
       upListener.remove();
       polylineRef.current?.setMap(null); // Cleanup on unmount
     };
-  }, [map, isDrawing, setShapes, setSelectedTool]);
+  }, [map, isDrawing, setShapes, setSelectedTool, shapes, toast]);
 
   return null;
 };
@@ -547,10 +572,12 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   const isInteractingWithShape = !!editingShapeId || !!movingShapeId;
   const isDrawing = ['rectangle', 'polygon', 'freehand', 'zone'].includes(selectedTool);
 
+  const projectBoundary = shapes.find(s => !s.bufferMeta && !s.zoneMeta && !s.assetMeta);
+
   useEffect(() => {
     if (map) {
-      let cursor = null;
-        if (selectedTool === 'freehand') cursor = 'crosshair';
+      let cursor = 'grab';
+        if (selectedTool === 'freehand' || selectedTool === 'rectangle' || selectedTool === 'polygon' || selectedTool === 'zone') cursor = 'crosshair';
         if (selectedTool === 'asset') cursor = 'copy';
       map.setOptions({ draggableCursor: cursor });
     }
@@ -782,10 +809,12 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         fullscreenControl={false}
         className="w-full h-full"
       >
-        {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} setShapes={setShapes} setSelectedTool={setSelectedTool} onZoneDrawn={handleZoneDrawn} />}
-        {isLoaded && selectedTool === 'freehand' && <FreehandDrawingTool setShapes={setShapes} setSelectedTool={setSelectedTool} />}
+        {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} shapes={shapes} setShapes={setShapes} setSelectedTool={setSelectedTool} onZoneDrawn={handleZoneDrawn} />}
+        {isLoaded && selectedTool === 'freehand' && <FreehandDrawingTool shapes={shapes} setShapes={setShapes} setSelectedTool={setSelectedTool} />}
         {isLoaded && <DrawnShapes shapes={shapes} setShapes={setShapes} onShapeRightClick={handleShapeRightClick} onShapeClick={handleShapeClick} selectedShapeIds={selectedShapeIds} editingShapeId={editingShapeId} setEditingShapeId={setEditingShapeId} movingShapeId={movingShapeId} setMovingShapeId={setMovingShapeId} />}
         {isLoaded && elevationGrid && isAnalysisVisible && <ElevationGridDisplay elevationGrid={elevationGrid} steepnessThreshold={steepnessThreshold} />}
+        {isLoaded && projectBoundary && <SiteMarker boundary={projectBoundary} />}
+
       </Map>
 
        {contextMenu && (
