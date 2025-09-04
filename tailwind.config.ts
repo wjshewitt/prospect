@@ -16,6 +16,10 @@ export default {
         sans: ['Manrope', 'Noto Sans', 'sans-serif'],
       },
       colors: {
+        'c-green': 'hsl(var(--c-green))',
+        'c-off-white': 'hsl(var(--c-off-white))',
+        'c-orange': 'hsl(var(--c-orange))',
+        'c-charcoal': 'hsl(var(--c-charcoal))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {
