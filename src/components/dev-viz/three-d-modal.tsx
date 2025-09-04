@@ -99,12 +99,12 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     const loader = new THREE.CubeTextureLoader();
     // IMPORTANT: Replace these with paths to your actual skybox images
     const skyboxTexture = loader.load([
-        'https://threejs.org/examples/textures/cube/Bridge2/px.jpg', // right
-        'https://threejs.org/examples/textures/cube/Bridge2/nx.jpg', // left
-        'https://threejs.org/examples/textures/cube/Bridge2/py.jpg', // top
-        'https://threejs.org/examples/textures/cube/Bridge2/ny.jpg', // bottom
-        'https://threejs.org/examples/textures/cube/Bridge2/pz.jpg', // front
-        'https://threejs.org/examples/textures/cube/Bridge2/nz.jpg'  // back
+        '/textures/skybox/px.jpg', // right
+        '/textures/skybox/nx.jpg', // left
+        '/textures/skybox/py.jpg', // top
+        '/textures/skybox/ny.jpg', // bottom
+        '/textures/skybox/pz.jpg', // front
+        '/textures/skybox/nz.jpg'  // back
     ], () => {
         scene.background = skyboxTexture;
     }, undefined, () => {
@@ -193,7 +193,8 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
         side: THREE.DoubleSide 
     });
 
-    const grassTexture = textureLoader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg', (texture) => {
+    // IMPORTANT: Replace this with the path to your grass texture
+    const grassTexture = textureLoader.load('/textures/grass.jpg', (texture) => {
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
         const textureCanvas = document.createElement('canvas');
         const textureSize = 2048;
@@ -201,6 +202,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
         textureCanvas.height = textureSize;
         const textureContext = textureCanvas.getContext('2d')!;
         
+        // Create a repeating pattern from the grass image and fill the canvas
         const pattern = textureContext.createPattern(texture.image, 'repeat');
         textureContext.fillStyle = pattern!;
         textureContext.fillRect(0, 0, textureSize, textureSize);
@@ -211,6 +213,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
             return { u: u * textureSize, v: v * textureSize };
         };
 
+        // Draw zones on top of the grass
         zones.forEach(zone => {
             const kind = zone.zoneMeta?.kind;
             let color = 'rgba(255, 255, 255, 0.4)';
@@ -251,6 +254,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     camera.lookAt(terrainCenter);
     controls.target.copy(terrainCenter);
 
+    // Tighten the shadow camera frustum around the terrain for better shadow quality
     const shadowCamSize = Math.max(terrainSize.x, terrainSize.z);
     directionalLight.shadow.camera.left = -shadowCamSize / 2;
     directionalLight.shadow.camera.right = shadowCamSize / 2;
@@ -273,7 +277,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
         const assetShape = new THREE.Shape(assetVertices);
 
         const floors = asset.assetMeta.floors ?? 1;
-        const height = floors * 3.5;
+        const height = floors * 3.5; // Slightly increased height
         const extrudeSettings = { depth: height, bevelEnabled: true, bevelSize: 0.1, bevelThickness: 0.1, bevelSegments: 2 };
         const geometry = new THREE.ExtrudeGeometry(assetShape, extrudeSettings);
         
@@ -329,7 +333,9 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
       cancelAnimationFrame(animationFrameId);
       controls.dispose();
       
-      if (scene.background) scene.background.dispose();
+      if (scene.background && scene.background instanceof THREE.Texture) {
+        scene.background.dispose();
+      }
       grassTexture.dispose();
       
       scene.traverse(object => {
@@ -363,5 +369,3 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     </div>
   );
 }
-
-    
