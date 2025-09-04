@@ -12,6 +12,8 @@ import { BufferDialog, type BufferState } from './buffer-dialog';
 import { ZoneDialog, type ZoneDialogState } from './zone-dialog';
 import { applyBuffer } from '@/services/buffer';
 import { SiteMarker } from './site-marker';
+import * as turf from '@turf/turf';
+
 
 interface MapCanvasProps {
   shapes: Shape[];
@@ -731,8 +733,22 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   };
 
    const handleZoneDrawn = useCallback((path: LatLng[], area: number) => {
+    if (!projectBoundary) return;
+    
+    const turfZone = turf.polygon([path.map(p => [p.lng, p.lat])]);
+    const turfBoundary = turf.polygon([projectBoundary.path.map(p => [p.lng, p.lat])]);
+
+    if (!turf.booleanContains(turfBoundary, turfZone)) {
+        toast({
+            variant: 'destructive',
+            title: 'Invalid Zone',
+            description: 'Zones must be drawn completely inside the main site boundary.',
+        });
+        return;
+    }
+
     setZoneDialogState({ isOpen: true, path, area });
-  }, []);
+  }, [projectBoundary, toast]);
 
   const handleCreateZone = useCallback((name: string, kind: Shape['zoneMeta']['kind']) => {
     if (!zoneDialogState.path || !zoneDialogState.area) return;

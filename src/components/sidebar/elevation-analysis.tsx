@@ -85,17 +85,17 @@ export function ElevationAnalysis({
         <CardContent className="space-y-4">
             <Collapsible open={isAnalysisVisible} onOpenChange={setIsAnalysisVisible}>
               <div className="flex items-center justify-between space-x-2">
-                  <div className="flex items-center gap-2">
-                      {isAnalysisVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                      <Label htmlFor="analysis-visibility">Show Grid</Label>
-                  </div>
                   <CollapsibleTrigger asChild>
-                    <Switch 
-                        id="analysis-visibility"
-                        checked={isAnalysisVisible}
-                        onCheckedChange={setIsAnalysisVisible}
-                    />
+                    <button className="flex items-center gap-2 flex-1">
+                        {isAnalysisVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        <Label htmlFor="analysis-visibility" className="cursor-pointer">Show Grid</Label>
+                    </button>
                   </CollapsibleTrigger>
+                <Switch 
+                    id="analysis-visibility"
+                    checked={isAnalysisVisible}
+                    onCheckedChange={setIsAnalysisVisible}
+                />
               </div>
               <CollapsibleContent className="space-y-6 pt-6">
                 <div className="space-y-4">

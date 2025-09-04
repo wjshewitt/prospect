@@ -64,6 +64,8 @@ export default function ToolPalette({
   );
   
   const { toast } = useToast();
+  const hasBoundary = useMemo(() => shapes.some(s => !s.zoneMeta && !s.assetMeta && !s.bufferMeta), [shapes]);
+
 
   const handleAdvancedTool = (action: 'union' | 'difference') => {
     if (selectedShapeIds.length !== 2) {
@@ -156,7 +158,7 @@ export default function ToolPalette({
             </Tooltip>
             <DropdownMenuContent side="right">
               {drawingTools.map(tool => (
-                <DropdownMenuItem key={tool.id} onClick={() => setSelectedTool(tool.id)}>
+                <DropdownMenuItem key={tool.id} onClick={() => setSelectedTool(tool.id)} disabled={hasBoundary}>
                   <div className="flex items-center gap-2">
                     {tool.icon}
                     <span>{tool.label}</span>
@@ -182,6 +184,7 @@ export default function ToolPalette({
                                     selectedTool === tool.id && 'bg-accent text-accent-foreground'
                                 )}
                                 onClick={() => setSelectedTool(tool.id)}
+                                disabled={!hasBoundary}
                             >
                                 {tool.icon}
                             </Button>
@@ -189,6 +192,7 @@ export default function ToolPalette({
                     </TooltipTrigger>
                     <TooltipContent side="right" className="md:block hidden">
                         <p>{tool.label}</p>
+                        {!hasBoundary && <p className="text-muted-foreground text-xs">Draw a site boundary first</p>}
                     </TooltipContent>
                  </Tooltip>
             ))}
