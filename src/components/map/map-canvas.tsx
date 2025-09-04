@@ -734,9 +734,17 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
 
    const handleZoneDrawn = useCallback((path: LatLng[], area: number) => {
     if (!projectBoundary) return;
+
+    const toTurfCoords = (p: LatLng[]) => {
+        const coords = p.map(point => [point.lng, point.lat]);
+        if (coords.length > 0 && (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1])) {
+            coords.push(coords[0]);
+        }
+        return coords;
+    };
     
-    const turfZone = turf.polygon([path.map(p => [p.lng, p.lat])]);
-    const turfBoundary = turf.polygon([projectBoundary.path.map(p => [p.lng, p.lat])]);
+    const turfZone = turf.polygon([toTurfCoords(path)]);
+    const turfBoundary = turf.polygon([toTurfCoords(projectBoundary.path)]);
 
     if (!turf.booleanContains(turfBoundary, turfZone)) {
         toast({
