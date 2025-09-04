@@ -4,7 +4,7 @@
 import type { Shape, ElevationGrid } from '@/lib/types';
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Map, Trash2, ChevronDown, LandPlot, Waves } from 'lucide-react';
+import { Map, Trash2, ChevronDown, LandPlot, Waves, Save, FolderOpen } from 'lucide-react';
 import { SiteAssessmentDialog } from '../assessment/site-assessment-dialog';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
@@ -23,13 +23,15 @@ type HeaderProps = {
   siteName: string;
   onSiteNameClick: () => void;
   onClear: () => void;
+  onSave: () => void;
+  onLoad: () => void;
   hasShapes: boolean;
   shapes: Shape[];
   elevationGrid: ElevationGrid | null;
   children?: React.ReactNode;
 };
 
-export default function Header({ siteName, onSiteNameClick, onClear, hasShapes, shapes, elevationGrid, children }: HeaderProps) {
+export default function Header({ siteName, onSiteNameClick, onClear, onSave, onLoad, hasShapes, shapes, elevationGrid, children }: HeaderProps) {
   const projectBoundary = shapes.find(s => s.type !== 'buffer' && !s.zoneMeta && !s.assetMeta);
   const zones = shapes.filter(s => !!s.zoneMeta);
 
@@ -84,6 +86,14 @@ export default function Header({ siteName, onSiteNameClick, onClear, hasShapes, 
       </div>
       <div className="flex items-center gap-2">
         {children}
+        <Button variant="outline" size="sm" onClick={onLoad}>
+            <FolderOpen className="h-4 w-4 mr-2" />
+            Load
+        </Button>
+        <Button variant="outline" size="sm" onClick={onSave} disabled={!hasShapes}>
+            <Save className="h-4 w-4 mr-2" />
+            Save
+        </Button>
         <Button variant="outline" size="sm" onClick={onClear} disabled={!hasShapes} aria-label="Clear all drawings">
             <Trash2 className="h-4 w-4 mr-2" />
             Clear

@@ -36,6 +36,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+const LOCAL_STORAGE_KEY = 'landvision-project';
 
 export default function VisionPage() {
   const [shapes, setShapes] = useState<Shape[]>([]);
@@ -126,6 +127,60 @@ export default function VisionPage() {
         setSiteName('');
     }
   }
+
+  const handleSave = () => {
+    try {
+        const projectData = {
+            siteName,
+            shapes,
+            mapState,
+        };
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(projectData));
+        toast({
+            title: 'Project Saved',
+            description: `Project "${siteName}" has been saved successfully.`,
+        });
+    } catch (error) {
+        console.error("Failed to save project:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Save Failed',
+            description: 'Could not save project data to local storage.',
+        });
+    }
+  };
+
+  const handleLoad = () => {
+    try {
+        const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (savedData) {
+            const projectData = JSON.parse(savedData);
+            setSiteName(projectData.siteName || '');
+            setShapes(projectData.shapes || []);
+            setMapState(projectData.mapState || null);
+            setSelectedShapeIds([]);
+            setElevationGrid(null);
+            toast({
+                title: 'Project Loaded',
+                description: `Project "${projectData.siteName || 'Untitled'}" has been loaded.`,
+            });
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'No Saved Project',
+                description: 'No saved project data was found in local storage.',
+            });
+        }
+    } catch (error) {
+        console.error("Failed to load project:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Load Failed',
+            description: 'Could not load project data from local storage.',
+        });
+    }
+  };
+
 
   const handleGenerateLayout = (zoneId: string) => {
     const zone = shapes.find(s => s.id === zoneId && !!s.zoneMeta);
@@ -230,6 +285,8 @@ export default function VisionPage() {
           siteName={siteName}
           onSiteNameClick={() => setIsNameSiteDialogOpen(true)}
           onClear={handleClear}
+          onSave={handleSave}
+          onLoad={handleLoad}
           hasShapes={shapes.length > 0}
           shapes={shapes}
           elevationGrid={elevationGrid}
