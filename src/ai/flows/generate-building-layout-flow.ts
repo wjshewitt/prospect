@@ -56,9 +56,9 @@ const generateLayoutPrompt = ai.definePrompt({
     You are an expert urban planner AI. Your task is to design a realistic and aesthetically pleasing residential building layout within a given polygonal zone, according to a specified density.
 
     General Rules:
-    1.  All generated buildings must be strictly inside the provided 'zonePolygon'.
+    1.  All generated buildings must be strictly inside the provided 'zonePolygon'. The zone is defined by a list of latitude/longitude points.
     2.  Generate detached houses ('house_detached'), each with 2 floors.
-    3.  The footprint for each house should be approximately 8x10 meters.
+    3.  The footprint for each house should be approximately 8x10 meters. The footprint must be a rectangle defined by four latitude/longitude points.
     4.  Arrange buildings in natural-looking clusters. Avoid placing them in a simple, rigid grid. Introduce slight variations in rotation for each building.
     5.  Ensure a reasonable distance between buildings for privacy and access, according to the density specified.
 
@@ -67,11 +67,11 @@ const generateLayoutPrompt = ai.definePrompt({
     - **medium**: Generate a standard suburban layout. Buildings should be regularly spaced but not cramped. Balance density with community feel.
     - **high**: Generate a dense layout but maintain realism. Do not just pack the area completely. Create organic clusters of buildings, and leave some irregular open space between clusters to simulate pathways or small common areas. The layout should feel dense but thoughtfully planned.
 
-    Input:
-    - Zone Polygon: {{{JSON.stringify zonePolygon}}}
+    Input Data:
+    - Zone Polygon Coordinates (lat, lng): {{{JSON.stringify zonePolygon}}}
     - Desired Density: {{{density}}}
 
-    Output the result as a JSON object matching the prescribed output schema.
+    Output the result as a JSON object matching the prescribed output schema. Ensure all building footprints are valid rectangles and fall completely within the zone polygon.
   `,
 });
 
