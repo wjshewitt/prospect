@@ -1,9 +1,8 @@
-
 'use client';
 
 import type { Shape, Tool, ElevationGrid, LatLng } from '@/lib/types';
 import { useState, useEffect } from 'react';
-import { APIProvider } from '@vis.gl/react-google-maps';
+import { APIProvider, useMap } from '@vis.gl/react-google-maps';
 import Header from '@/components/layout/header';
 import ToolPalette from '@/components/tools/tool-palette';
 import StatisticsSidebar from '@/components/sidebar/statistics-sidebar';
@@ -38,7 +37,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 const LOCAL_STORAGE_KEY = 'landvision-project';
 
-export default function VisionPage() {
+function VisionPageContent() {
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<Tool>('pan');
@@ -63,6 +62,7 @@ export default function VisionPage() {
   // State to preserve map position
   const [mapState, setMapState] = useState<{center: LatLng, zoom: number} | null>(null);
   const { toast } = useToast();
+  const map = useMap();
 
   useEffect(() => {
     // This now runs only on the client, after hydration
@@ -102,19 +102,6 @@ export default function VisionPage() {
   }, [selectedShapeIds, debouncedGridResolution]); // Re-run when selection or resolution changes
   
 
-  if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Configuration Error</h1>
-          <p className="text-muted-foreground">
-            Please provide a Google Maps API key in your environment variables.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const projectBoundary = shapes.find(s => s.type !== 'buffer' && !s.zoneMeta && !s.assetMeta);
   const assets = shapes.filter(s => !!s.assetMeta);
   const zones = shapes.filter(s => !!s.zoneMeta);
@@ -133,7 +120,7 @@ export default function VisionPage() {
         const projectData = {
             siteName,
             shapes,
-            mapState,
+            mapState: map ? { center: map.getCenter()!.toJSON(), zoom: map.getZoom()! } : null,
         };
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(projectData));
         toast({
@@ -184,7 +171,7 @@ export default function VisionPage() {
 
   const handleGenerateLayout = async (zoneId: string) => {
     const zone = shapes.find(s => s.id === zoneId && !!s.zoneMeta);
-    if (!zone) return;
+    if (!zone || !map) return;
 
     toast({
       title: 'Generating AI Layout...',
@@ -312,104 +299,99 @@ export default function VisionPage() {
 
 
   return (
-    <APIProvider 
-      apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-      libraries={['drawing', 'geometry', 'elevation', 'places']}
-    >
-      <div id="capture-area" className="flex flex-col h-screen bg-background text-foreground font-body">
-        <Header 
-          siteName={siteName}
-          onSiteNameClick={() => setIsNameSiteDialogOpen(true)}
-          onClear={handleClear}
-          onSave={handleSave}
-          onLoad={handleLoad}
-          hasShapes={shapes.length > 0}
+    <div id="capture-area" className="flex flex-col h-screen bg-background text-foreground font-body">
+      <Header 
+        siteName={siteName}
+        onSiteNameClick={() => setIsNameSiteDialogOpen(true)}
+        onClear={handleClear}
+        onSave={handleSave}
+        onLoad={handleLoad}
+        hasShapes={shapes.length > 0}
+        shapes={shapes}
+        elevationGrid={elevationGrid}
+      >
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleToggle3DView}
+            disabled={!projectBoundary}
+            data-tutorial="step-4"
+          >
+            {is3DView ? <MapIcon className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+            {is3DView ? '2D View' : '3D View'}
+          </Button>
+      </Header>
+      <div className="flex flex-1 overflow-hidden">
+        <ToolPalette 
+          selectedTool={selectedTool} 
+          setSelectedTool={setSelectedTool}
+          selectedShapeIds={selectedShapeIds}
           shapes={shapes}
-          elevationGrid={elevationGrid}
-        >
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleToggle3DView}
-              disabled={!projectBoundary}
-              data-tutorial="step-4"
-            >
-              {is3DView ? <MapIcon className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-              {is3DView ? '2D View' : '3D View'}
-            </Button>
-        </Header>
-        <div className="flex flex-1 overflow-hidden">
-          <ToolPalette 
-            selectedTool={selectedTool} 
-            setSelectedTool={setSelectedTool}
-            selectedShapeIds={selectedShapeIds}
-            shapes={shapes}
-            setShapes={setShapes}
-            setSelectedShapeIds={setSelectedShapeIds}
-          />
-          <main className="flex-1 relative bg-muted/20">
-            {is3DView && projectBoundary && elevationGrid ? (
-              <ThreeDVisualizationModal
-                assets={assets}
-                zones={zones}
-                boundary={projectBoundary}
-                elevationGrid={elevationGrid}
-              />
-            ) : (
-              <MapCanvas
-                shapes={shapes}
-                setShapes={setShapes}
-                selectedTool={selectedTool}
-                setSelectedTool={setSelectedTool}
-                gridResolution={debouncedGridResolution} // Use debounced value for analysis
-                steepnessThreshold={steepnessThreshold}
-                elevationGrid={elevationGrid}
-                setElevationGrid={setElevationGrid}
-                isAnalysisVisible={isAnalysisVisible}
-                selectedShapeIds={selectedShapeIds}
-                setSelectedShapeIds={setSelectedShapeIds}
-                onBoundaryDrawn={handleBoundaryDrawn}
-                mapState={mapState}
-                onMapStateChange={setMapState}
-              />
-            )}
-            
-            {!is3DView && (
-              <Button 
-                size="icon" 
-                variant="outline"
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-                className={cn("absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm", !isSidebarOpen && "right-4")}
-              >
-                {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
-              </Button>
-            )}
-
-            <Button
-                variant="default"
-                size="icon"
-                className="absolute bottom-4 left-4 z-10 rounded-full h-12 w-12 shadow-lg"
-                onClick={handleTutorialStart}
-            >
-                <HelpCircle />
-            </Button>
-          </main>
-          {!is3DView && (
-            <StatisticsSidebar 
-              shapes={shapes} 
-              isOpen={isSidebarOpen}
-              gridResolution={gridResolution} // Use immediate value for slider UI
-              setGridResolution={setGridResolution}
-              steepnessThreshold={steepnessThreshold}
-              setSteepnessThreshold={setSteepnessThreshold}
+          setShapes={setShapes}
+          setSelectedShapeIds={setSelectedShapeIds}
+        />
+        <main className="flex-1 relative bg-muted/20">
+          {is3DView && projectBoundary && elevationGrid ? (
+            <ThreeDVisualizationModal
+              assets={assets}
+              zones={zones}
+              boundary={projectBoundary}
               elevationGrid={elevationGrid}
+            />
+          ) : (
+            <MapCanvas
+              shapes={shapes}
+              setShapes={setShapes}
+              selectedTool={selectedTool}
+              setSelectedTool={setSelectedTool}
+              gridResolution={debouncedGridResolution} // Use debounced value for analysis
+              steepnessThreshold={steepnessThreshold}
+              elevationGrid={elevationGrid}
+              setElevationGrid={setElevationGrid}
               isAnalysisVisible={isAnalysisVisible}
-              setIsAnalysisVisible={setIsAnalysisVisible}
               selectedShapeIds={selectedShapeIds}
-              onGenerateLayout={handleGenerateLayout}
+              setSelectedShapeIds={setSelectedShapeIds}
+              onBoundaryDrawn={handleBoundaryDrawn}
+              mapState={mapState}
+              onMapStateChange={setMapState}
             />
           )}
-        </div>
+          
+          {!is3DView && (
+            <Button 
+              size="icon" 
+              variant="outline"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+              className={cn("absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm", !isSidebarOpen && "right-4")}
+            >
+              {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
+            </Button>
+          )}
+
+          <Button
+              variant="default"
+              size="icon"
+              className="absolute bottom-4 left-4 z-10 rounded-full h-12 w-12 shadow-lg"
+              onClick={handleTutorialStart}
+          >
+              <HelpCircle />
+          </Button>
+        </main>
+        {!is3DView && (
+          <StatisticsSidebar 
+            shapes={shapes} 
+            isOpen={isSidebarOpen}
+            gridResolution={gridResolution} // Use immediate value for slider UI
+            setGridResolution={setGridResolution}
+            steepnessThreshold={steepnessThreshold}
+            setSteepnessThreshold={setSteepnessThreshold}
+            elevationGrid={elevationGrid}
+            isAnalysisVisible={isAnalysisVisible}
+            setIsAnalysisVisible={setIsAnalysisVisible}
+            selectedShapeIds={selectedShapeIds}
+            onGenerateLayout={handleGenerateLayout}
+          />
+        )}
       </div>
       <NameSiteDialog 
         isOpen={isNameSiteDialogOpen}
@@ -425,8 +407,32 @@ export default function VisionPage() {
           onFinish={handleTutorialFinish}
         />
       )}
-    </APIProvider>
+    </div>
   );
 }
 
+
+export default function VisionPage() {
+
+    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Configuration Error</h1>
+          <p className="text-muted-foreground">
+            Please provide a Google Maps API key in your environment variables.
+          </p>
+        </div>
+      </div>
+    );
+  }
     
+    return (
+     <APIProvider 
+      apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+      libraries={['drawing', 'geometry', 'elevation', 'places']}
+    >
+        <VisionPageContent />
+    </APIProvider>
+    )
+}

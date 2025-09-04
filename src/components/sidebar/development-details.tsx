@@ -4,6 +4,8 @@ import type { Shape } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Building, Home, Scan, Scaling } from 'lucide-react';
 import { useMemo } from 'react';
+import { useMap } from '@vis.gl/react-google-maps';
+
 
 type DevelopmentDetailsProps = {
   shapes: Shape[];
@@ -13,8 +15,10 @@ type DevelopmentDetailsProps = {
 const SQ_METERS_TO_ACRES = 0.000247105;
 
 export function DevelopmentDetails({ shapes, selectedShapeIds }: DevelopmentDetailsProps) {
+  const map = useMap();
+
   const analysis = useMemo(() => {
-    if (selectedShapeIds.length !== 1) return null;
+    if (!map || selectedShapeIds.length !== 1) return null;
     
     const selectedZone = shapes.find(s => s.id === selectedShapeIds[0] && !!s.zoneMeta);
     if (!selectedZone || !selectedZone.area) return null;
@@ -44,7 +48,7 @@ export function DevelopmentDetails({ shapes, selectedShapeIds }: DevelopmentDeta
         density
     }
 
-  }, [shapes, selectedShapeIds]);
+  }, [shapes, selectedShapeIds, map]);
 
   if (!analysis) {
     return null;

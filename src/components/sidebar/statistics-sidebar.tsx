@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Shape, ElevationGrid } from '@/lib/types';
