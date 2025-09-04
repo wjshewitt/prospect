@@ -7,7 +7,7 @@ import { APIProvider } from '@vis.gl/react-google-maps';
 import Header from '@/components/layout/header';
 import ToolPalette from '@/components/tools/tool-palette';
 import StatisticsSidebar from '@/components/sidebar/statistics-sidebar';
-import { MapCanvas } from '@/components/map/map-canvas';
+import { MapCanvas, uuid } from '@/components/map/map-canvas';
 import { Button } from '@/components/ui/button';
 import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,7 @@ import { ThreeDVisualizationModal } from '@/components/dev-viz/three-d-modal';
 import { NameSiteDialog } from '@/components/map/name-site-dialog';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { TutorialGuide } from '@/components/tutorial/tutorial-guide';
+import { layoutAssetsInZone } from '@/services/procedural-generation';
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -88,6 +89,26 @@ export default function VisionPage() {
         setElevationGrid(null);
         setSiteName('');
     }
+  }
+
+  const handleGenerateLayout = (zoneId: string) => {
+    const zone = shapes.find(s => s.id === zoneId && !!s.zoneMeta);
+    if (!zone) return;
+
+    // Remove existing assets within that zone first
+    const assetsInZone = assets.filter(asset => {
+        const assetCenter = new google.maps.LatLng(asset.path[0].lat, asset.path[0].lng);
+        const zonePolygon = new google.maps.Polygon({ paths: zone.path });
+        return google.maps.geometry.poly.containsLocation(assetCenter, zonePolygon);
+    });
+    const assetIdsInZone = new Set(assetsInZone.map(a => a.id));
+
+    const newAssets = layoutAssetsInZone(zone);
+    
+    setShapes(prev => {
+        const shapesWithoutOldAssets = prev.filter(s => !assetIdsInZone.has(s.id));
+        return [...shapesWithoutOldAssets, ...newAssets];
+    });
   }
 
   const handleNameSite = (name: string) => {
@@ -211,6 +232,7 @@ export default function VisionPage() {
               isAnalysisVisible={isAnalysisVisible}
               setIsAnalysisVisible={setIsAnalysisVisible}
               selectedShapeIds={selectedShapeIds}
+              onGenerateLayout={handleGenerateLayout}
             />
           )}
         </div>

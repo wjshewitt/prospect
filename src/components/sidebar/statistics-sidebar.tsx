@@ -5,7 +5,8 @@ import type { Shape, ElevationGrid } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { BarChart3, LandPlot, Waves, HelpCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { BarChart3, LandPlot, Waves, HelpCircle, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ElevationAnalysis } from './elevation-analysis';
 
@@ -20,6 +21,7 @@ type StatisticsSidebarProps = {
   isAnalysisVisible: boolean;
   setIsAnalysisVisible: (visible: boolean) => void;
   selectedShapeIds: string[];
+  onGenerateLayout: (zoneId: string) => void;
 };
 
 const SQ_METERS_TO_ACRES = 0.000247105;
@@ -35,6 +37,7 @@ export default function StatisticsSidebar({
     isAnalysisVisible,
     setIsAnalysisVisible,
     selectedShapeIds,
+    onGenerateLayout,
 }: StatisticsSidebarProps) {
   const totalAreaMeters = shapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
   const totalAreaAcres = totalAreaMeters * SQ_METERS_TO_ACRES;
@@ -42,6 +45,8 @@ export default function StatisticsSidebar({
   const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
   const selectedAreaMeters = selectedShapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
   const selectedAreaAcres = selectedAreaMeters * SQ_METERS_TO_ACRES;
+
+  const canGenerate = selectedShapeIds.length === 1 && shapes.find(s => s.id === selectedShapeIds[0])?.zoneMeta;
 
   return (
     <aside 
@@ -102,6 +107,25 @@ export default function StatisticsSidebar({
               selectedShapeIds={selectedShapeIds}
             />
           </div>
+
+          {canGenerate && (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center justify-between">
+                        <span>Zone Actions</span>
+                        <LayoutGrid className="h-5 w-5 text-muted-foreground" />
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Button className="w-full" onClick={() => onGenerateLayout(selectedShapeIds[0])}>
+                        Generate Layout
+                    </Button>
+                    <CardDescription className="text-xs mt-2 text-center">
+                        Automatically place buildings in the selected zone. This will replace any existing buildings in this zone.
+                    </CardDescription>
+                </CardContent>
+            </Card>
+          )}
 
            <Card>
             <CardHeader>

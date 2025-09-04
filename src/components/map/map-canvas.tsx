@@ -225,8 +225,9 @@ const DrawnShapes: React.FC<{
 
         if (isAsset) {
             // Asset footprints are just simple outlines
-            fillOpacity = 0;
-            strokeColor = '#334155'; // slate-700
+            fillOpacity = 0.4;
+            fillColor = '#334155'; // slate-700
+            strokeColor = '#0f172a'; // slate-900
             strokeWeight = 1;
         }
 
@@ -274,7 +275,7 @@ const DrawnShapes: React.FC<{
         
         poly.addListener('dblclick', () => {
             if (isBuffer || isAsset) {
-                toast({ title: 'This shape cannot be moved directly.' });
+                toast({ title: 'This shape cannot be moved or edited directly.' });
                 return;
             }
             setEditingShapeId(null); // Stop editing if we start moving
