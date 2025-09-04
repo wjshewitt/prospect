@@ -110,12 +110,6 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
         return z0 * (1 - t) + z1 * t;
     };
     
-    // --- Ground Plane (from boundary) ---
-    const groundShape = new THREE.Shape(boundary.path.map(p => {
-        const local = proj.toLocal(p);
-        return new THREE.Vector2(local.x, local.y);
-    }));
-
     // --- Create Topographic Terrain Mesh ---
     const terrainDivisionsX = 100;
     const terrainDivisionsY = 100;
@@ -177,13 +171,16 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
             side: THREE.DoubleSide, 
             transparent: true, 
             opacity: 0.6,
-            polygonOffset: true, // Prevents z-fighting
-            polygonOffsetFactor: -1.0,
-            polygonOffsetUnits: -4.0
         });
         const zoneMesh = new THREE.Mesh(zoneGeometry, zoneMaterial);
         zoneMesh.rotation.x = -Math.PI / 2;
-        // No need to set y position, it will be handled by the offset
+        
+        // Elevate the zone decal slightly above the terrain to avoid z-fighting
+        const zoneCenter = getPolygonCenter(zone.path);
+        const localZoneCenter = proj.toLocal(zoneCenter);
+        const elevation = getElevationAt(localZoneCenter.x, localZoneCenter.y);
+        zoneMesh.position.y = elevation + 0.1; // 10cm above terrain
+
         scene.add(zoneMesh);
     });
     
@@ -218,8 +215,10 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
 
         const mesh = new THREE.Mesh(geometry, material);
         
-        mesh.position.set(localPos.x, elevation + height / 2, localPos.y);
+        // After rotating, the shape's original Z becomes Y.
+        // We set the position AFTER rotation.
         mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set(localPos.x, elevation, localPos.y); // Set base at terrain height
         
         const rotationDegrees = asset.assetMeta.rotation ?? 0;
         mesh.rotation.z = -rotationDegrees * (Math.PI / 180);
@@ -279,3 +278,5 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     </div>
   );
 }
+
+    
