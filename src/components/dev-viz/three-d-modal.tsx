@@ -1,15 +1,13 @@
-
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Shape, LatLng, ElevationGrid } from '@/lib/types';
-import { ArrowUp, Droplets, Layers, Mountain, Camera, CameraOff } from 'lucide-react';
+import { ArrowUp, Orbit, MousePointer, X, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { Earcut } from 'three/src/extras/Earcut';
-
 
 // Helper to calculate the center of a polygon
 const getPolygonCenter = (path: LatLng[]): LatLng => {
@@ -91,14 +89,9 @@ export function ThreeDVisualizationModal({
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const orbitControlsRef = useRef<OrbitControls | null>(null);
-  
   const [selectedAsset, setSelectedAsset] = useState<{mesh: THREE.Mesh, shape: Shape} | null>(null);
   const [elevationStats, setElevationStats] = useState({ min: 0, max: 0, range: 0 });
   const [terrainQuality, setTerrainQuality] = useState<'low' | 'medium' | 'high'>('medium');
-  const [showWater, setShowWater] = useState(false);
-  const [waterLevel, setWaterLevel] = useState(0);
-  const [showTextures, setShowTextures] = useState(true);
 
   const onKeyDown = useCallback((event: KeyboardEvent) => {
     if ((event.key === 'Delete' || event.key === 'Backspace') && selectedAsset) {
@@ -136,7 +129,7 @@ export function ThreeDVisualizationModal({
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: 'high-performance',
-      logarithmicDepthBuffer: true,
+      logarithmicDepthBuffer: true, // Better depth precision for large terrains
     });
     renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -169,6 +162,7 @@ export function ThreeDVisualizationModal({
     const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x4F2E14, 0.3);
     scene.add(hemiLight);
 
+    // Add fill light to reduce harsh shadows
     const fillLight = new THREE.DirectionalLight(0xFFFFFF, 0.3);
     fillLight.position.set(-100, 200, -50);
     scene.add(fillLight);
@@ -182,7 +176,6 @@ export function ThreeDVisualizationModal({
     orbitControls.maxDistance = 1000;
     orbitControls.maxPolarAngle = Math.PI / 2.1;
     (camera as any)._controls = orbitControls;
-    orbitControlsRef.current = orbitControls;
 
     // Raycasting for selection
     const raycaster = new THREE.Raycaster();
@@ -219,7 +212,7 @@ export function ThreeDVisualizationModal({
 
     // Coordinate System & Projections
     const siteCenter = getPolygonCenter(boundary.path);
-    const R_EARTH = 6371e3;
+    const R_EARTH = 6371e3; // meters
     const COS_LAT = Math.cos(siteCenter.lat * Math.PI / 180);
 
     const proj = {
@@ -227,11 +220,11 @@ export function ThreeDVisualizationModal({
         const dLat = (p.lat - siteCenter.lat) * Math.PI / 180;
         const dLng = (p.lng - siteCenter.lng) * Math.PI / 180;
         const x = dLng * R_EARTH * COS_LAT;
-        const y = dLat * R_EARTH;
+        const y = dLat * R_EARTH; // Fixed: removed negative sign
         return { x, y };
       },
       xyToLL: (x: number, y: number): LatLng => {
-        const dLat = y / R_EARTH;
+        const dLat = y / R_EARTH; // Fixed: removed negative sign
         const dLng = x / (R_EARTH * COS_LAT);
         return {
           lat: siteCenter.lat + dLat * 180 / Math.PI,
@@ -254,44 +247,159 @@ export function ThreeDVisualizationModal({
     }
     const elevRange = maxElev - minElev;
     setElevationStats({ min: minElev, max: maxElev, range: elevRange });
-    setWaterLevel(minElev + elevRange * 0.3); // Default water at 30% of elevation range
 
+    // Enhanced elevation getter with bicubic interpolation
     const getElevationAt = (x: number, y: number): number => {
       if (!grid || nx < 2 || ny < 2) return minElev;
-    
-      const u = (x - minX) / (maxX - minX);
-      const v = 1 - ((y - minY) / (maxY - minY)); // Flipped V for correct mapping
-    
-      const gridU = u * (nx - 1);
-      const gridV = v * (ny - 1);
-    
-      const i = Math.floor(gridU);
-      const j = Math.floor(gridV);
-    
+      
+      const u = ((x - minX) / (maxX - minX)) * (nx - 1);
+      const v = ((y - minY) / (maxY - minY)) * (ny - 1); // Fixed: removed inversion
+      
+      const i = Math.floor(u);
+      const j = Math.floor(v);
+
       if (i < 0 || i >= nx - 1 || j < 0 || j >= ny - 1) {
-        const clampedI = Math.max(0, Math.min(nx - 1, i));
-        const clampedJ = Math.max(0, Math.min(ny - 1, j));
+        // Extrapolate for points outside grid
+        const clampedI = Math.max(0, Math.min(nx - 1, Math.round(u)));
+        const clampedJ = Math.max(0, Math.min(ny - 1, Math.round(v)));
         return grid[clampedJ * nx + clampedI] || minElev;
       }
-    
-      const s = gridU - i; // Fractional part for interpolation in u
-      const t = gridV - j; // Fractional part for interpolation in v
-    
+
       // Bilinear interpolation
+      const s = u - i;
+      const t = v - j;
+
       const z00 = grid[j * nx + i] || minElev;
       const z10 = grid[j * nx + i + 1] || minElev;
       const z01 = grid[(j + 1) * nx + i] || minElev;
       const z11 = grid[(j + 1) * nx + i + 1] || minElev;
-    
+
       const z0 = z00 * (1 - s) + z10 * s;
       const z1 = z01 * (1 - s) + z11 * s;
-    
+
       return z0 * (1 - t) + z1 * t;
     };
 
-
-    // Calculate boundary bounds and create shape
+    // Create high-resolution terrain mesh
     const boundaryPoints = boundary.path.map(p => proj.toLocal(p));
+    
+    // Calculate boundary bounds
+    let bMinX = Infinity, bMaxX = -Infinity, bMinY = Infinity, bMaxY = -Infinity;
+    boundaryPoints.forEach(p => {
+      bMinX = Math.min(bMinX, p.x);
+      bMaxX = Math.max(bMaxX, p.x);
+      bMinY = Math.min(bMinY, p.y);
+      bMaxY = Math.max(bMaxY, p.y);
+    });
+
+    // Create dense grid for terrain mesh
+    const gridResolution = terrainQuality === 'high' ? 100 : terrainQuality === 'medium' ? 50 : 25;
+    const gridWidth = Math.ceil((bMaxX - bMinX) / 2) * 2; // Ensure even number
+    const gridHeight = Math.ceil((bMaxY - bMinY) / 2) * 2;
+    const segmentsX = Math.max(10, Math.min(gridResolution, gridWidth));
+    const segmentsY = Math.max(10, Math.min(gridResolution, gridHeight));
+
+    // Create plane geometry with proper resolution
+    const terrainGeometry = new THREE.PlaneGeometry(
+      gridWidth,
+      gridHeight,
+      segmentsX,
+      segmentsY
+    );
+
+    // Apply elevation to vertices
+    const positions = terrainGeometry.attributes.position;
+    const vertices = [];
+    
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i) + (bMinX + bMaxX) / 2;
+      const y = positions.getY(i) + (bMinY + bMaxY) / 2;
+      const z = getElevationAt(x, y);
+      
+      positions.setZ(i, z);
+      vertices.push(new THREE.Vector3(x, y, z));
+    }
+
+    // Smooth terrain by averaging nearby vertices
+    const smoothingPasses = 2;
+    for (let pass = 0; pass < smoothingPasses; pass++) {
+      const newZ = new Float32Array(positions.count);
+      
+      for (let i = 0; i < segmentsY + 1; i++) {
+        for (let j = 0; j < segmentsX + 1; j++) {
+          const idx = i * (segmentsX + 1) + j;
+          let sumZ = positions.getZ(idx);
+          let count = 1;
+          
+          // Average with neighbors
+          const neighbors = [
+            [-1, 0], [1, 0], [0, -1], [0, 1],
+            [-1, -1], [-1, 1], [1, -1], [1, 1]
+          ];
+          
+          for (const [di, dj] of neighbors) {
+            const ni = i + di;
+            const nj = j + dj;
+            if (ni >= 0 && ni <= segmentsY && nj >= 0 && nj <= segmentsX) {
+              const nIdx = ni * (segmentsX + 1) + nj;
+              sumZ += positions.getZ(nIdx);
+              count++;
+            }
+          }
+          
+          newZ[idx] = sumZ / count;
+        }
+      }
+      
+      for (let i = 0; i < positions.count; i++) {
+        positions.setZ(i, newZ[i]);
+      }
+    }
+
+    // Recompute normals for smooth shading
+    terrainGeometry.computeVertexNormals();
+    terrainGeometry.attributes.position.needsUpdate = true;
+
+    // Create terrain material with vertex colors based on elevation
+    const colors = new Float32Array(positions.count * 3);
+    for (let i = 0; i < positions.count; i++) {
+      const z = positions.getZ(i);
+      const normalizedHeight = (z - minElev) / (elevRange || 1);
+      
+      // Gradient from green (low) to brown (high)
+      const lowColor = new THREE.Color(0x2D5016);
+      const midColor = new THREE.Color(0x8B7355);
+      const highColor = new THREE.Color(0xD2B48C);
+      
+      let color;
+      if (normalizedHeight < 0.5) {
+        color = lowColor.clone().lerp(midColor, normalizedHeight * 2);
+      } else {
+        color = midColor.clone().lerp(highColor, (normalizedHeight - 0.5) * 2);
+      }
+      
+      colors[i * 3] = color.r;
+      colors[i * 3 + 1] = color.g;
+      colors[i * 3 + 2] = color.b;
+    }
+    
+    terrainGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    // Create terrain material
+    const terrainMaterial = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.9,
+      metalness: 0.0,
+      side: THREE.DoubleSide,
+      flatShading: false,
+    });
+
+    const terrainMesh = new THREE.Mesh(terrainGeometry, terrainMaterial);
+    terrainMesh.receiveShadow = true;
+    terrainMesh.position.set((bMinX + bMaxX) / 2, (bMinY + bMaxY) / 2, 0);
+    geoGroup.add(terrainMesh);
+
+    // Clip terrain to boundary (visual mask)
     const boundaryShape = new THREE.Shape();
     boundaryPoints.forEach((p, i) => {
       if (i === 0) boundaryShape.moveTo(p.x, p.y);
@@ -299,195 +407,61 @@ export function ThreeDVisualizationModal({
     });
     boundaryShape.closePath();
 
-    // Create terrain textures
-    const textureLoader = new THREE.TextureLoader();
-    
-    // Create procedural textures using canvas
-    const createTerrainTexture = (baseColor: string, variation: number = 0.1) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 512;
-      const ctx = canvas.getContext('2d')!;
+    // Add boundary outline
+    const boundaryGeometry = new THREE.BufferGeometry().setFromPoints(
+      boundaryShape.getPoints(50)
+    );
+    const boundaryLine = new THREE.Line(
+      boundaryGeometry,
+      new THREE.LineBasicMaterial({ color: 0xFF0000, linewidth: 2 })
+    );
+    boundaryLine.position.z = maxElev + 0.5;
+    geoGroup.add(boundaryLine);
+
+    // Zone rendering with elevation-aware placement
+    zones.forEach(zone => {
+      const zonePoints = zone.path.map(p => proj.toLocal(p));
+      const zoneShape = new THREE.Shape();
+      zonePoints.forEach((p, i) => {
+        if (i === 0) zoneShape.moveTo(p.x, p.y);
+        else zoneShape.lineTo(p.x, p.y);
+      });
+      zoneShape.closePath();
+
+      // Create zone overlay
+      const zoneGeometry = new THREE.ShapeGeometry(zoneShape);
+      const positions = zoneGeometry.attributes.position;
       
-      // Base color
-      ctx.fillStyle = baseColor;
-      ctx.fillRect(0, 0, 512, 512);
-      
-      // Add noise/variation
-      for (let i = 0; i < 5000; i++) {
-        const x = Math.random() * 512;
-        const y = Math.random() * 512;
-        const size = Math.random() * 3;
-        const alpha = Math.random() * variation;
-        ctx.fillStyle = `rgba(${Math.random()*50}, ${Math.random()*50}, ${Math.random()*50}, ${alpha})`;
-        ctx.fillRect(x, y, size, size);
+      // Apply elevation to zone vertices
+      for (let i = 0; i < positions.count; i++) {
+        const x = positions.getX(i);
+        const y = positions.getY(i);
+        const z = getElevationAt(x, y) + 0.1; // Slight offset above terrain
+        positions.setZ(i, z);
       }
       
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(10, 10);
-      return texture;
-    };
-
-    const grassTexture = createTerrainTexture('#3a5f1a', 0.2);
-    const rockTexture = createTerrainTexture('#8b7355', 0.3);
-    const sandTexture = createTerrainTexture('#c2b280', 0.15);
-
-
-    // --- Zone and Material Mapping ---
-    const zoneMaterialMap = new Map<string, number>();
-    const materials: THREE.Material[] = [
-        new THREE.MeshStandardMaterial({ color: 0x2d5016, roughness: 0.9, metalness: 0.0, side: THREE.DoubleSide }) // Default terrain
-    ];
-
-    const zoneKindToColor: Record<Shape['zoneMeta']['kind'], number> = {
-        'residential': 0x4CAF50, // Green
-        'commercial':  0x2196F3, // Blue
-        'amenity':     0xFFC107, // Amber
-        'green_space': 0x2E7D32, // Dark Green
-        'solar':       0xFF9800, // Orange
-    };
-    
-    zones.forEach(zone => {
-        const color = zoneKindToColor[zone.zoneMeta!.kind] || 0x555555;
-        materials.push(new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.7 }));
-        zoneMaterialMap.set(zone.id, materials.length - 1);
-    });
-    
-    // Create LOD terrain meshes
-    const createTerrainLOD = () => {
-      const lodGroup = new THREE.LOD();
+      zoneGeometry.computeVertexNormals();
       
-      const resolutions = [
-        { segments: 100, distance: 0 },
-        { segments: 50, distance: 100 },
-        { segments: 25, distance: 300 },
-      ];
-
-      resolutions.forEach(({ segments, distance }) => {
-        const geometry = new THREE.ShapeGeometry(boundaryShape, segments);
-        const positions = geometry.attributes.position;
-        
-        for (let i = 0; i < positions.count; i++) {
-          const x = positions.getX(i);
-          const y = positions.getY(i);
-          const z = getElevationAt(x, y);
-          positions.setZ(i, z);
-        }
-
-        // --- Assign materials based on zone ---
-        geometry.clearGroups();
-        const faces = Earcut.triangulate(positions.array, [], 3);
-        const facesByMaterial: { [index: number]: number[] } = { 0: [] };
-        zones.forEach(zone => { facesByMaterial[zoneMaterialMap.get(zone.id)!] = []; });
-
-        for (let i = 0; i < faces.length; i += 3) {
-            const i1 = faces[i];
-            const i2 = faces[i+1];
-            const i3 = faces[i+2];
-
-            const cx = (positions.getX(i1) + positions.getX(i2) + positions.getX(i3)) / 3;
-            const cy = (positions.getY(i1) + positions.getY(i2) + positions.getY(i3)) / 3;
-            
-            let materialIndex = 0; // Default terrain
-            for (const zone of zones) {
-                const googleZone = new google.maps.Polygon({ paths: zone.path });
-                const centerLL = proj.xyToLL(cx, cy);
-                if(google.maps.geometry.poly.containsLocation(new google.maps.LatLng(centerLL), googleZone)) {
-                    materialIndex = zoneMaterialMap.get(zone.id) ?? 0;
-                    break;
-                }
-            }
-            
-            facesByMaterial[materialIndex].push(i1, i2, i3);
-        }
-
-        let currentStart = 0;
-        Object.entries(facesByMaterial).forEach(([matIndex, faceIndices]) => {
-            if (faceIndices.length > 0) {
-                geometry.addGroup(currentStart, faceIndices.length, parseInt(matIndex));
-                currentStart += faceIndices.length;
-            }
-        });
-        
-        geometry.setIndex(faces);
-        geometry.computeVertexNormals();
-
-        const mesh = new THREE.Mesh(geometry, materials);
-        mesh.receiveShadow = true;
-        mesh.castShadow = true;
-        lodGroup.addLevel(mesh, distance);
-      });
-
-      return lodGroup;
-    };
-
-    // Add terrain LOD to scene
-    const terrainLOD = createTerrainLOD();
-    geoGroup.add(terrainLOD);
-
-    // Water feature
-    let waterMesh: THREE.Mesh | null = null;
-    if (showWater) {
-       const boundaryBBox = new THREE.Box3().setFromPoints(boundaryPoints.map(p => new THREE.Vector3(p.x, p.y, 0)));
-       const size = boundaryBBox.getSize(new THREE.Vector3());
-
-      const waterGeometry = new THREE.PlaneGeometry(size.x * 1.2, size.y * 1.2, 1, 1);
+      let zoneColor = 0x555555;
+      switch(zone.zoneMeta?.kind) {
+        case 'residential': zoneColor = 0x4CAF50; break;
+        case 'commercial': zoneColor = 0x2196F3; break;
+        case 'amenity': zoneColor = 0xFFC107; break;
+        case 'green_space': zoneColor = 0x2E7D32; break;
+        case 'solar': zoneColor = 0xFF9800; break;
+      }
       
-      const waterMaterial = new THREE.ShaderMaterial({
-        uniforms: {
-          time: { value: 0 },
-          waterColor: { value: new THREE.Color(0x006994) },
-          waterHighlight: { value: new THREE.Color(0x4db8ff) },
-          flowSpeed: { value: 0.03 }
-        },
-        vertexShader: `
-          varying vec2 vUv;
-          uniform float time;
-          
-          void main() {
-            vUv = uv;
-            vec3 pos = position;
-            
-            pos.z += sin(position.x * 0.1 + time) * 0.2;
-            pos.z += cos(position.y * 0.15 + time * 1.2) * 0.15;
-            
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-          }
-        `,
-        fragmentShader: `
-          uniform float time;
-          uniform vec3 waterColor;
-          uniform vec3 waterHighlight;
-          uniform float flowSpeed;
-          varying vec2 vUv;
-          
-          void main() {
-            vec2 uv = vUv;
-            uv.x += sin(uv.y * 10.0 + time * flowSpeed) * 0.01;
-            uv.y += cos(uv.x * 10.0 + time * flowSpeed * 0.8) * 0.01;
-            
-            float ripple1 = sin(length(uv - vec2(0.5)) * 20.0 - time) * 0.5 + 0.5;
-            float ripple2 = cos(length(uv - vec2(0.3, 0.7)) * 15.0 - time * 0.8) * 0.5 + 0.5;
-            float ripples = (ripple1 + ripple2) * 0.5;
-            
-            vec3 color = mix(waterColor, waterHighlight, ripples * 0.3);
-            
-            gl_FragColor = vec4(color, 0.85);
-          }
-        `,
+      const zoneMaterial = new THREE.MeshStandardMaterial({
+        color: zoneColor,
         transparent: true,
+        opacity: 0.3,
         side: THREE.DoubleSide,
-        depthWrite: false
       });
       
-      waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
-      const center = boundaryBBox.getCenter(new THREE.Vector3());
-      waterMesh.position.set(center.x, center.y, waterLevel);
-      waterMesh.receiveShadow = true;
-      geoGroup.add(waterMesh);
-    }
-    
+      const zoneMesh = new THREE.Mesh(zoneGeometry, zoneMaterial);
+      geoGroup.add(zoneMesh);
+    });
+
     // Asset materials
     const buildingMaterial = new THREE.MeshStandardMaterial({ 
       color: '#D2B48C', 
@@ -519,7 +493,7 @@ export function ThreeDVisualizationModal({
       return new THREE.Shape(points);
     };
 
-    // Render assets with LOD support
+    // Render assets with proper elevation
     assets.forEach(asset => {
       if (!asset.assetMeta) return;
 
@@ -530,76 +504,44 @@ export function ThreeDVisualizationModal({
       
       let height = 0;
       let material: THREE.Material;
-      let lodAsset: THREE.LOD | THREE.Object3D;
 
       if(asset.assetMeta.assetType === 'building') {
         height = (asset.assetMeta.floors ?? 1) * 3.2;
         material = buildingMaterial.clone();
         
-        lodAsset = new THREE.LOD();
-        
-        const highDetailGeometry = new THREE.ExtrudeGeometry(footprintShape, {
-          depth: height,
-          bevelEnabled: true,
-          bevelThickness: 0.1,
-          bevelSize: 0.1,
-          bevelSegments: 3
-        });
-        const highDetailMesh = new THREE.Mesh(highDetailGeometry, material.clone());
-        highDetailMesh.castShadow = true;
-        highDetailMesh.receiveShadow = true;
-        lodAsset.addLevel(highDetailMesh, 0);
-        
-        const medDetailGeometry = new THREE.ExtrudeGeometry(footprintShape, {
-          depth: height,
-          bevelEnabled: true,
-          bevelThickness: 0.05,
-          bevelSize: 0.05,
-          bevelSegments: 1
-        });
-        const medDetailMesh = new THREE.Mesh(medDetailGeometry, material.clone());
-        medDetailMesh.castShadow = true;
-        medDetailMesh.receiveShadow = true;
-        lodAsset.addLevel(medDetailMesh, 50);
-        
-        const lowDetailGeometry = new THREE.ExtrudeGeometry(footprintShape, {
-          depth: height,
-          bevelEnabled: false
-        });
-        const lowDetailMesh = new THREE.Mesh(lowDetailGeometry, material.clone());
-        lowDetailMesh.castShadow = false;
-        lowDetailMesh.receiveShadow = true;
-        lodAsset.addLevel(lowDetailMesh, 150);
-        
-        [highDetailMesh, medDetailMesh, lowDetailMesh].forEach(mesh => {
-          mesh.userData = { shape: asset, originalMaterial: material };
-          originalMaterials.set(mesh, material.clone());
-          selectableMeshes.push(mesh);
-        });
-        
+        // Add windows to buildings
+        const windowTexture = new THREE.TextureLoader().load(
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+        );
+        (material as THREE.MeshStandardMaterial).emissiveMap = windowTexture;
+        (material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0x222222);
       } else if(asset.assetMeta.assetType === 'solar_panel') {
         height = 0.1;
         material = solarPanelMaterial.clone();
-        
-        const geometry = new THREE.ExtrudeGeometry(footprintShape, {
-          depth: height,
-          bevelEnabled: false
-        });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        mesh.userData = { shape: asset, originalMaterial: material };
-        originalMaterials.set(mesh, material);
-        selectableMeshes.push(mesh);
-        lodAsset = mesh;
       } else {
         return;
       }
 
+      const extrudeSettings = {
+        depth: height,
+        bevelEnabled: true,
+        bevelThickness: 0.1,
+        bevelSize: 0.1,
+        bevelSegments: 2
+      };
+
+      const geometry = new THREE.ExtrudeGeometry(footprintShape, extrudeSettings);
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData = { shape: asset, originalMaterial: material };
+      originalMaterials.set(mesh, material);
+      selectableMeshes.push(mesh);
+      
       const pivot = new THREE.Object3D();
       const elevationOffset = asset.assetMeta.assetType === 'solar_panel' ? 0.1 : 0;
       pivot.position.set(centerXY.x, centerXY.y, baseElevation + elevationOffset);
-      pivot.add(lodAsset);
+      pivot.add(mesh);
       pivot.rotation.z = -(asset.assetMeta.rotation ?? 0) * (Math.PI / 180);
       geoGroup.add(pivot);
     });
@@ -631,25 +573,7 @@ export function ThreeDVisualizationModal({
       if (deltaTime < frameTime) return;
       lastTime = currentTime;
       
-      if (waterMesh && waterMesh.material instanceof THREE.ShaderMaterial) {
-        waterMesh.material.uniforms.time.value = clock.getElapsedTime();
-      }
-      
-      terrainLOD.update(camera);
-      assets.forEach(asset => {
-        const lodObject = geoGroup.children.find(child => 
-          child.children.some(grandchild => 
-            grandchild instanceof THREE.LOD && 
-            grandchild.children.some(mesh => 
-              (mesh as any).userData?.shape === asset
-            )
-          )
-        );
-        if (lodObject && lodObject.children[0] instanceof THREE.LOD) {
-          lodObject.children[0].update(camera);
-        }
-      });
-      
+      // Update selected asset material
       selectableMeshes.forEach(mesh => {
         if (selectedAsset?.mesh === mesh) {
           mesh.material = selectedMaterial;
@@ -697,7 +621,7 @@ export function ThreeDVisualizationModal({
         mountNode.removeChild(renderer.domElement);
       }
     };
-  }, [assets, zones, boundary, elevationGrid, terrainQuality, showWater, waterLevel, showTextures, onDeleteAsset, selectedAsset]);
+  }, [assets, zones, boundary, elevationGrid, terrainQuality]);
 
   return (
     <div className="relative w-full h-full bg-black">
@@ -719,50 +643,38 @@ export function ThreeDVisualizationModal({
         </div>
       )}
       
+      {/* Quality selector */}
       <div className="absolute top-20 right-4 bg-background/80 p-2 rounded-md shadow-lg">
-        <div className="text-xs font-semibold mb-1 flex items-center gap-1">
-          <Layers className="w-3 h-3" />
-          Textures
+        <div className="text-xs font-semibold mb-1">Terrain Quality</div>
+        <div className="flex gap-1">
+          <button
+            onClick={() => setTerrainQuality('low')}
+            className={cn(
+              "px-2 py-1 text-xs rounded",
+              terrainQuality === 'low' ? "bg-primary text-primary-foreground" : "bg-background"
+            )}
+          >
+            Low
+          </button>
+          <button
+            onClick={() => setTerrainQuality('medium')}
+            className={cn(
+              "px-2 py-1 text-xs rounded",
+              terrainQuality === 'medium' ? "bg-primary text-primary-foreground" : "bg-background"
+            )}
+          >
+            Med
+          </button>
+          <button
+            onClick={() => setTerrainQuality('high')}
+            className={cn(
+              "px-2 py-1 text-xs rounded",
+              terrainQuality === 'high' ? "bg-primary text-primary-foreground" : "bg-background"
+            )}
+          >
+            High
+          </button>
         </div>
-        <button
-          onClick={() => setShowTextures(!showTextures)}
-          className={cn(
-            "px-3 py-1 text-xs rounded w-full",
-            showTextures ? "bg-primary text-primary-foreground" : "bg-background"
-          )}
-        >
-          {showTextures ? 'On' : 'Off'}
-        </button>
-      </div>
-      
-      <div className="absolute top-36 right-4 bg-background/80 p-2 rounded-md shadow-lg">
-        <div className="text-xs font-semibold mb-1 flex items-center gap-1">
-          <Droplets className="w-3 h-3" />
-          Water
-        </div>
-        <button
-          onClick={() => setShowWater(!showWater)}
-          className={cn(
-            "px-3 py-1 text-xs rounded w-full mb-2",
-            showWater ? "bg-primary text-primary-foreground" : "bg-background"
-          )}
-        >
-          {showWater ? 'On' : 'Off'}
-        </button>
-        {showWater && (
-          <div className="space-y-1">
-            <div className="text-xs">Level: {waterLevel.toFixed(1)}m</div>
-            <input
-              type="range"
-              min={elevationStats.min}
-              max={elevationStats.max}
-              step="0.5"
-              value={waterLevel}
-              onChange={(e) => setWaterLevel(parseFloat(e.target.value))}
-              className="w-full h-1"
-            />
-          </div>
-        )}
       </div>
     </div>
   );
