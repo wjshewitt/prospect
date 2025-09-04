@@ -57,6 +57,7 @@ export default function VisionPage() {
   const [tutorialStep, setTutorialStep] = useState(0);
 
   useEffect(() => {
+    // This now runs only on the client, after hydration
     if (!hasCompletedTutorial) {
         setIsTutorialActive(true);
     }
