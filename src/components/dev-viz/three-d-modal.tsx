@@ -166,7 +166,7 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
       scene.children.forEach(child => {
         if(child instanceof THREE.Mesh) {
             child.geometry.dispose();
-            child.material.dispose();
+            (child.material as THREE.Material).dispose();
         }
       });
       if(mountRef.current && renderer.domElement){
