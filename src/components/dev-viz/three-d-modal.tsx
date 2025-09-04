@@ -307,6 +307,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
         }
       });
       
+      // FIX: Check if the canvas is still a child of the mount node before removing it.
       if (mountNode && mountNode.contains(canvasElement)) {
         mountNode.removeChild(canvasElement);
       }
