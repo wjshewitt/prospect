@@ -14,9 +14,10 @@ type HeaderProps = {
   elevationGrid: ElevationGrid | null;
   setSelectedShapeIds: (ids: string[]) => void;
   setElevationGrid: (grid: ElevationGrid | null) => void;
+  children?: React.ReactNode;
 };
 
-export default function Header({ shapes, setShapes, elevationGrid, setSelectedShapeIds, setElevationGrid }: HeaderProps) {
+export default function Header({ shapes, setShapes, elevationGrid, setSelectedShapeIds, setElevationGrid, children }: HeaderProps) {
   
   const handleClear = () => {
     if (window.confirm('Are you sure you want to clear all drawings? This cannot be undone.')) {
@@ -35,6 +36,7 @@ export default function Header({ shapes, setShapes, elevationGrid, setSelectedSh
         </h1>
       </Link>
       <div className="flex items-center gap-2">
+        {children}
         <Button variant="outline" size="sm" onClick={handleClear} disabled={shapes.length === 0} aria-label="Clear all drawings">
             <Trash2 className="h-4 w-4 mr-2" />
             Clear

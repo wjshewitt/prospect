@@ -9,8 +9,9 @@ import ToolPalette from '@/components/tools/tool-palette';
 import StatisticsSidebar from '@/components/sidebar/statistics-sidebar';
 import { MapCanvas } from '@/components/map/map-canvas';
 import { Button } from '@/components/ui/button';
-import { PanelRightClose, PanelLeftClose } from 'lucide-react';
+import { PanelRightClose, PanelLeftClose, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ThreeDVisualizationModal } from '@/components/dev-viz/three-d-modal';
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -42,6 +43,7 @@ export default function VisionPage() {
   const [steepnessThreshold, setSteepnessThreshold] = useState<number>(8); // default 8 percent
   const [elevationGrid, setElevationGrid] = useState<ElevationGrid | null>(null);
   const [isAnalysisVisible, setIsAnalysisVisible] = useState(true);
+  const [is3DModalOpen, setIs3DModalOpen] = useState(false);
 
 
   if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
@@ -57,6 +59,8 @@ export default function VisionPage() {
     );
   }
 
+  const projectBoundary = shapes.find(s => s.type !== 'buffer');
+
   return (
     <APIProvider 
       apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
@@ -69,7 +73,17 @@ export default function VisionPage() {
           elevationGrid={elevationGrid}
           setSelectedShapeIds={setSelectedShapeIds}
           setElevationGrid={setElevationGrid}
-        />
+        >
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIs3DModalOpen(true)}
+              disabled={shapes.length === 0}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Visualize in 3D
+            </Button>
+        </Header>
         <div className="flex flex-1 overflow-hidden">
           <ToolPalette 
             selectedTool={selectedTool} 
@@ -116,6 +130,14 @@ export default function VisionPage() {
           />
         </div>
       </div>
+      {is3DModalOpen && (
+        <ThreeDVisualizationModal
+          isOpen={is3DModalOpen}
+          onClose={() => setIs3DModalOpen(false)}
+          assets={shapes.filter(s => s.type !== 'buffer')}
+          boundary={projectBoundary}
+        />
+      )}
     </APIProvider>
   );
 }
