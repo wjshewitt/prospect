@@ -17,8 +17,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
-import { AiSummaryDialog } from '../assessment/ai-summary-dialog';
-
 
 type HeaderProps = {
   siteName: string;
@@ -100,7 +98,6 @@ export default function Header({ siteName, onSiteNameClick, onClear, onSave, onL
             Clear
         </Button>
         <SiteAssessmentDialog shapes={shapes} elevationGrid={elevationGrid} />
-        <AiSummaryDialog siteName={siteName} shapes={shapes} elevationGrid={elevationGrid} />
       </div>
     </header>
   );

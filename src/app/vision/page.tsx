@@ -383,7 +383,8 @@ function VisionPageContent() {
         </main>
         {!is3DView && (
           <StatisticsSidebar 
-            shapes={shapes} 
+            shapes={shapes}
+            siteName={siteName}
             isOpen={isSidebarOpen}
             gridResolution={gridResolution} // Use immediate value for slider UI
             setGridResolution={setGridResolution}
