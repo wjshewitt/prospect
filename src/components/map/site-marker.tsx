@@ -45,8 +45,8 @@ export function SiteMarker({ boundary }: SiteMarkerProps) {
     ];
     const mapArea = google.maps.geometry.spherical.computeArea(mapPolygon);
 
-    // Show marker if the site area is less than 5% of the map area
-    const shouldBeVisible = boundary.area < mapArea * 0.05;
+    // Show marker if the site area is less than 1% of the map area
+    const shouldBeVisible = boundary.area < mapArea * 0.01;
     
     setIsVisible(shouldBeVisible);
 
@@ -82,9 +82,8 @@ export function SiteMarker({ boundary }: SiteMarkerProps) {
 
   return (
     <AdvancedMarker position={center}>
-        <div className="flex flex-col items-center justify-center text-primary animate-bounce">
-            <p className="text-sm font-bold bg-primary/20 backdrop-blur-sm px-2 py-1 rounded-full border border-primary/50 shadow-lg">SITE</p>
-            <Pin className="h-8 w-8 -mt-2" fill="currentColor" />
+        <div className="flex flex-col items-center justify-center text-primary/80 transition-all hover:text-primary">
+            <Pin className="h-8 w-8 drop-shadow-lg" fill="currentColor" />
         </div>
     </AdvancedMarker>
   );
