@@ -11,6 +11,7 @@ import { BarChart3, LandPlot, HelpCircle, LayoutGrid, Info, ChevronDown, Sparkle
 import { cn } from '@/lib/utils';
 import { ElevationAnalysis } from './elevation-analysis';
 import { DevelopmentDetails } from './development-details';
+import { SolarAnalysis } from './solar-analysis';
 import { useState } from 'react';
 import { AiSummaryPanel } from './ai-summary-panel';
 
@@ -27,6 +28,7 @@ type StatisticsSidebarProps = {
   setIsAnalysisVisible: (visible: boolean) => void;
   selectedShapeIds: string[];
   onGenerateLayout: (zoneId: string, density: 'low' | 'medium' | 'high') => void;
+  onGenerateSolarLayout: (zoneId: string, density: 'low' | 'medium' | 'high') => void;
 };
 
 type SidebarView = 'stats' | 'summary';
@@ -46,6 +48,7 @@ export default function StatisticsSidebar({
     setIsAnalysisVisible,
     selectedShapeIds,
     onGenerateLayout,
+    onGenerateSolarLayout,
 }: StatisticsSidebarProps) {
 
   const [view, setView] = useState<SidebarView>('stats');
@@ -64,7 +67,7 @@ export default function StatisticsSidebar({
   const selectedAreaMeters = selectedShapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
   const selectedAreaAcres = selectedAreaMeters * SQ_METERS_TO_ACRES;
 
-  const canGenerate = selectedShapes.length === 1 && selectedShapes[0].type === 'zone';
+  const canGenerateBuildingLayout = selectedShapes.length === 1 && selectedShapes[0].zoneMeta?.kind && selectedShapes[0].zoneMeta?.kind !== 'solar';
 
   const ViewSwitcher = () => (
     <div className="flex items-center justify-center p-2">
@@ -154,6 +157,12 @@ export default function StatisticsSidebar({
 
                 <DevelopmentDetails shapes={shapes} selectedShapeIds={selectedShapeIds} />
 
+                <SolarAnalysis 
+                    shapes={shapes}
+                    selectedShapeIds={selectedShapeIds}
+                    onGenerateSolarLayout={onGenerateSolarLayout}
+                />
+
                 <div data-tutorial="step-3">
                     <ElevationAnalysis
                     gridResolution={gridResolution}
@@ -167,7 +176,7 @@ export default function StatisticsSidebar({
                     />
                 </div>
 
-                {canGenerate && (
+                {canGenerateBuildingLayout && (
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-base flex items-center justify-between">
@@ -179,7 +188,7 @@ export default function StatisticsSidebar({
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button className="w-full">
-                                        Generate Layout
+                                        Generate Building Layout
                                         <ChevronDown className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>

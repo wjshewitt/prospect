@@ -21,11 +21,12 @@ export type Shape = {
   }
   // Optional metadata for zone shapes
   zoneMeta?: {
-    kind: 'residential' | 'commercial' | 'green_space' | 'amenity';
+    kind: 'residential' | 'commercial' | 'green_space' | 'amenity' | 'solar';
     name: string;
   }
   // Optional metadata for asset shapes
   assetMeta?: {
+    assetType: 'building' | 'solar_panel';
     key: string;
     floors: number;
     rotation: number;

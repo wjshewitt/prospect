@@ -18,6 +18,7 @@ import { TutorialGuide } from '@/components/tutorial/tutorial-guide';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeElevation } from '@/services/elevation';
 import { generateBuildingLayout } from '@/ai/flows/generate-building-layout-flow';
+import { generateSolarLayout } from '@/ai/flows/generate-solar-layout-flow';
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -77,7 +78,7 @@ function VisionPageContent() {
     const runAnalysis = async () => {
         const shapeToAnalyze = shapes.find(s => s.id === selectedShapeIds[0]);
 
-        if (selectedShapeIds.length === 1 && shapeToAnalyze && window.google) {
+        if (selectedShapeIds.length === 1 && shapeToAnalyze && window.google && !shapeToAnalyze.assetMeta) { // Don't analyze individual assets
             try {
                 const elevationService = new window.google.maps.ElevationService();
                 const grid = await analyzeElevation(shapeToAnalyze, elevationService, debouncedGridResolution);
@@ -194,6 +195,7 @@ function VisionPageContent() {
           path,
           area,
           assetMeta: {
+            assetType: 'building',
             key: b.type,
             floors: b.floors,
             rotation: b.rotation,
@@ -228,6 +230,68 @@ function VisionPageContent() {
       });
     }
   }
+
+    const handleGenerateSolarLayout = async (zoneId: string, density: 'low' | 'medium' | 'high') => {
+    const zone = shapes.find(s => s.id === zoneId && s.zoneMeta?.kind === 'solar');
+    if (!zone || !map) return;
+
+    toast({
+      title: 'Generating Solar Layout...',
+      description: `The AI is designing a ${density}-density solar array. This may take a moment.`,
+    });
+
+    try {
+      const result = await generateSolarLayout({ 
+          roofPolygon: zone.path,
+          density,
+      });
+      
+      const newPanels: Shape[] = result.panels.map(p => {
+        const path = p.footprint.map(point => ({ lat: point.lat, lng: point.lng }));
+        const area = google.maps.geometry.spherical.computeArea(path);
+        return {
+          id: uuid(),
+          type: 'rectangle', // Visually a rectangle
+          path,
+          area,
+          assetMeta: {
+            assetType: 'solar_panel',
+            key: 'solar_panel',
+            rotation: p.rotation,
+            floors: 0, // Not applicable
+          },
+        }
+      });
+
+       // Remove existing solar panels within that zone first
+      const assetsInZone = assets.filter(asset => {
+          if (asset.assetMeta?.assetType !== 'solar_panel') return false;
+          const assetCenter = new google.maps.LatLng(asset.path[0].lat, asset.path[0].lng);
+          const zonePolygon = new google.maps.Polygon({ paths: zone.path });
+          return google.maps.geometry.poly.containsLocation(assetCenter, zonePolygon);
+      });
+      const assetIdsInZone = new Set(assetsInZone.map(a => a.id));
+
+      setShapes(prev => {
+          const shapesWithoutOldAssets = prev.filter(s => !assetIdsInZone.has(s.id));
+          return [...shapesWithoutOldAssets, ...newPanels];
+      });
+
+      toast({
+        title: 'Solar Layout Generated',
+        description: `${newPanels.length} solar panels have been placed on the roof.`,
+      });
+
+    } catch (error) {
+      console.error("Solar Layout generation failed:", error);
+      toast({
+        variant: 'destructive',
+        title: 'Solar Layout Failed',
+        description: 'The AI could not generate a solar layout. Please try again.',
+      });
+    }
+  }
+
 
   const handleNameSite = (name: string) => {
     setSiteName(name);
@@ -393,6 +457,7 @@ function VisionPageContent() {
             setIsAnalysisVisible={setIsAnalysisVisible}
             selectedShapeIds={selectedShapeIds}
             onGenerateLayout={handleGenerateLayout}
+            onGenerateSolarLayout={handleGenerateSolarLayout}
           />
         )}
       </div>
@@ -439,5 +504,3 @@ export default function VisionPage() {
     </APIProvider>
     )
 }
-
-    

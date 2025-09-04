@@ -196,6 +196,7 @@ const DrawnShapes: React.FC<{
             case 'commercial': return { fill: 'rgba(147, 197, 253, 0.4)', stroke: 'rgb(59, 130, 246)'}; // blue
             case 'amenity': return { fill: 'rgba(252, 211, 77, 0.4)', stroke: 'rgb(234, 179, 8)'}; // amber
             case 'green_space': return { fill: 'rgba(34, 197, 94, 0.3)', stroke: 'rgb(22, 163, 74)'}; // darker green
+            case 'solar': return { fill: 'rgba(251, 146, 60, 0.4)', stroke: 'rgb(249, 115, 22)'}; // orange
             default: return { fill: 'hsl(var(--primary))', stroke: 'hsl(var(--primary))'};
         }
       }
@@ -249,7 +250,7 @@ const DrawnShapes: React.FC<{
         }
 
         if (isAsset) {
-            fillColor = '#334155'; // slate-700
+            fillColor = shape.assetMeta?.assetType === 'solar_panel' ? '#0A2A48' : '#334155'; // Dark blue for panels, slate for buildings
             strokeColor = '#0f172a'; // slate-900
             strokeWeight = 1;
             zIndex = isSelected ? 8 : 6; // Assets on top
@@ -797,6 +798,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
             path,
             area: google.maps.geometry.spherical.computeArea(path),
             assetMeta: {
+                assetType: 'building',
                 key: 'house_detached',
                 floors: 2,
                 rotation: 0,
@@ -877,7 +879,3 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
-
-    
-
-    

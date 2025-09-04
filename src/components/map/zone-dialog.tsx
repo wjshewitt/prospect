@@ -40,6 +40,7 @@ const zoneKinds: { value: Shape['zoneMeta']['kind']; label: string }[] = [
     { value: 'commercial', label: 'Commercial' },
     { value: 'green_space', label: 'Green Space' },
     { value: 'amenity', label: 'Amenity' },
+    { value: 'solar', label: 'Solar' },
 ];
 
 export function ZoneDialog({ state, onOpenChange, onCreateZone }: ZoneDialogProps) {
