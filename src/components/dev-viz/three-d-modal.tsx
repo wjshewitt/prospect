@@ -1,10 +1,13 @@
 
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Shape, LatLng, ElevationGrid } from '@/lib/types';
+import { ArrowUp } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
 
 interface ThreeDVisualizationProps {
   assets: Shape[];
@@ -24,8 +27,55 @@ const getPolygonCenter = (path: LatLng[]): LatLng => {
     return bounds.getCenter().toJSON();
 };
 
+const Compass = ({ camera }: { camera: THREE.Camera | null }) => {
+    const [rotation, setRotation] = useState(0);
+
+    useEffect(() => {
+        if (!camera) return;
+
+        const updateCompass = () => {
+            const vector = new THREE.Vector3();
+            // Get the direction the camera is looking at
+            camera.getWorldDirection(vector);
+            // Calculate the angle in the XZ plane
+            const angle = Math.atan2(vector.x, vector.z);
+            setRotation(angle);
+        };
+        
+        // Initial update
+        updateCompass();
+
+        // Attach to a dummy object and use controls' change event for updates
+        const controls = (camera as any).__orbitControls;
+        if(controls) {
+            controls.addEventListener('change', updateCompass);
+            return () => controls.removeEventListener('change', updateCompass);
+        }
+
+    }, [camera]);
+
+
+    return (
+        <div className="absolute bottom-4 right-4 w-16 h-16 bg-background/50 rounded-full flex items-center justify-center text-foreground backdrop-blur-sm shadow-lg">
+            <div 
+                className="relative w-full h-full"
+                style={{ transform: `rotate(${-rotation}rad)` }}
+            >
+                <div className="absolute top-1 left-1/2 -translate-x-1/2 font-bold text-lg">N</div>
+                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-sm">S</div>
+                <div className="absolute left-1 top-1/2 -translate-y-1/2 text-sm">W</div>
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 text-sm">E</div>
+            </div>
+             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                 <ArrowUp className="w-6 h-6 text-red-500" />
+            </div>
+        </div>
+    )
+}
+
 export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGrid }: ThreeDVisualizationProps) {
   const mountRef = useRef<HTMLDivElement>(null);
+  const [camera, setCamera] = useState<THREE.PerspectiveCamera | null>(null);
 
   useEffect(() => {
     if (!mountRef.current || !boundary || !elevationGrid || !elevationGrid.pointGrid) return;
@@ -36,6 +86,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1a2638);
     const camera = new THREE.PerspectiveCamera(75, mountNode.clientWidth / mountNode.clientHeight, 0.1, 10000);
+    setCamera(camera);
     
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
@@ -61,6 +112,8 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     // --- Controls ---
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
+    // Attach controls to camera for compass access
+    (camera as any).__orbitControls = controls;
     
     // --- Coordinate System & Projections ---
     const siteCenter = getPolygonCenter(boundary.path);
@@ -276,12 +329,14 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
         mountNode.removeChild(canvasElement);
       }
       renderer.dispose();
+      setCamera(null);
     };
   }, [assets, zones, boundary, elevationGrid]);
 
   return (
     <div className="relative w-full h-full bg-black">
         <div ref={mountRef} className="w-full h-full" />
+        <Compass camera={camera} />
     </div>
   );
 }
