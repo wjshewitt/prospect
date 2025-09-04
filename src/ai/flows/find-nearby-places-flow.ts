@@ -51,7 +51,7 @@ const findPlaceTool = ai.defineTool(
           radius: 50000, // 50km search radius
           type,
           rankby: 'distance',
-          key: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+          key: process.env.GOOGLE_MAPS_API_KEY!,
         },
       });
 
