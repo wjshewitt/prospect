@@ -18,23 +18,23 @@ export default function HomePage() {
             <a className="text-base font-medium text-[var(--c-charcoal)] hover:text-[var(--c-green)] transition-colors" href="#">Resources</a>
           </nav>
         </header>
-        <main className="flex-1">
+        <main className="flex-1 flex items-center">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-              <div className="flex flex-col gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-16 items-center">
+              <div className="lg:col-span-3 flex flex-col gap-8">
                 <h1 className="text-5xl md:text-6xl font-extrabold tracking-tighter text-[var(--c-green)]">Intelligent Land Analysis at Scale.</h1>
-                <p className="text-lg md:text-xl text-[var(--c-charcoal)]">Visualize terrain, analyze slopes, and unlock property potential with AI-powered insights.</p>
+                <p className="text-lg md:text-xl text-[var(--c-charcoal)] max-w-lg">Visualize terrain, analyze slopes, and unlock property potential with AI-powered insights.</p>
                 <Button asChild className="min-w-[84px] max-w-fit cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-[var(--c-orange)] text-white text-lg font-bold shadow-md hover:shadow-lg transition-shadow">
                   <Link href="/vision">
                     <span className="truncate">Launch Application</span>
                   </Link>
                 </Button>
               </div>
-              <div className="relative">
+              <div className="lg:col-span-2 relative">
                 <div 
-                  className="w-full aspect-[4/3] bg-cover bg-center rounded-2xl shadow-2xl" 
-                  style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuCaX4OmYpjLHgXLI5EyuAeqAkxVcGjI0OCBAtXBeooWkjG0FUP05xRXfi17eVfk7yJzPlfZxm-HaKIoGrJSW2AoF5Dh6Gq40yuAgEPQJQoqc2p2CLfHmSjztb8hpzGNfLmWP-lguoLHNPBJIz9jHWMwvfY7KuZYIGcmhPahYCpY6TjE4Gx_zv7_zL05sB7xhL4eDaE7aWQRB5DeExuLv6TDiOX32JO6wWAqL6q-R4Yeqis5h14u9032h1cwhPqktXP_IoUFuqzlWLIi")'}}
-                  data-ai-hint="topographical map"
+                  className="w-full aspect-square bg-cover bg-center rounded-2xl shadow-2xl" 
+                  style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuA3LzZl-yM8-pLg2sZeGIMNl_rZJJHlTjJc_0O1XQ8LqK8cQy9Iu6Z9Z8fX7X6E8Z9R0jJ-9cZ5jY-oG9pX8lB6nZ-dY2gS3tH0wI=s1500-c")'}}
+                  data-ai-hint="topographical map abstract"
                 ></div>
                 <div className="absolute -bottom-8 -left-8 bg-white/70 backdrop-blur-md p-4 rounded-lg shadow-lg">
                   <p className="text-sm font-semibold text-[var(--c-charcoal)]">Total Area</p>
