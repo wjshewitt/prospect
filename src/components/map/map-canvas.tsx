@@ -134,17 +134,18 @@ const DrawingManagerComponent: React.FC<{
             type = 'rectangle';
         } else { // Polygon
             path = overlay.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
+            // This is the critical fix: Correctly identify the type as 'zone' when drawing a zone.
             type = selectedTool === 'zone' ? 'zone' : 'polygon';
         }
         
         area = google.maps.geometry.spherical.computeArea(path);
 
-        if (selectedTool === 'zone') {
+        if (type === 'zone') {
             onZoneDrawn(path, area);
         } else {
             // This is a boundary drawing tool
             const hasBoundary = shapes.some(s => !s.zoneMeta && !s.assetMeta && !s.bufferMeta);
-            if (hasBoundary && type !== 'zone') {
+            if (hasBoundary) {
                 toast({
                     variant: 'destructive',
                     title: 'Boundary Exists',
@@ -359,11 +360,10 @@ const DrawnShapes: React.FC<{
                     // but we must preserve its metadata (zoneMeta, etc.)
                     return { 
                         ...s, 
-                        type: s.zoneMeta ? 'zone' : 'polygon', 
+                        type: 'polygon', 
                         path: newPath, 
                         area: newArea,
-                        // This is the key fix: DO NOT reset bufferMeta
-                        // bufferMeta: undefined 
+                        // bufferMeta: undefined // This was the bug causing zones to lose their meta
                     };
                 }
                 return s;
