@@ -163,6 +163,7 @@ const DrawnShapes: React.FC<{
       if (!map) return;
   
       const newPolygons: {[id: string]: google.maps.Polygon} = {};
+      const bufferedParentIds = new Set(shapes.filter(s => s.bufferMeta).map(s => s.bufferMeta!.originalShapeId));
 
       shapes.forEach(shape => {
         const path = shape.path;
@@ -171,8 +172,9 @@ const DrawnShapes: React.FC<{
         const isMoving = shape.id === movingShapeId;
         const isSelected = selectedShapeIds.includes(shape.id);
         const isBuffer = shape.type === 'buffer';
+        const isBufferedParent = bufferedParentIds.has(shape.id);
 
-        const poly = new google.maps.Polygon({
+        const polyOptions: google.maps.PolygonOptions = {
           paths: path,
           strokeColor: isBuffer ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
           strokeOpacity: isMoving ? 1.0 : 0.8,
@@ -184,7 +186,24 @@ const DrawnShapes: React.FC<{
           editable: isEditing,
           draggable: isMoving,
           zIndex: isSelected ? 2 : 1,
-        });
+        };
+
+        if (isBufferedParent) {
+            polyOptions.strokeOpacity = 0; // Make solid line invisible
+            polyOptions.icons = [{
+                icon: {
+                    path: 'M 0,-1 0,1',
+                    strokeOpacity: 1,
+                    strokeWeight: 2.5,
+                    strokeColor: 'hsl(var(--accent))',
+                    scale: 4,
+                },
+                offset: '0',
+                repeat: '15px'
+            }];
+        }
+
+        const poly = new google.maps.Polygon(polyOptions);
 
         poly.addListener('rightclick', (e: google.maps.MapMouseEvent) => onShapeRightClick(shape.id, e));
         poly.addListener('click', (e: google.maps.MapMouseEvent) => {
@@ -499,22 +518,26 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
 
   useEffect(() => {
     const runAnalysis = async () => {
-        if (shapes.length === 1 && selectedShapeIds.length <= 1 && isLoaded && elevationService) {
-            const shapeToAnalyze = shapes.find(s => s.id === (selectedShapeIds[0] || shapes[0].id)) || shapes[0];
-            try {
-                const grid = await analyzeElevation(shapeToAnalyze, elevationService, gridResolution);
-                setElevationGrid(grid);
-            } catch (err) {
-                console.error("Error getting elevation grid:", err);
-                toast({
-                    variant: 'destructive',
-                    title: 'Elevation API Error',
-                    description: 'Could not fetch elevation data. Please check your API key and permissions.'
-                });
-                setElevationGrid(null); // Clear grid on error
+        if (selectedShapeIds.length === 1 && isLoaded && elevationService) {
+            const shapeToAnalyze = shapes.find(s => s.id === selectedShapeIds[0]);
+            if (shapeToAnalyze) {
+                try {
+                    const grid = await analyzeElevation(shapeToAnalyze, elevationService, gridResolution);
+                    setElevationGrid(grid);
+                } catch (err) {
+                    console.error("Error getting elevation grid:", err);
+                    toast({
+                        variant: 'destructive',
+                        title: 'Elevation API Error',
+                        description: 'Could not fetch elevation data. Please check your API key and permissions.'
+                    });
+                    setElevationGrid(null); // Clear grid on error
+                }
+            } else {
+                setElevationGrid(null);
             }
         } else {
-            // If not exactly one shape, clear the grid
+            // If not exactly one shape is selected, clear the grid
             if (elevationGrid !== null) {
                 setElevationGrid(null);
             }
@@ -692,5 +715,3 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
-
-    

@@ -43,8 +43,6 @@ export default function StatisticsSidebar({
   const selectedAreaMeters = selectedShapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
   const selectedAreaAcres = selectedAreaMeters * SQ_METERS_TO_ACRES;
 
-  const singleSelectedShape = selectedShapes.length === 1 ? selectedShapes[0] : null;
-
   return (
     <aside 
       id="stats-sidebar" 
@@ -93,7 +91,6 @@ export default function StatisticsSidebar({
           </Card>
 
           <ElevationAnalysis
-            shape={singleSelectedShape}
             gridResolution={gridResolution}
             setGridResolution={setGridResolution}
             steepnessThreshold={steepnessThreshold}
@@ -101,6 +98,7 @@ export default function StatisticsSidebar({
             elevationGrid={elevationGrid}
             isAnalysisVisible={isAnalysisVisible}
             setIsAnalysisVisible={setIsAnalysisVisible}
+            selectedShapeIds={selectedShapeIds}
           />
 
            <Card>

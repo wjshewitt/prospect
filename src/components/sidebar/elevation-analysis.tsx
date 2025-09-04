@@ -12,7 +12,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/colla
 import { Separator } from '../ui/separator';
 
 type ElevationAnalysisProps = {
-  shape: Shape | null;
   gridResolution: number;
   setGridResolution: (res: number) => void;
   steepnessThreshold: number;
@@ -20,10 +19,10 @@ type ElevationAnalysisProps = {
   elevationGrid: ElevationGrid | null;
   isAnalysisVisible: boolean;
   setIsAnalysisVisible: (visible: boolean) => void;
+  selectedShapeIds: string[];
 };
 
 export function ElevationAnalysis({
-  shape,
   gridResolution,
   setGridResolution,
   steepnessThreshold,
@@ -31,6 +30,7 @@ export function ElevationAnalysis({
   elevationGrid,
   isAnalysisVisible,
   setIsAnalysisVisible,
+  selectedShapeIds,
 }: ElevationAnalysisProps) {
 
   const analysis = useMemo(() => {
@@ -56,7 +56,7 @@ export function ElevationAnalysis({
     }
   }, [elevationGrid, steepnessThreshold]);
 
-  if (!shape) {
+  if (selectedShapeIds.length !== 1) {
     return (
         <Card>
             <CardHeader>
