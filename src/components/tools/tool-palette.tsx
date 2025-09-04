@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import type { Tool, Shape } from '@/lib/types';
@@ -12,7 +13,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { BuildingPlacementDialog } from '@/components/ai/building-placement-dialog';
-import { MousePointer2, Square, Pen, PenTool, Shapes, Combine, Diff } from 'lucide-react';
+import { MousePointer2, Square, Pen, PenTool, Shapes, Combine, Diff, WholeWord, Building } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -34,9 +35,14 @@ const panTool: { id: Tool; label: string; icon: React.ReactNode } = {
 };
 
 const drawingTools: { id: Tool; label:string; icon: React.ReactNode }[] = [
-    { id: 'rectangle', label: 'Rectangle', icon: <Square /> },
-    { id: 'polygon', label: 'Polygon (Click to Plot)', icon: <Pen /> },
-    { id: 'freehand', label: 'Freehand (Drag to Draw)', icon: <PenTool /> },
+    { id: 'rectangle', label: 'Boundary', icon: <Square /> },
+    { id: 'polygon', label: 'Polygon Boundary', icon: <Pen /> },
+    { id: 'freehand', label: 'Freehand Boundary', icon: <PenTool /> },
+];
+
+const designTools: { id: Tool; label: string; icon: React.ReactNode }[] = [
+    { id: 'zone', label: 'Draw Zone', icon: <WholeWord /> },
+    { id: 'asset', label: 'Place Building', icon: <Building /> },
 ];
 
 const advancedTools: { id: string; label: string; tooltip: string; icon: React.ReactNode; action: 'union' | 'difference' }[] = [
@@ -145,7 +151,7 @@ export default function ToolPalette({
                 </div>
               </TooltipTrigger>
               <TooltipContent side="right" className="md:block hidden">
-                <p>Drawing Tools</p>
+                <p>Boundary Tools</p>
               </TooltipContent>
             </Tooltip>
             <DropdownMenuContent side="right">
@@ -162,6 +168,34 @@ export default function ToolPalette({
         </div>
 
         <Separator className="my-4 w-10/12 mx-auto" />
+        
+        {/* Design Tools */}
+        <div className="flex flex-col items-center gap-1">
+            {designTools.map(tool => (
+                 <Tooltip key={tool.id}>
+                    <TooltipTrigger asChild>
+                        <div className="w-full px-2 group/button">
+                            <Button
+                                variant="ghost"
+                                className={cn(
+                                    'w-full h-14 justify-center',
+                                    selectedTool === tool.id && 'bg-accent text-accent-foreground'
+                                )}
+                                onClick={() => setSelectedTool(tool.id)}
+                            >
+                                {tool.icon}
+                            </Button>
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="md:block hidden">
+                        <p>{tool.label}</p>
+                    </TooltipContent>
+                 </Tooltip>
+            ))}
+        </div>
+
+        <Separator className="my-4 w-10/12 mx-auto" />
+
 
         {/* Advanced Tools */}
         <div className="flex flex-col items-center gap-1">

@@ -1,40 +1,42 @@
 
+
 'use client';
 
 import React, { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Shape, LatLng } from '@/lib/types';
-import { Button } from '../ui/button';
-import { X } from 'lucide-react';
 
-interface ThreeDVisualizationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface ThreeDVisualizationProps {
   assets: Shape[];
-  boundary?: Shape;
+  zones: Shape[];
+  boundary: Shape;
 }
 
-export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: ThreeDVisualizationModalProps) {
+export function ThreeDVisualizationModal({ assets, zones, boundary }: ThreeDVisualizationProps) {
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isOpen || !mountRef.current || !boundary) return;
+    if (!mountRef.current || !boundary) return;
 
     // Helper to calculate the center of a polygon - MUST be inside useEffect
     const getPolygonCenter = (path: LatLng[]): LatLng => {
+        if (!window.google || !window.google.maps) {
+          // Return a default if google maps is not loaded
+          return path[0] || { lat: 0, lng: 0};
+        }
         const bounds = new google.maps.LatLngBounds();
         path.forEach(p => bounds.extend(p));
         return bounds.getCenter().toJSON();
     };
     
     const mountNode = mountRef.current;
-
+    
     // --- Scene Setup ---
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1a2638);
-    const camera = new THREE.PerspectiveCamera(75, mountNode.clientWidth / mountNode.clientHeight, 0.1, 1000);
-    camera.position.set(0, 100, 150);
+    scene.background = new THREE.Color(0x1a2638); // Dark blueish grey
+    const camera = new THREE.PerspectiveCamera(75, mountNode.clientWidth / mountNode.clientHeight, 0.1, 10000);
+    camera.position.set(0, 150, 250);
     camera.lookAt(0,0,0);
     
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -46,15 +48,15 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(-100, 150, 100);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    directionalLight.position.set(-150, 200, 150);
     directionalLight.castShadow = true;
-    directionalLight.shadow.camera.top = 250;
-    directionalLight.shadow.camera.bottom = -250;
-    directionalLight.shadow.camera.left = -250;
-    directionalLight.shadow.camera.right = 250;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.camera.top = 500;
+    directionalLight.shadow.camera.bottom = -500;
+    directionalLight.shadow.camera.left = -500;
+    directionalLight.shadow.camera.right = 500;
+    directionalLight.shadow.mapSize.width = 4096;
+    directionalLight.shadow.mapSize.height = 4096;
     scene.add(directionalLight);
     
     // --- Controls ---
@@ -75,7 +77,7 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
         return { x, y };
     };
     
-    // --- Ground Plane ---
+    // --- Ground Plane (from boundary) ---
     const groundPath = boundary.path.map(p => {
         const local = toLocal(p);
         return new THREE.Vector2(local.x, local.y);
@@ -88,18 +90,43 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
     groundMesh.receiveShadow = true;
     scene.add(groundMesh);
 
-    // --- Asset Generation ---
-    const geometries: THREE.BufferGeometry[] = [];
-    const materials: THREE.Material[] = [];
+    // --- Render Zones ---
+    zones.forEach(zone => {
+        const zonePath = zone.path.map(p => {
+            const local = toLocal(p);
+            return new THREE.Vector2(local.x, local.y);
+        });
+        const zoneShape = new THREE.Shape(zonePath);
+        const zoneGeometry = new THREE.ShapeGeometry(zoneShape);
 
+        let color = '#ffffff';
+        switch(zone.zoneMeta?.kind) {
+            case 'residential': color = '#86efac'; break; // green-300
+            case 'commercial': color = '#93c5fd'; break; // blue-300
+            case 'amenity': color = '#fcd34d'; break; // amber-300
+            case 'green_space': color = '#22c55e'; break; // green-500
+        }
+        const zoneMaterial = new THREE.MeshStandardMaterial({ 
+            color, 
+            side: THREE.DoubleSide, 
+            transparent: true, 
+            opacity: 0.6 
+        });
+        const zoneMesh = new THREE.Mesh(zoneGeometry, zoneMaterial);
+        zoneMesh.position.y = 0.1; // Slightly above ground
+        zoneMesh.rotation.x = -Math.PI / 2;
+        scene.add(zoneMesh);
+    });
+
+    // --- Render Assets ---
     assets.forEach(asset => {
-        if (asset.id === boundary.id) return; // Skip the boundary itself
+        if (!asset.assetMeta) return;
 
         // 1. Calculate local position
         const assetCenter = getPolygonCenter(asset.path);
         const localPos = toLocal(assetCenter);
 
-        // 2. Generate 2D shape
+        // 2. Generate 2D shape for extrusion base
         const assetVertices = asset.path.map(p => {
             const local = toLocal(p);
             // Translate vertices so they are relative to the asset's own center
@@ -108,33 +135,29 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
         const assetShape = new THREE.Shape(assetVertices);
 
         // 3. Create 3D geometry
-        const floors = (asset as any).floors ?? 1;
-        const height = floors * 3;
+        const floors = asset.assetMeta.floors ?? 1;
+        const height = floors * 3; // 3m per floor
         const extrudeSettings = { depth: height, bevelEnabled: false };
         const geometry = new THREE.ExtrudeGeometry(assetShape, extrudeSettings);
-        geometries.push(geometry);
-
+        
         // 4. Create Mesh and Material
         let color = '#ADD8E6'; // Default (commercial)
-        const assetKey = (asset as any).typeKey || '';
+        const assetKey = asset.assetMeta.key || '';
         if (assetKey.includes('house') || assetKey.includes('bungalow')) {
             color = '#8B4513'; // Brownish
         } else if (assetKey.includes('flat_block')) {
             color = '#B0B0B0'; // Light grey
-        } else if (assetKey.includes('community')) {
-            color = '#ADD8E6'; // Light blue for community
         }
         const material = new THREE.MeshStandardMaterial({ color });
-        materials.push(material);
 
         const mesh = new THREE.Mesh(geometry, material);
         
         // 5. Position and Rotate
         mesh.position.set(localPos.x, height / 2, -localPos.y); // Y is up, Z is negative of local Y
-        mesh.rotation.x = -Math.PI / 2; // Align shape with XY plane first
+        mesh.rotation.x = -Math.PI / 2;
         
-        const rotationDegrees = (asset as any).rotation ?? 0;
-        mesh.rotation.z = -rotationDegrees * (Math.PI / 180); // Z-axis rotation in Three.js corresponds to map rotation
+        const rotationDegrees = asset.assetMeta.rotation ?? 0;
+        mesh.rotation.z = -rotationDegrees * (Math.PI / 180);
         
         mesh.castShadow = true;
         mesh.receiveShadow = true;
@@ -152,6 +175,7 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
 
     // --- Resize Listener ---
     const handleResize = () => {
+      if (!mountNode) return;
       camera.aspect = mountNode.clientWidth / mountNode.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
@@ -163,8 +187,8 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationFrameId);
       controls.dispose();
-      geometries.forEach(g => g.dispose());
-      materials.forEach(m => m.dispose());
+      
+      // Dispose all scene objects
       scene.children.forEach(child => {
         if(child instanceof THREE.Mesh) {
             child.geometry.dispose();
@@ -175,26 +199,17 @@ export function ThreeDVisualizationModal({ isOpen, onClose, assets, boundary }: 
             }
         }
       });
+
       if(mountNode && renderer.domElement){
           mountNode.removeChild(renderer.domElement);
       }
       renderer.dispose();
     };
-  }, [isOpen, assets, boundary]);
-
-  if (!isOpen) return null;
+  }, [assets, zones, boundary]); // Re-run when project data changes
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center">
+    <div className="relative w-full h-full bg-black">
         <div ref={mountRef} className="w-full h-full" />
-        <Button
-            variant="secondary"
-            size="icon"
-            onClick={onClose}
-            className="absolute top-4 right-4 z-50"
-        >
-            <X />
-        </Button>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 
+
 export type LatLng = { lat: number; lng: number };
 
 export type Bounds = {
@@ -10,7 +11,7 @@ export type Bounds = {
 
 export type Shape = {
   id: string;
-  type: 'rectangle' | 'polygon' | 'freehand' | 'buffer' | 'union' | 'difference';
+  type: 'rectangle' | 'polygon' | 'freehand' | 'buffer' | 'union' | 'difference' | 'zone';
   path: LatLng[];
   area?: number;
   // Optional metadata for buffer shapes
@@ -18,9 +19,20 @@ export type Shape = {
     originalShapeId: string;
     distance: number;
   }
+  // Optional metadata for zone shapes
+  zoneMeta?: {
+    kind: 'residential' | 'commercial' | 'green_space' | 'amenity';
+    name: string;
+  }
+  // Optional metadata for asset shapes
+  assetMeta?: {
+    key: string;
+    floors: number;
+    rotation: number;
+  }
 };
 
-export type Tool = 'pan' | 'rectangle' | 'polygon' | 'freehand';
+export type Tool = 'pan' | 'rectangle' | 'polygon' | 'freehand' | 'zone' | 'asset';
 
 export type ElevationPoint = {
     location: LatLng;

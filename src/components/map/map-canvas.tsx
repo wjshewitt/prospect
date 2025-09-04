@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
@@ -8,6 +9,7 @@ import { ShapeContextMenu } from './shape-context-menu';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeElevation } from '@/services/elevation';
 import { BufferDialog, type BufferState } from './buffer-dialog';
+import { ZoneDialog, type ZoneDialogState } from './zone-dialog';
 import { applyBuffer } from '@/services/buffer';
 
 interface MapCanvasProps {
@@ -34,12 +36,12 @@ export function uuid() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-
 const DrawingManagerComponent: React.FC<{
   selectedTool: Tool,
   setSelectedTool: (tool: Tool) => void,
-  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>
-}> = ({ selectedTool, setShapes, setSelectedTool }) => {
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>,
+  onZoneDrawn: (path: LatLng[], area: number) => void;
+}> = ({ selectedTool, setShapes, setSelectedTool, onZoneDrawn }) => {
   const map = useMap();
   const [drawingManager, setDrawingManager] = useState<google.maps.drawing.DrawingManager | null>(null);
 
@@ -80,13 +82,25 @@ const DrawingManagerComponent: React.FC<{
   useEffect(() => {
     if (!drawingManager) return;
     
-    const isStandardDrawingTool = selectedTool === 'rectangle' || selectedTool === 'polygon';
+    const isBoundaryDrawingTool = selectedTool === 'rectangle' || selectedTool === 'polygon';
+    const isZoneDrawingTool = selectedTool === 'zone';
     
-    const drawingMode = isStandardDrawingTool
-      ? selectedTool === 'rectangle'
-        ? google.maps.drawing.OverlayType.RECTANGLE
-        : google.maps.drawing.OverlayType.POLYGON
-      : null;
+    let drawingMode = null;
+    if (isBoundaryDrawingTool) {
+        drawingMode = selectedTool === 'rectangle'
+            ? google.maps.drawing.OverlayType.RECTANGLE
+            : google.maps.drawing.OverlayType.POLYGON;
+    } else if (isZoneDrawingTool) {
+        drawingMode = google.maps.drawing.OverlayType.POLYGON;
+    }
+
+    drawingManager.setOptions({
+        polygonOptions: {
+            ...drawingManager.get('polygonOptions'),
+            fillColor: isZoneDrawingTool ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
+            strokeColor: isZoneDrawingTool ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
+        }
+    })
 
     drawingManager.setDrawingMode(drawingMode);
 
@@ -95,49 +109,46 @@ const DrawingManagerComponent: React.FC<{
   useEffect(() => {
     if (!drawingManager) return;
 
-    const onRectangleComplete = (rect: google.maps.Rectangle) => {
-        const bounds = rect.getBounds()!;
-        const ne = bounds.getNorthEast();
-        const sw = bounds.getSouthWest();
+    const onComplete = (overlay: google.maps.Rectangle | google.maps.Polygon) => {
+        let path: LatLng[], area: number;
+        let type: Shape['type'];
+
+        if (overlay instanceof google.maps.Rectangle) {
+            const bounds = overlay.getBounds()!;
+            const ne = bounds.getNorthEast();
+            const sw = bounds.getSouthWest();
+            path = [
+              { lat: sw.lat(), lng: sw.lng() },
+              { lat: ne.lat(), lng: sw.lng() },
+              { lat: ne.lat(), lng: ne.lng() },
+              { lat: sw.lat(), lng: ne.lng() },
+            ];
+            type = 'rectangle';
+        } else { // Polygon
+            path = overlay.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
+            type = selectedTool === 'zone' ? 'zone' : 'polygon';
+        }
         
-        const path = [
-          { lat: sw.lat(), lng: sw.lng() },
-          { lat: ne.lat(), lng: sw.lng() },
-          { lat: ne.lat(), lng: ne.lng() },
-          { lat: sw.lat(), lng: ne.lng() },
-        ];
+        area = google.maps.geometry.spherical.computeArea(path);
+
+        if (selectedTool === 'zone') {
+            onZoneDrawn(path, area);
+        } else {
+            setShapes(prev => [...prev, { id: uuid(), type, path, area }]);
+        }
         
-        setShapes(prev => [...prev, {
-            id: uuid(),
-            type: 'rectangle',
-            path,
-            area: google.maps.geometry.spherical.computeArea(path)
-        }]);
-        rect.setMap(null); 
-        setSelectedTool('pan');
-    };
-    
-    const onPolygonComplete = (poly: google.maps.Polygon) => {
-        const path = poly.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
-        const area = google.maps.geometry.spherical.computeArea(path);
-        setShapes(prev => [...prev, {
-            id: uuid(),
-            type: 'polygon',
-            path,
-            area
-        }]);
-        poly.setMap(null); 
+        overlay.setMap(null); 
         setSelectedTool('pan');
     };
 
-    const rectListener = google.maps.event.addListener(drawingManager, 'rectanglecomplete', onRectangleComplete);
-    const polyListener = google.maps.event.addListener(drawingManager, 'polygoncomplete', onPolygonComplete);
+    const rectListener = google.maps.event.addListener(drawingManager, 'rectanglecomplete', onComplete);
+    const polyListener = google.maps.event.addListener(drawingManager, 'polygoncomplete', onComplete);
 
     return () => {
       google.maps.event.removeListener(rectListener);
       google.maps.event.removeListener(polyListener);
     };
-  }, [drawingManager, setShapes, setSelectedTool]);
+  }, [drawingManager, setShapes, setSelectedTool, selectedTool, onZoneDrawn]);
   
   return null;
 }
@@ -165,6 +176,16 @@ const DrawnShapes: React.FC<{
       const newPolygons: {[id: string]: google.maps.Polygon} = {};
       const bufferedParentIds = new Set(shapes.filter(s => s.bufferMeta).map(s => s.bufferMeta!.originalShapeId));
 
+      const getZoneColor = (kind: Shape['zoneMeta']['kind']) => {
+        switch(kind) {
+            case 'residential': return 'rgba(134, 239, 172, 0.5)'; // green-300
+            case 'commercial': return 'rgba(147, 197, 253, 0.5)'; // blue-300
+            case 'amenity': return 'rgba(252, 211, 77, 0.5)'; // amber-300
+            case 'green_space': return 'rgba(34, 197, 94, 0.5)'; // green-500
+            default: return 'hsl(var(--primary))';
+        }
+      }
+
       shapes.forEach(shape => {
         const path = shape.path;
   
@@ -172,20 +193,42 @@ const DrawnShapes: React.FC<{
         const isMoving = shape.id === movingShapeId;
         const isSelected = selectedShapeIds.includes(shape.id);
         const isBuffer = shape.type === 'buffer';
+        const isZone = !!shape.zoneMeta;
+        const isAsset = !!shape.assetMeta;
         const isBufferedParent = bufferedParentIds.has(shape.id);
+        
+        let fillColor = isBuffer ? 'hsl(var(--accent))' : 'hsl(var(--primary))';
+        let strokeColor = isBuffer ? 'hsl(var(--accent))' : 'hsl(var(--primary))';
+        let fillOpacity = isMoving ? 0.5 : isSelected ? 0.45 : isBuffer ? 0.25 : 0.3;
+        let strokeWeight = isSelected ? 3.5 : isBuffer ? 2.5 : 2;
+
+        if (isZone) {
+            fillColor = getZoneColor(shape.zoneMeta!.kind);
+            strokeColor = fillColor;
+            fillOpacity = 0.6;
+            strokeWeight = 1.5;
+        }
+
+        if (isAsset) {
+            // Asset footprints are just simple outlines
+            fillOpacity = 0;
+            strokeColor = '#334155'; // slate-700
+            strokeWeight = 1;
+        }
+
 
         const polyOptions: google.maps.PolygonOptions = {
           paths: path,
-          strokeColor: isBuffer ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
+          strokeColor,
           strokeOpacity: isMoving ? 1.0 : 0.8,
-          strokeWeight: isSelected ? 3.5 : isBuffer ? 2.5 : 2,
-          fillColor: isBuffer ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
-          fillOpacity: isMoving ? 0.5 : isSelected ? 0.45 : isBuffer ? 0.25 : 0.3,
+          strokeWeight,
+          fillColor,
+          fillOpacity,
           map: map,
           clickable: true,
           editable: isEditing,
           draggable: isMoving,
-          zIndex: isSelected ? 2 : 1,
+          zIndex: isZone ? 0 : isSelected ? 2 : 1,
         };
 
         if (isBufferedParent) {
@@ -216,8 +259,8 @@ const DrawnShapes: React.FC<{
         });
         
         poly.addListener('dblclick', () => {
-            if (isBuffer) {
-                toast({ title: 'Buffer shapes cannot be moved directly.' });
+            if (isBuffer || isAsset) {
+                toast({ title: 'This shape cannot be moved directly.' });
                 return;
             }
             setEditingShapeId(null); // Stop editing if we start moving
@@ -273,8 +316,8 @@ const DrawnShapes: React.FC<{
             const isMoving = id === movingShapeId;
             const shape = shapes.find(s => s.id === id);
 
-            const shouldBeEditable = isEditing && shape?.type !== 'buffer';
-            const shouldBeDraggable = isMoving && shape?.type !== 'buffer';
+            const shouldBeEditable = isEditing && !shape?.bufferMeta && !shape?.assetMeta;
+            const shouldBeDraggable = isMoving && !shape?.bufferMeta && !shape?.assetMeta;
 
             if (poly.getEditable() !== shouldBeEditable) {
                 poly.setEditable(shouldBeEditable);
@@ -294,7 +337,7 @@ const DrawnShapes: React.FC<{
             const newShapes = prev.map(s => {
                 if (s.id === id) {
                     // Any edit/move converts the original shape type to a polygon
-                    return { ...s, type: 'polygon' as Shape['type'], path: newPath, area: newArea, bufferMeta: undefined };
+                    return { ...s, type: s.zoneMeta ? 'zone' : 'polygon', path: newPath, area: newArea, bufferMeta: undefined };
                 }
                 return s;
             });
@@ -499,14 +542,17 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   const { toast } = useToast();
   const [elevationService, setElevationService] = useState<google.maps.ElevationService | null>(null);
   const [bufferState, setBufferState] = useState<BufferState>({ isOpen: false, shapeId: null });
+  const [zoneDialogState, setZoneDialogState] = useState<ZoneDialogState>({ isOpen: false, path: null, area: null });
 
   const isInteractingWithShape = !!editingShapeId || !!movingShapeId;
-  const isDrawing = selectedTool === 'rectangle' || selectedTool === 'polygon' || selectedTool === 'freehand';
+  const isDrawing = ['rectangle', 'polygon', 'freehand', 'zone'].includes(selectedTool);
 
   useEffect(() => {
     if (map) {
-      const newCursor = selectedTool === 'freehand' ? 'crosshair' : null;
-      map.setOptions({ draggableCursor: newCursor });
+      let cursor = null;
+        if (selectedTool === 'freehand') cursor = 'crosshair';
+        if (selectedTool === 'asset') cursor = 'copy';
+      map.setOptions({ draggableCursor: cursor });
     }
   }, [map, selectedTool]);
   
@@ -655,13 +701,60 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     }
   };
 
+   const handleZoneDrawn = useCallback((path: LatLng[], area: number) => {
+    setZoneDialogState({ isOpen: true, path, area });
+  }, []);
+
+  const handleCreateZone = useCallback((name: string, kind: Shape['zoneMeta']['kind']) => {
+    if (!zoneDialogState.path || !zoneDialogState.area) return;
+    const newZone: Shape = {
+      id: uuid(),
+      type: 'zone',
+      path: zoneDialogState.path,
+      area: zoneDialogState.area,
+      zoneMeta: { name, kind },
+    };
+    setShapes(prev => [...prev, newZone]);
+    setZoneDialogState({ isOpen: false, path: null, area: null });
+  }, [zoneDialogState, setShapes]);
+
+
   useEffect(() => {
-    const handleClickOutside = () => {
+    const handleClickOutside = (e: google.maps.MapMouseEvent) => {
       closeContextMenu();
       setEditingShapeId(null); // Stop editing when clicking the map
       setMovingShapeId(null); // Stop moving when clicking the map
+      
+      if(selectedTool === 'asset' && e.latLng) {
+        // This is a simplified asset placement. A real implementation would have a modal to select asset type.
+        const assetSize = 10; // meters
+        const center = e.latLng.toJSON();
+        const halfSize = assetSize / 111320; // ~meters to degrees
+        
+        const path = [
+          { lat: center.lat - halfSize, lng: center.lng - halfSize },
+          { lat: center.lat + halfSize, lng: center.lng - halfSize },
+          { lat: center.lat + halfSize, lng: center.lng + halfSize },
+          { lat: center.lat - halfSize, lng: center.lng + halfSize },
+        ];
+
+        setShapes(prev => [...prev, {
+            id: uuid(),
+            type: 'rectangle', // Visually it's a rect, but meta identifies it as an asset
+            path,
+            area: google.maps.geometry.spherical.computeArea(path),
+            assetMeta: {
+                key: 'house_detached',
+                floors: 2,
+                rotation: 0,
+            }
+        }]);
+        return;
+      }
+      
       setSelectedShapeIds([]); // Deselect all shapes
     };
+
     if (map) {
       const clickListener = map.addListener('click', handleClickOutside);
       const dragListener = map.addListener('dragstart', closeContextMenu);
@@ -670,7 +763,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         dragListener.remove();
       }
     }
-  }, [map, closeContextMenu, setSelectedShapeIds]);
+  }, [map, closeContextMenu, setSelectedShapeIds, selectedTool, setShapes]);
 
 
   return (
@@ -688,9 +781,8 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         mapTypeControl={false}
         fullscreenControl={false}
         className="w-full h-full"
-        // onClick={() => setSelectedShapeIds([])}
       >
-        {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} setShapes={setShapes} setSelectedTool={setSelectedTool} />}
+        {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} setShapes={setShapes} setSelectedTool={setSelectedTool} onZoneDrawn={handleZoneDrawn} />}
         {isLoaded && selectedTool === 'freehand' && <FreehandDrawingTool setShapes={setShapes} setSelectedTool={setSelectedTool} />}
         {isLoaded && <DrawnShapes shapes={shapes} setShapes={setShapes} onShapeRightClick={handleShapeRightClick} onShapeClick={handleShapeClick} selectedShapeIds={selectedShapeIds} editingShapeId={editingShapeId} setEditingShapeId={setEditingShapeId} movingShapeId={movingShapeId} setMovingShapeId={setMovingShapeId} />}
         {isLoaded && elevationGrid && isAnalysisVisible && <ElevationGridDisplay elevationGrid={elevationGrid} steepnessThreshold={steepnessThreshold} />}
@@ -700,6 +792,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         <ShapeContextMenu
           position={contextMenu.position}
           shapeId={contextMenu.shapeId}
+          shapes={shapes}
           onDelete={handleDeleteShape}
           onEdit={handleEditShape}
           onBuffer={handleBufferShape}
@@ -711,6 +804,11 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         state={bufferState}
         onOpenChange={(isOpen) => setBufferState(prev => ({...prev, isOpen}))}
         onCreateBuffer={handleCreateBuffer}
+      />
+      <ZoneDialog
+        state={zoneDialogState}
+        onOpenChange={(isOpen) => setZoneDialogState(prev => ({...prev, isOpen}))}
+        onCreateZone={handleCreateZone}
       />
     </div>
   );

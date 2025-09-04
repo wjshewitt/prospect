@@ -9,7 +9,7 @@ import ToolPalette from '@/components/tools/tool-palette';
 import StatisticsSidebar from '@/components/sidebar/statistics-sidebar';
 import { MapCanvas } from '@/components/map/map-canvas';
 import { Button } from '@/components/ui/button';
-import { PanelRightClose, PanelLeftClose, Eye } from 'lucide-react';
+import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThreeDVisualizationModal } from '@/components/dev-viz/three-d-modal';
 
@@ -43,7 +43,7 @@ export default function VisionPage() {
   const [steepnessThreshold, setSteepnessThreshold] = useState<number>(8); // default 8 percent
   const [elevationGrid, setElevationGrid] = useState<ElevationGrid | null>(null);
   const [isAnalysisVisible, setIsAnalysisVisible] = useState(true);
-  const [is3DModalOpen, setIs3DModalOpen] = useState(false);
+  const [is3DView, setIs3DView] = useState(false);
 
 
   if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
@@ -59,7 +59,10 @@ export default function VisionPage() {
     );
   }
 
-  const projectBoundary = shapes.find(s => s.type !== 'buffer');
+  const projectBoundary = shapes.find(s => s.type !== 'buffer' && !s.zoneMeta && !s.assetMeta);
+  const assets = shapes.filter(s => !!s.assetMeta);
+  const zones = shapes.filter(s => !!s.zoneMeta);
+
 
   return (
     <APIProvider 
@@ -77,11 +80,11 @@ export default function VisionPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIs3DModalOpen(true)}
-              disabled={shapes.length === 0}
+              onClick={() => setIs3DView(!is3DView)}
+              disabled={!projectBoundary}
             >
-              <Eye className="h-4 w-4 mr-2" />
-              Visualize in 3D
+              {is3DView ? <MapIcon className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+              {is3DView ? '2D View' : '3D View'}
             </Button>
         </Header>
         <div className="flex flex-1 overflow-hidden">
@@ -94,50 +97,55 @@ export default function VisionPage() {
             setSelectedShapeIds={setSelectedShapeIds}
           />
           <main className="flex-1 relative bg-muted/20">
-            <MapCanvas
-              shapes={shapes}
-              setShapes={setShapes}
-              selectedTool={selectedTool}
-              setSelectedTool={setSelectedTool}
-              gridResolution={debouncedGridResolution} // Use debounced value for analysis
-              steepnessThreshold={steepnessThreshold}
-              elevationGrid={elevationGrid}
-              setElevationGrid={setElevationGrid}
-              isAnalysisVisible={isAnalysisVisible}
-              selectedShapeIds={selectedShapeIds}
-              setSelectedShapeIds={setSelectedShapeIds}
-            />
-            <Button 
-              size="icon" 
-              variant="outline"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-              className={cn("absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm", !isSidebarOpen && "right-4")}
-            >
-              {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
-            </Button>
+            {is3DView && projectBoundary ? (
+              <ThreeDVisualizationModal
+                assets={assets}
+                zones={zones}
+                boundary={projectBoundary}
+              />
+            ) : (
+              <MapCanvas
+                shapes={shapes}
+                setShapes={setShapes}
+                selectedTool={selectedTool}
+                setSelectedTool={setSelectedTool}
+                gridResolution={debouncedGridResolution} // Use debounced value for analysis
+                steepnessThreshold={steepnessThreshold}
+                elevationGrid={elevationGrid}
+                setElevationGrid={setElevationGrid}
+                isAnalysisVisible={isAnalysisVisible}
+                selectedShapeIds={selectedShapeIds}
+                setSelectedShapeIds={setSelectedShapeIds}
+              />
+            )}
+            
+            {!is3DView && (
+              <Button 
+                size="icon" 
+                variant="outline"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+                className={cn("absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm", !isSidebarOpen && "right-4")}
+              >
+                {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
+              </Button>
+            )}
           </main>
-          <StatisticsSidebar 
-            shapes={shapes} 
-            isOpen={isSidebarOpen}
-            gridResolution={gridResolution} // Use immediate value for slider UI
-            setGridResolution={setGridResolution}
-            steepnessThreshold={steepnessThreshold}
-            setSteepnessThreshold={setSteepnessThreshold}
-            elevationGrid={elevationGrid}
-            isAnalysisVisible={isAnalysisVisible}
-            setIsAnalysisVisible={setIsAnalysisVisible}
-            selectedShapeIds={selectedShapeIds}
-          />
+          {!is3DView && (
+            <StatisticsSidebar 
+              shapes={shapes} 
+              isOpen={isSidebarOpen}
+              gridResolution={gridResolution} // Use immediate value for slider UI
+              setGridResolution={setGridResolution}
+              steepnessThreshold={steepnessThreshold}
+              setSteepnessThreshold={setSteepnessThreshold}
+              elevationGrid={elevationGrid}
+              isAnalysisVisible={isAnalysisVisible}
+              setIsAnalysisVisible={setIsAnalysisVisible}
+              selectedShapeIds={selectedShapeIds}
+            />
+          )}
         </div>
       </div>
-      {is3DModalOpen && (
-        <ThreeDVisualizationModal
-          isOpen={is3DModalOpen}
-          onClose={() => setIs3DModalOpen(false)}
-          assets={shapes.filter(s => s.type !== 'buffer')}
-          boundary={projectBoundary}
-        />
-      )}
     </APIProvider>
   );
 }

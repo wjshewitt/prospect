@@ -1,20 +1,23 @@
 
+
 'use client';
 
 import React from 'react';
+import type { Shape } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Trash2, Pencil, Minimize2 } from 'lucide-react';
 
 interface ShapeContextMenuProps {
   position: { x: number; y: number };
   shapeId: string;
+  shapes: Shape[];
   onDelete: (shapeId: string) => void;
   onEdit: (shapeId: string) => void;
   onBuffer: (shapeId: string) => void;
   onClose: () => void;
 }
 
-export function ShapeContextMenu({ position, shapeId, onDelete, onEdit, onBuffer }: ShapeContextMenuProps) {
+export function ShapeContextMenu({ position, shapeId, shapes, onDelete, onEdit, onBuffer }: ShapeContextMenuProps) {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDelete(shapeId);
@@ -29,6 +32,11 @@ export function ShapeContextMenu({ position, shapeId, onDelete, onEdit, onBuffer
     e.stopPropagation();
     onBuffer(shapeId);
   };
+  
+  const selectedShape = shapes.find(s => s.id === shapeId);
+  const canEdit = selectedShape && !selectedShape.bufferMeta && !selectedShape.assetMeta;
+  const canBuffer = selectedShape && !selectedShape.bufferMeta && !selectedShape.assetMeta;
+
 
   return (
     <div
@@ -44,6 +52,7 @@ export function ShapeContextMenu({ position, shapeId, onDelete, onEdit, onBuffer
         size="sm"
         onClick={handleEdit}
         className="justify-start px-2 py-1 h-auto"
+        disabled={!canEdit}
       >
         <Pencil className="mr-2 h-4 w-4" />
         <span>Edit Shape</span>
@@ -53,6 +62,7 @@ export function ShapeContextMenu({ position, shapeId, onDelete, onEdit, onBuffer
         size="sm"
         onClick={handleBuffer}
         className="justify-start px-2 py-1 h-auto"
+        disabled={!canBuffer}
       >
         <Minimize2 className="mr-2 h-4 w-4" />
         <span>Create Buffer</span>
