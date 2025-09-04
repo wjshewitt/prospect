@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import type { Tool, Shape } from '@/lib/types';
@@ -108,6 +107,7 @@ export default function ToolPalette({
     <aside
       id="tool-palette"
       className="w-16 border-r bg-background/80 backdrop-blur-sm flex flex-col items-center py-4 z-10"
+      data-tutorial="step-0"
     >
       <TooltipProvider>
         <div className="flex flex-col items-center gap-1">

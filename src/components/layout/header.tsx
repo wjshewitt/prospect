@@ -33,9 +33,8 @@ export default function Header({ siteName, onSiteNameClick, onClear, hasShapes, 
         {siteName && (
             <>
               <Separator orientation="vertical" className="h-6" />
-              <button onClick={onSiteNameClick} className="flex items-center gap-2 text-xl font-semibold text-muted-foreground hover:text-foreground transition-colors">
+              <button onClick={onSiteNameClick} className="flex items-center gap-2 text-lg font-semibold text-muted-foreground hover:text-foreground transition-colors" data-tutorial="step-2">
                 <span>{siteName}</span>
-                <Pencil className="h-4 w-4" />
               </button>
             </>
         )}

@@ -19,9 +19,10 @@ interface NameSiteDialogProps {
   onOpenChange: (isOpen: boolean) => void;
   onSubmit: (name: string) => void;
   initialName?: string;
+  isTutorialActive?: boolean;
 }
 
-export function NameSiteDialog({ isOpen, onOpenChange, onSubmit, initialName }: NameSiteDialogProps) {
+export function NameSiteDialog({ isOpen, onOpenChange, onSubmit, initialName, isTutorialActive = false }: NameSiteDialogProps) {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
 
@@ -42,7 +43,10 @@ export function NameSiteDialog({ isOpen, onOpenChange, onSubmit, initialName }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent 
+        className="sm:max-w-[425px]"
+        data-tutorial={isTutorialActive ? "step-1" : undefined}
+      >
         <DialogHeader>
           <DialogTitle>{initialName ? 'Edit Site Name' : 'Name Your Site'}</DialogTitle>
           <DialogDescription>

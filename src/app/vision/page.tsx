@@ -9,10 +9,12 @@ import ToolPalette from '@/components/tools/tool-palette';
 import StatisticsSidebar from '@/components/sidebar/statistics-sidebar';
 import { MapCanvas } from '@/components/map/map-canvas';
 import { Button } from '@/components/ui/button';
-import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon } from 'lucide-react';
+import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThreeDVisualizationModal } from '@/components/dev-viz/three-d-modal';
 import { NameSiteDialog } from '@/components/map/name-site-dialog';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+import { TutorialGuide } from '@/components/tutorial/tutorial-guide';
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -50,6 +52,16 @@ export default function VisionPage() {
   const [isNameSiteDialogOpen, setIsNameSiteDialogOpen] = useState(false);
   const [pendingShape, setPendingShape] = useState<Omit<Shape, 'id'> | null>(null);
 
+  const [hasCompletedTutorial, setHasCompletedTutorial] = useLocalStorage('landvision-tutorial-complete', false);
+  const [isTutorialActive, setIsTutorialActive] = useState(false);
+  const [tutorialStep, setTutorialStep] = useState(0);
+
+  useEffect(() => {
+    if (!hasCompletedTutorial) {
+        setIsTutorialActive(true);
+    }
+  }, [hasCompletedTutorial]);
+
 
   if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
     return (
@@ -84,11 +96,27 @@ export default function VisionPage() {
         setPendingShape(null);
     }
     setIsNameSiteDialogOpen(false);
+    if (isTutorialActive) {
+      setTutorialStep(prev => prev + 1);
+    }
   }
 
   const handleBoundaryDrawn = (shape: Omit<Shape, 'id'>) => {
     setPendingShape(shape);
     setIsNameSiteDialogOpen(true);
+    if(isTutorialActive) {
+        setTutorialStep(prev => prev + 1);
+    }
+  }
+  
+  const handleTutorialFinish = () => {
+    setIsTutorialActive(false);
+    setHasCompletedTutorial(true);
+  }
+  
+  const handleTutorialStart = () => {
+    setTutorialStep(0);
+    setIsTutorialActive(true);
   }
 
 
@@ -111,6 +139,7 @@ export default function VisionPage() {
               size="sm"
               onClick={() => setIs3DView(!is3DView)}
               disabled={!projectBoundary}
+              data-tutorial="step-4"
             >
               {is3DView ? <MapIcon className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
               {is3DView ? '2D View' : '3D View'}
@@ -159,6 +188,15 @@ export default function VisionPage() {
                 {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
               </Button>
             )}
+
+            <Button
+                variant="default"
+                size="icon"
+                className="absolute bottom-4 left-4 z-10 rounded-full h-12 w-12 shadow-lg"
+                onClick={handleTutorialStart}
+            >
+                <HelpCircle />
+            </Button>
           </main>
           {!is3DView && (
             <StatisticsSidebar 
@@ -181,7 +219,15 @@ export default function VisionPage() {
         onOpenChange={setIsNameSiteDialogOpen}
         onSubmit={handleNameSite}
         initialName={siteName}
+        isTutorialActive={isTutorialActive && tutorialStep === 1}
       />
+       {isTutorialActive && (
+        <TutorialGuide
+          step={tutorialStep}
+          setStep={setTutorialStep}
+          onFinish={handleTutorialFinish}
+        />
+      )}
     </APIProvider>
   );
 }

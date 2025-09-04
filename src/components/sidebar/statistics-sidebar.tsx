@@ -90,16 +90,18 @@ export default function StatisticsSidebar({
             </CardContent>
           </Card>
 
-          <ElevationAnalysis
-            gridResolution={gridResolution}
-            setGridResolution={setGridResolution}
-            steepnessThreshold={steepnessThreshold}
-            setSteepnessThreshold={setSteepnessThreshold}
-            elevationGrid={elevationGrid}
-            isAnalysisVisible={isAnalysisVisible}
-            setIsAnalysisVisible={setIsAnalysisVisible}
-            selectedShapeIds={selectedShapeIds}
-          />
+          <div data-tutorial="step-3">
+            <ElevationAnalysis
+              gridResolution={gridResolution}
+              setGridResolution={setGridResolution}
+              steepnessThreshold={steepnessThreshold}
+              setSteepnessThreshold={setSteepnessThreshold}
+              elevationGrid={elevationGrid}
+              isAnalysisVisible={isAnalysisVisible}
+              setIsAnalysisVisible={setIsAnalysisVisible}
+              selectedShapeIds={selectedShapeIds}
+            />
+          </div>
 
            <Card>
             <CardHeader>
