@@ -224,7 +224,7 @@ export function SiteAssessmentDialog({ shapes, elevationGrid }: SiteAssessmentDi
                         </div>
                      </div>
 
-                    <h3 className="font-semibold text-lg">Elevation Analysis</h3>
+                    <h3 className="font-semibold text-lg">Topography Analysis</h3>
                     <div className="p-4 rounded-md border bg-muted/50">
                          <h4 className="font-medium flex items-center gap-2 mb-3"><Mountain className="h-5 w-5" /> Slope Extremes</h4>
                          <div className="flex justify-around text-center">

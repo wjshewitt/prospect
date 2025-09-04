@@ -783,9 +783,12 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
 
   useEffect(() => {
     const handleClickOutside = (e: google.maps.MapMouseEvent) => {
-      closeContextMenu();
-      setEditingShapeId(null); // Stop editing when clicking the map
-      setMovingShapeId(null); // Stop moving when clicking the map
+      if (selectedTool === 'pan' && !isInteractingWithShape) {
+        closeContextMenu();
+        setEditingShapeId(null); // Stop editing when clicking the map
+        setMovingShapeId(null); // Stop moving when clicking the map
+        setSelectedShapeIds([]); // Deselect all shapes
+      }
       
       if(selectedTool === 'asset' && e.latLng) {
         if (!projectBoundary) {
@@ -824,8 +827,6 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         }]);
         return;
       }
-      
-      setSelectedShapeIds([]); // Deselect all shapes
     };
 
     if (map) {
@@ -836,7 +837,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         dragListener.remove();
       }
     }
-  }, [map, closeContextMenu, setSelectedShapeIds, selectedTool, setShapes, projectBoundary, toast]);
+  }, [map, closeContextMenu, setSelectedShapeIds, selectedTool, setShapes, projectBoundary, toast, isInteractingWithShape]);
   
   const handleCameraChange = () => {
       if (!map) return;
@@ -899,5 +900,3 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
-
-    

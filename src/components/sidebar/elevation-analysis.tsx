@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { TrendingUp, Percent, Eye, EyeOff, Mountain, ArrowDown, ArrowUp } from 'lucide-react';
+import { TrendingUp, Percent, Eye, EyeOff, Mountain, ArrowDown, ArrowUp, Scaling } from 'lucide-react';
 import { useMemo } from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { Separator } from '../ui/separator';
@@ -53,6 +53,8 @@ export function ElevationAnalysis({
       invalidCells: elevationGrid.cells.length - validCells.length,
       minSlope: elevationGrid.minSlope,
       maxSlope: elevationGrid.maxSlope,
+      minElevation: elevationGrid.minElevation,
+      maxElevation: elevationGrid.maxElevation,
     }
   }, [elevationGrid, steepnessThreshold]);
 
@@ -61,13 +63,13 @@ export function ElevationAnalysis({
         <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center justify-between">
-                <span>Elevation Analysis</span>
+                <span>Topography Analysis</span>
                 <TrendingUp className="h-5 w-5 text-muted-foreground" />
               </CardTitle>
             </CardHeader>
             <CardContent>
               <CardDescription>
-                Select a single shape to analyze its slope.
+                Select a single shape to analyze its topography.
               </CardDescription>
             </CardContent>
         </Card>
@@ -78,7 +80,7 @@ export function ElevationAnalysis({
     <Card>
         <CardHeader>
             <CardTitle className="text-base flex items-center justify-between">
-            <span>Slope Analysis</span>
+            <span>Topography Analysis</span>
             <TrendingUp className="h-5 w-5 text-muted-foreground" />
             </CardTitle>
         </CardHeader>
@@ -153,29 +155,36 @@ export function ElevationAnalysis({
                     <Separator />
 
                     <h4 className="font-medium text-sm flex items-center gap-2">
-                        <Mountain className="h-4 w-4" /> Slope Extemes
+                        <Mountain className="h-4 w-4" /> Elevation Span
                     </h4>
                     <div className="flex justify-around text-center">
                         <div>
-                            <p className="text-2xl font-bold flex items-center justify-center gap-1">
-                                <ArrowDown className="h-5 w-5 text-muted-foreground" />
-                                {analysis.minSlope.toFixed(1)}%
+                             <p className="text-lg font-bold flex items-center justify-center gap-1">
+                                <ArrowDown className="h-4 w-4 text-muted-foreground" />
+                                {analysis.minElevation?.toFixed(1)}m
                             </p>
                             <p className="text-xs text-muted-foreground">Lowest</p>
                         </div>
                         <div>
-                           <p className="text-2xl font-bold flex items-center justify-center gap-1">
-                                <ArrowUp className="h-5 w-5 text-muted-foreground" />
-                                {analysis.maxSlope.toFixed(1)}%
+                           <p className="text-lg font-bold flex items-center justify-center gap-1">
+                                <ArrowUp className="h-4 w-4 text-muted-foreground" />
+                                {analysis.maxElevation?.toFixed(1)}m
                             </p>
-                            <p className="text-xs text-muted-foreground">Steepest</p>
+                            <p className="text-xs text-muted-foreground">Highest</p>
+                        </div>
+                        <div>
+                           <p className="text-lg font-bold flex items-center justify-center gap-1">
+                                <Scaling className="h-4 w-4 text-muted-foreground" />
+                                {(analysis.maxElevation! - analysis.minElevation!).toFixed(1)}m
+                            </p>
+                            <p className="text-xs text-muted-foreground">Difference</p>
                         </div>
                     </div>
                 </div>
             )}
              {(!elevationGrid || analysis.totalCells === 0) && (
                 <CardDescription className="text-center pt-2">
-                    Could not generate slope analysis for this area. Try a larger area or different resolution.
+                    Could not generate topography data for this area. Try a larger area or different resolution.
                 </CardDescription>
              )}
         </CardContent>

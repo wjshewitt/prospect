@@ -180,8 +180,8 @@ export async function analyzeElevation(
 
     // Create colored grid cells for visualization
     const cells: ElevationGridCell[] = [];
-    let minSlope = Infinity;
-    let maxSlope = -Infinity;
+    let minSlope = Infinity, maxSlope = -Infinity;
+    let minElevation = Infinity, maxElevation = -Infinity;
 
     for (let j = 0; j < ny - 1; j++) {
         for (let i = 0; i < nx - 1; i++) {
@@ -218,6 +218,21 @@ export async function analyzeElevation(
                 if (avgSlope < minSlope) minSlope = avgSlope;
                 if (avgSlope > maxSlope) maxSlope = avgSlope;
             }
+
+            // Find min/max elevation for the cell's corners
+            const elevs = [
+                z[j * nx + i],
+                z[j * nx + i + 1],
+                z[(j + 1) * nx + i],
+                z[(j + 1) * nx + i + 1]
+            ].filter(e => isFinite(e));
+
+            if (elevs.length > 0) {
+              const localMin = Math.min(...elevs);
+              const localMax = Math.max(...elevs);
+              if (localMin < minElevation) minElevation = localMin;
+              if (localMax > maxElevation) maxElevation = localMax;
+            }
             
             cells.push({
                 path: cellPath,
@@ -239,5 +254,7 @@ export async function analyzeElevation(
         resolution: (dx + dy) / 2,
         minSlope: isFinite(minSlope) ? minSlope : 0,
         maxSlope: isFinite(maxSlope) ? maxSlope : 0,
+        minElevation: isFinite(minElevation) ? minElevation : 0,
+        maxElevation: isFinite(maxElevation) ? maxElevation : 0,
     };
 }

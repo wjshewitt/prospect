@@ -52,4 +52,6 @@ export type ElevationGrid = {
     resolution: number;
     minSlope: number;
     maxSlope: number;
+    minElevation?: number;
+    maxElevation?: number;
 }
