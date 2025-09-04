@@ -91,13 +91,13 @@ const findNearbyPlacesFlow = ai.defineFlow(
     try {
       airport = await findPlaceTool({ location, type: PlaceType2.airport });
     } catch (e) {
-      console.warn("Could not find a nearby airport.");
+      console.log("Could not find a nearby airport.");
     }
     
     try {
        town = await findPlaceTool({ location, type: PlaceType2.locality });
     } catch (e) {
-       console.warn("Could not find a nearby town.");
+       console.log("Could not find a nearby town.");
     }
 
     return { airport, town };
