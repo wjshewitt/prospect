@@ -63,7 +63,13 @@ export default function VisionPage() {
       libraries={['drawing', 'geometry', 'elevation', 'places']}
     >
       <div id="capture-area" className="flex flex-col h-screen bg-background text-foreground font-body">
-        <Header shapes={shapes} setShapes={setShapes} elevationGrid={elevationGrid} />
+        <Header 
+          shapes={shapes} 
+          setShapes={setShapes} 
+          elevationGrid={elevationGrid}
+          setSelectedShapeIds={setSelectedShapeIds}
+          setElevationGrid={setElevationGrid}
+        />
         <div className="flex flex-1 overflow-hidden">
           <ToolPalette 
             selectedTool={selectedTool} 

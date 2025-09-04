@@ -4,7 +4,7 @@
 import type { Shape, ElevationGrid } from '@/lib/types';
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Map, Trash2, FileSearch } from 'lucide-react';
+import { Map, Trash2 } from 'lucide-react';
 import { SiteAssessmentDialog } from '../assessment/site-assessment-dialog';
 import Link from 'next/link';
 
@@ -12,13 +12,17 @@ type HeaderProps = {
   shapes: Shape[];
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
   elevationGrid: ElevationGrid | null;
+  setSelectedShapeIds: (ids: string[]) => void;
+  setElevationGrid: (grid: ElevationGrid | null) => void;
 };
 
-export default function Header({ shapes, setShapes, elevationGrid }: HeaderProps) {
+export default function Header({ shapes, setShapes, elevationGrid, setSelectedShapeIds, setElevationGrid }: HeaderProps) {
   
   const handleClear = () => {
     if (window.confirm('Are you sure you want to clear all drawings? This cannot be undone.')) {
         setShapes([]);
+        setSelectedShapeIds([]);
+        setElevationGrid(null);
     }
   }
 
@@ -31,7 +35,7 @@ export default function Header({ shapes, setShapes, elevationGrid }: HeaderProps
         </h1>
       </Link>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" onClick={handleClear} aria-label="Clear all drawings">
+        <Button variant="outline" size="sm" onClick={handleClear} disabled={shapes.length === 0} aria-label="Clear all drawings">
             <Trash2 className="h-4 w-4 mr-2" />
             Clear
         </Button>
