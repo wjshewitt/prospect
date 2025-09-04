@@ -41,10 +41,12 @@ const DrawingManagerComponent: React.FC<{
   selectedTool: Tool,
   setSelectedTool: (tool: Tool) => void,
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>,
+  shapes: Shape[],
   onZoneDrawn: (path: LatLng[], area: number) => void;
-}> = ({ selectedTool, setShapes, setSelectedTool, onZoneDrawn }) => {
+}> = ({ selectedTool, setShapes, setSelectedTool, onZoneDrawn, shapes }) => {
   const map = useMap();
   const [drawingManager, setDrawingManager] = useState<google.maps.drawing.DrawingManager | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!map) return;
