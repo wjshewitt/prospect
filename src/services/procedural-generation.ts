@@ -131,7 +131,7 @@ export function layoutAssetsInZone(zone: Shape): Shape[] {
                 assetMeta: {
                     key: kind === 'residential' ? 'house_procedural' : 'building_procedural',
                     floors: floors,
-                    rotation: 0, // Rotation could be a parameter in the future
+                    rotation: 0,
                 },
             };
             newAssets.push(asset);

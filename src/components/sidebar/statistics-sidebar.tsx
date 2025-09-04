@@ -48,6 +48,7 @@ export default function StatisticsSidebar({
 
   const totalAreaMeters = projectBoundary?.area || 0;
   const totalAreaAcres = totalAreaMeters * SQ_METERS_TO_ACRES;
+  const developedPercentage = totalAreaMeters > 0 ? (developedAreaMeters / totalAreaMeters) * 100 : 0;
 
   const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
   const selectedAreaMeters = selectedShapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
@@ -102,7 +103,10 @@ export default function StatisticsSidebar({
                     <Separator />
                      <div className="flex justify-between items-baseline">
                         <span className="font-medium text-muted-foreground">Total Developed</span>
-                        <span className="font-mono font-semibold">{developedAreaAcres.toFixed(3)} acres</span>
+                         <div className="text-right font-mono font-semibold">
+                          <span>{developedAreaAcres.toFixed(3)} acres</span>
+                          <span className="ml-2 text-muted-foreground">({developedPercentage.toFixed(1)}%)</span>
+                        </div>
                     </div>
                     </>
                  )}
