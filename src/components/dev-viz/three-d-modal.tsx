@@ -240,19 +240,64 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    
+    // --- Zone Coloring Logic ---
+    const zonePolygons = zones.map(zone => {
+      const zonePath = zone.path.map(p => proj.toLocal(p));
+      return {
+        path: zonePath,
+        kind: zone.zoneMeta?.kind,
+      }
+    });
+
+    const getZoneMaterial = (kind: Shape['zoneMeta']['kind']) => {
+        let color: THREE.ColorRepresentation = 0x555555; // Default grey
+        switch(kind) {
+            case 'residential': color = 0x4CAF50; break; // Green
+            case 'commercial': color = 0x2196F3; break; // Blue
+            case 'amenity': color = 0xFFC107; break; // Amber
+            case 'green_space': color = 0x2E7D32; break; // Darker Green
+            case 'solar': color = 0xFF9800; break; // Orange
+        }
+        return new THREE.MeshStandardMaterial({ color, side: THREE.DoubleSide, roughness: 0.9, metalness: 0.1 });
+    }
+
+    const materials = [
+        new THREE.MeshStandardMaterial({ color: 0x2D5016, side: THREE.DoubleSide, roughness: 0.9, metalness: 0.1 }), // Default terrain
+        ...zones.map(z => getZoneMaterial(z.zoneMeta?.kind)),
+    ];
+    const zoneMaterialMap = new Map(zones.map((z, i) => [z.id, i + 1]));
+
+    // Check which zone each face belongs to
+    const faceCount = triangles.length / 3;
+    let defaultGroupStart = 0;
+    let defaultGroupCount = 0;
+
+    for (let i = 0; i < faceCount; i++) {
+        const vA = new THREE.Vector3(positions[i*9 + 0], positions[i*9 + 1], positions[i*9 + 2]);
+        const vB = new THREE.Vector3(positions[i*9 + 3], positions[i*9 + 4], positions[i*9 + 5]);
+        const vC = new THREE.Vector3(positions[i*9 + 6], positions[i*9 + 7], positions[i*9 + 8]);
+        const center = new THREE.Vector3().add(vA).add(vB).add(vC).divideScalar(3);
+
+        let materialIndex = 0; // Default terrain
+        for (const zone of zones) {
+            const googleZone = new google.maps.Polygon({ paths: zone.path });
+            const centerLL = proj.xyToLL(center.x, -center.y);
+            if(google.maps.geometry.poly.containsLocation(new google.maps.LatLng(centerLL), googleZone)) {
+                materialIndex = zoneMaterialMap.get(zone.id) ?? 0;
+                break; // Assign to first matching zone
+            }
+        }
+        
+        geometry.addGroup(i * 3, 3, materialIndex);
+    }
+    
     geometry.computeVertexNormals();
 
-
-    const groundMaterial = new THREE.MeshStandardMaterial({
-        color: 0x2D5016, // Solid green color
-        side: THREE.DoubleSide,
-        roughness: 0.9,
-        metalness: 0.1,
-    });
-    
-    const terrainMesh = new THREE.Mesh(geometry, groundMaterial);
+    const terrainMesh = new THREE.Mesh(geometry, materials);
     terrainMesh.receiveShadow = true;
     geoGroup.add(terrainMesh);
+
 
     // Asset materials
     const buildingMaterial = new THREE.MeshStandardMaterial({ color: '#D2B48C', roughness: 0.8, metalness: 0.0 });
