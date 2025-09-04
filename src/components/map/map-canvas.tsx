@@ -212,14 +212,15 @@ const DrawnShapes: React.FC<{
         const isBuffer = !!shape.bufferMeta;
         const isZone = !!shape.zoneMeta;
         const isAsset = !!shape.assetMeta;
+        const isBoundary = !isBuffer && !isZone && !isAsset;
         const isBufferedParent = bufferedParentIds.has(shape.id);
         
         let fillColor = 'hsl(var(--primary))';
+        let fillOpacity = isBoundary ? 0.2 : 1.0;
         let strokeColor = 'hsl(var(--primary))';
-        let fillOpacity = 1;
         let strokeOpacity = isSelected ? 1.0 : 0.8;
         let strokeWeight = isSelected ? 3.5 : 2;
-        let zIndex = isSelected ? 4 : 1; // Default zIndex
+        let zIndex = isSelected ? 5 : 1; // Default zIndex
         let icons = undefined;
 
         if (isBuffer) {
@@ -227,7 +228,7 @@ const DrawnShapes: React.FC<{
             fillOpacity = 0.15;
             strokeColor = 'hsl(var(--accent))';
             strokeWeight = 2.5;
-            zIndex = 2;
+            zIndex = isSelected ? 6 : 3;
             icons = [{
                 icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, strokeWeight, scale: 4 },
                 offset: '0',
@@ -241,14 +242,15 @@ const DrawnShapes: React.FC<{
             const zoneColors = getZoneColor(shape.zoneMeta!.kind);
             fillColor = zoneColors.fill;
             strokeColor = zoneColors.stroke;
-            zIndex = 3;
+            zIndex = isSelected ? 7 : 4;
         }
 
         if (isAsset) {
             fillColor = '#334155'; // slate-700
             strokeColor = '#0f172a'; // slate-900
             strokeWeight = 1;
-            zIndex = 5; // Assets on top
+            zIndex = isSelected ? 8 : 6; // Assets on top
+            fillOpacity = 1.0;
         }
 
         if(isMoving) {
@@ -426,6 +428,7 @@ const ElevationGridDisplay: React.FC<{
         strokeWeight: 0.5,
         strokeOpacity: 0.6,
         clickable: true,
+        zIndex: 2, // Ensure grid is above boundary but below zones/assets
       });
 
       poly.addListener('click', () => {
