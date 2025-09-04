@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { BarChart3, LandPlot, HelpCircle, LayoutGrid, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ElevationAnalysis } from './elevation-analysis';
+import { DevelopmentDetails } from './development-details';
 
 type StatisticsSidebarProps = {
   shapes: Shape[];
@@ -115,6 +116,8 @@ export default function StatisticsSidebar({
                  )}
             </CardContent>
           </Card>
+
+          <DevelopmentDetails shapes={shapes} selectedShapeIds={selectedShapeIds} />
 
           <div data-tutorial="step-3">
             <ElevationAnalysis
