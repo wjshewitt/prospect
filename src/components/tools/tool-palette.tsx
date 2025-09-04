@@ -12,12 +12,11 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { BuildingPlacementDialog } from '@/components/ai/building-placement-dialog';
-import { MousePointer2, Square, Pen, Circle, Type, Spline, Shapes, PenTool, Combine, Diff } from 'lucide-react';
+import { MousePointer2, Square, Pen, PenTool, Shapes, Combine, Diff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { applyUnion, applyDifference } from '@/services/turf-operations';
-import { uuid } from '../map/map-canvas';
 
 type ToolPaletteProps = {
   selectedTool: Tool;
@@ -113,15 +112,12 @@ export default function ToolPalette({
                 <Button
                   variant="ghost"
                   className={cn(
-                    'w-full justify-center group-hover/button:justify-start group-hover/button:px-4 gap-2 px-0 h-14',
+                    'w-full h-14 justify-center',
                     selectedTool === panTool.id && 'bg-accent text-accent-foreground'
                   )}
                   onClick={() => setSelectedTool(panTool.id)}
                 >
                   {panTool.icon}
-                  <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
-                    {panTool.label}
-                  </span>
                 </Button>
               </div>
             </TooltipTrigger>
@@ -139,14 +135,11 @@ export default function ToolPalette({
                     <Button
                         variant="ghost"
                         className={cn(
-                        'w-full justify-center group-hover/button:justify-start group-hover/button:px-4 gap-2 px-0 h-14',
+                        'w-full h-14 justify-center',
                         !!activeDrawingTool && 'bg-accent text-accent-foreground'
                         )}
                     >
                         {activeDrawingTool?.icon ?? <Shapes />}
-                         <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
-                            Draw Tools
-                        </span>
                     </Button>
                   </DropdownMenuTrigger>
                 </div>
@@ -178,14 +171,11 @@ export default function ToolPalette({
                         <div className="w-full px-2 group/button">
                             <Button
                                 variant="ghost"
-                                className="w-full justify-center group-hover/button:justify-start group-hover/button:px-4 gap-2 px-0 h-14"
+                                className="w-full h-14 justify-center"
                                 disabled={selectedShapeIds.length !== 2}
                                 onClick={() => handleAdvancedTool(tool.action)}
                             >
                                 {tool.icon}
-                                <span className="opacity-0 w-0 group-hover/button:w-auto group-hover/button:opacity-100 transition-all duration-200 delay-100 whitespace-nowrap">
-                                    {tool.label}
-                                </span>
                             </Button>
                         </div>
                     </TooltipTrigger>
@@ -199,9 +189,19 @@ export default function ToolPalette({
         <div className="flex-grow" />
 
         <div className="w-full px-2 group/button">
-          <BuildingPlacementDialog />
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="w-full">
+                        <BuildingPlacementDialog />
+                    </div>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="md:block hidden">
+                    <p>AI Building Placement</p>
+                </TooltipContent>
+            </Tooltip>
         </div>
       </TooltipProvider>
     </aside>
   );
 }
+
