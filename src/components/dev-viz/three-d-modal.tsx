@@ -211,12 +211,12 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     const getElevationAt = (x: number, y: number): number => {
       if (!grid || nx < 2 || ny < 2) return 0;
       const u = ((x - minX) / (maxX - minX)) * (nx - 1);
-      const v = ((y - minY) / (maxY - minY)) * (ny - 1);
+      const v = 1 - ((y - minY) / (maxY - minY)); // Invert v-coordinate
       const i = Math.floor(u);
-      const j = Math.floor(v);
+      const j = Math.floor(v * (ny - 1));
       if (i < 0 || i >= nx - 1 || j < 0 || j >= ny - 1) return 0;
       const s = u - i;
-      const t = v - j;
+      const t = v * (ny - 1) - j;
       const z00 = grid[j * nx + i];
       const z10 = grid[j * nx + i + 1];
       const z01 = grid[(j + 1) * nx + i];
