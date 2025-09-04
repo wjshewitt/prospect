@@ -30,7 +30,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
   const mountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!mountRef.current || !boundary || !elevationGrid) return;
+    if (!mountRef.current || !boundary || !elevationGrid || !elevationGrid.pointGrid) return;
 
     const mountNode = mountRef.current;
     
@@ -81,8 +81,7 @@ export function ThreeDVisualizationModal({ assets, zones, boundary, elevationGri
     // --- Elevation Data Interpolation ---
     const { grid, nx, ny } = elevationGrid.pointGrid!;
     const { minX, maxX, minY, maxY } = elevationGrid.xyBounds!;
-    const elevRange = elevationGrid.maxElevation! - elevationGrid.minElevation!;
-
+    
     const getElevationAt = (x: number, y: number): number => {
         if (!grid || nx < 2 || ny < 2) return 0;
 
