@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -65,9 +66,9 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, values.email, values.password);
       toast({
         title: 'Login Successful',
-        description: "Welcome back! Redirecting you to the app...",
+        description: "Welcome back! Redirecting you...",
       });
-      router.push('/vision');
+      router.push('/welcome');
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -85,9 +86,9 @@ export default function LoginPage() {
         await signInWithPopup(auth, googleProvider);
         toast({
             title: 'Login Successful',
-            description: "Welcome back! Redirecting you to the app...",
+            description: "Welcome back! Redirecting you...",
         });
-        router.push('/vision');
+        router.push('/welcome');
     } catch (error: any) {
         toast({
             variant: 'destructive',

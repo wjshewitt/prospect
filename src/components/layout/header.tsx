@@ -49,7 +49,7 @@ export default function Header({ siteName, onSiteNameClick, onClear, onSave, onL
   return (
     <header className="flex items-center justify-between h-16 px-4 md:px-6 border-b shrink-0 z-10 bg-background/80 backdrop-blur-sm">
       <div className="flex items-center gap-4">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/welcome" className="flex items-center gap-2">
           <Map className="h-7 w-7 text-primary" />
           <h1 className="text-2xl font-bold font-headline tracking-tight text-gray-800">
             LandVision

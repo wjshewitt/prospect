@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -65,9 +66,9 @@ export default function SignUpPage() {
       await createUserWithEmailAndPassword(auth, values.email, values.password);
       toast({
         title: 'Account Created',
-        description: "You've successfully created your account. Redirecting to the app...",
+        description: "Welcome! Redirecting you now...",
       });
-      router.push('/vision');
+      router.push('/welcome');
     } catch (error: any) {
       let description = 'An unexpected error occurred. Please try again.';
       if (error.code === 'auth/email-already-in-use') {
@@ -89,9 +90,9 @@ export default function SignUpPage() {
         await signInWithPopup(auth, googleProvider);
         toast({
             title: 'Account Created',
-            description: "You've successfully signed up with Google. Redirecting to the app...",
+            description: "Welcome! Redirecting you now...",
         });
-        router.push('/vision');
+        router.push('/welcome');
     } catch (error: any) {
         toast({
             variant: 'destructive',
