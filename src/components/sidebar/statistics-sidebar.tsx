@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { BarChart3, LandPlot, HelpCircle, LayoutGrid, Info, ChevronDown, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BarChart3, LandPlot, HelpCircle, LayoutGrid, Info, ChevronDown, Sparkles, ChevronLeft, ChevronRight, Building, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ElevationAnalysis } from './elevation-analysis';
 import { DevelopmentDetails } from './development-details';
@@ -29,11 +29,43 @@ type StatisticsSidebarProps = {
   selectedShapeIds: string[];
   onGenerateLayout: (zoneId: string, density: 'low' | 'medium' | 'high') => void;
   onGenerateSolarLayout: (zoneId: string, density: 'low' | 'medium' | 'high') => void;
+  is3DView: boolean;
+  selectedAssetId: string | null;
+  onDeleteAsset: (assetId: string) => void;
 };
 
 type SidebarView = 'stats' | 'summary';
 
 const SQ_METERS_TO_ACRES = 0.000247105;
+
+const ThreeDAssetPanel = ({ selectedAssetId, onDeleteAsset }: { selectedAssetId: string, onDeleteAsset: (id: string) => void }) => {
+    return (
+        <div className="p-4">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base flex items-center justify-between">
+                        <span>Selected Building</span>
+                        <Building className="h-5 w-5 text-muted-foreground" />
+                    </CardTitle>
+                    <CardDescription>
+                        Actions for the selected 3D asset.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <p className="text-xs text-muted-foreground break-all">ID: {selectedAssetId}</p>
+                    <Button 
+                        variant="destructive"
+                        className="w-full"
+                        onClick={() => onDeleteAsset(selectedAssetId)}
+                    >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Building
+                    </Button>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
 
 export default function StatisticsSidebar({ 
     shapes, 
@@ -49,6 +81,9 @@ export default function StatisticsSidebar({
     selectedShapeIds,
     onGenerateLayout,
     onGenerateSolarLayout,
+    is3DView,
+    selectedAssetId,
+    onDeleteAsset,
 }: StatisticsSidebarProps) {
 
   const [view, setView] = useState<SidebarView>('stats');
@@ -107,113 +142,121 @@ export default function StatisticsSidebar({
         isOpen ? "w-80 flex" : "w-0 hidden"
       )}
     >
-        <ViewSwitcher />
-        <Separator />
-        <ScrollArea className="flex-1">
-            {view === 'stats' && (
-                <div className="p-4 space-y-6">
-                <Card>
-                    <CardHeader>
-                    <CardTitle className="text-base flex items-center justify-between">
-                        <span>Site Areas</span>
-                        <LandPlot className="h-5 w-5 text-muted-foreground" />
-                    </CardTitle>
-                    {selectedShapeIds.length > 0 && selectedAreaAcres > 0 && (
-                        <CardDescription>
-                            {selectedAreaAcres.toFixed(3)} acres in selection
-                        </CardDescription>
-                    )}
-                    </CardHeader>
-                    <CardContent className="space-y-3 text-sm">
-                        {projectBoundary && (
-                            <div className="flex justify-between items-baseline">
-                                <span className="font-medium text-muted-foreground">Total Site</span>
-                                <span className="font-mono font-semibold">{totalAreaAcres.toFixed(3)} acres</span>
-                            </div>
-                        )}
-                        {zones.map(zone => (
-                            <div key={zone.id} className="flex justify-between items-baseline">
-                                <span className="text-muted-foreground truncate pr-2">{zone.zoneMeta?.name}</span>
-                                <span className="font-mono font-semibold">{(zone.area! * SQ_METERS_TO_ACRES).toFixed(3)} acres</span>
-                            </div>
-                        ))}
-                        {developedAreaAcres > 0 && (
-                            <>
-                            <Separator />
-                            <div className="flex justify-between items-baseline">
-                                <span className="font-medium text-muted-foreground">Total Developed</span>
-                                <div className="text-right font-mono font-semibold">
-                                <span>{developedAreaAcres.toFixed(3)} acres</span>
-                                <span className="ml-2 text-muted-foreground">({developedPercentage.toFixed(1)}%)</span>
-                                </div>
-                            </div>
-                            </>
-                        )}
-                        {!projectBoundary && zones.length === 0 && (
-                            <CardDescription className="text-center">Draw a boundary to see area statistics.</CardDescription>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <DevelopmentDetails shapes={shapes} selectedShapeIds={selectedShapeIds} />
-
-                <SolarAnalysis 
-                    shapes={shapes}
-                    selectedShapeIds={selectedShapeIds}
-                    onGenerateSolarLayout={onGenerateSolarLayout}
-                />
-
-                <div data-tutorial="step-3">
-                    <ElevationAnalysis
-                    gridResolution={gridResolution}
-                    setGridResolution={setGridResolution}
-                    steepnessThreshold={steepnessThreshold}
-                    setSteepnessThreshold={setSteepnessThreshold}
-                    elevationGrid={elevationGrid}
-                    isAnalysisVisible={isAnalysisVisible}
-                    setIsAnalysisVisible={setIsAnalysisVisible}
-                    selectedShapeIds={selectedShapeIds}
-                    />
-                </div>
-
-                {canGenerateBuildingLayout && (
+      {is3DView && selectedAssetId && (
+        <ThreeDAssetPanel selectedAssetId={selectedAssetId} onDeleteAsset={onDeleteAsset} />
+      )}
+      
+      {!is3DView && (
+        <>
+            <ViewSwitcher />
+            <Separator />
+            <ScrollArea className="flex-1">
+                {view === 'stats' && (
+                    <div className="p-4 space-y-6">
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-base flex items-center justify-between">
-                                <span>Zone Actions</span>
-                                <LayoutGrid className="h-5 w-5 text-muted-foreground" />
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button className="w-full">
-                                        Generate Building Layout
-                                        <ChevronDown className="ml-2 h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                                    <DropdownMenuItem onSelect={() => onGenerateLayout(selectedShapeIds[0], 'low')}>Low Density</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => onGenerateLayout(selectedShapeIds[0], 'medium')}>Medium Density</DropdownMenuItem>
-                                    <DropdownMenuItem onSelect={() => onGenerateLayout(selectedShapeIds[0], 'high')}>High Density</DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            <CardDescription className="text-xs mt-2 text-center">
-                                Automatically place buildings in the selected zone. This will replace any existing buildings in this zone.
+                        <CardTitle className="text-base flex items-center justify-between">
+                            <span>Site Areas</span>
+                            <LandPlot className="h-5 w-5 text-muted-foreground" />
+                        </CardTitle>
+                        {selectedShapeIds.length > 0 && selectedAreaAcres > 0 && (
+                            <CardDescription>
+                                {selectedAreaAcres.toFixed(3)} acres in selection
                             </CardDescription>
+                        )}
+                        </CardHeader>
+                        <CardContent className="space-y-3 text-sm">
+                            {projectBoundary && (
+                                <div className="flex justify-between items-baseline">
+                                    <span className="font-medium text-muted-foreground">Total Site</span>
+                                    <span className="font-mono font-semibold">{totalAreaAcres.toFixed(3)} acres</span>
+                                </div>
+                            )}
+                            {zones.map(zone => (
+                                <div key={zone.id} className="flex justify-between items-baseline">
+                                    <span className="text-muted-foreground truncate pr-2">{zone.zoneMeta?.name}</span>
+                                    <span className="font-mono font-semibold">{(zone.area! * SQ_METERS_TO_ACRES).toFixed(3)} acres</span>
+                                </div>
+                            ))}
+                            {developedAreaAcres > 0 && (
+                                <>
+                                <Separator />
+                                <div className="flex justify-between items-baseline">
+                                    <span className="font-medium text-muted-foreground">Total Developed</span>
+                                    <div className="text-right font-mono font-semibold">
+                                    <span>{developedAreaAcres.toFixed(3)} acres</span>
+                                    <span className="ml-2 text-muted-foreground">({developedPercentage.toFixed(1)}%)</span>
+                                    </div>
+                                </div>
+                                </>
+                            )}
+                            {!projectBoundary && zones.length === 0 && (
+                                <CardDescription className="text-center">Draw a boundary to see area statistics.</CardDescription>
+                            )}
                         </CardContent>
                     </Card>
+
+                    <DevelopmentDetails shapes={shapes} selectedShapeIds={selectedShapeIds} />
+
+                    <SolarAnalysis 
+                        shapes={shapes}
+                        selectedShapeIds={selectedShapeIds}
+                        onGenerateSolarLayout={onGenerateSolarLayout}
+                    />
+
+                    <div data-tutorial="step-3">
+                        <ElevationAnalysis
+                        gridResolution={gridResolution}
+                        setGridResolution={setGridResolution}
+                        steepnessThreshold={steepnessThreshold}
+                        setSteepnessThreshold={setSteepnessThreshold}
+                        elevationGrid={elevationGrid}
+                        isAnalysisVisible={isAnalysisVisible}
+                        setIsAnalysisVisible={setIsAnalysisVisible}
+                        selectedShapeIds={selectedShapeIds}
+                        />
+                    </div>
+
+                    {canGenerateBuildingLayout && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center justify-between">
+                                    <span>Zone Actions</span>
+                                    <LayoutGrid className="h-5 w-5 text-muted-foreground" />
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button className="w-full">
+                                            Generate Building Layout
+                                            <ChevronDown className="ml-2 h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                                        <DropdownMenuItem onSelect={() => onGenerateLayout(selectedShapeIds[0], 'low')}>Low Density</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => onGenerateLayout(selectedShapeIds[0], 'medium')}>Medium Density</DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => onGenerateLayout(selectedShapeIds[0], 'high')}>High Density</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                <CardDescription className="text-xs mt-2 text-center">
+                                    Automatically place buildings in the selected zone. This will replace any existing buildings in this zone.
+                                </CardDescription>
+                            </CardContent>
+                        </Card>
+                    )}
+                    </div>
                 )}
-                </div>
-            )}
-            {view === 'summary' && (
-               <AiSummaryPanel 
-                siteName={siteName}
-                shapes={shapes}
-                elevationGrid={elevationGrid}
-               />
-            )}
-        </ScrollArea>
+                {view === 'summary' && (
+                   <AiSummaryPanel 
+                    siteName={siteName}
+                    shapes={shapes}
+                    elevationGrid={elevationGrid}
+                   />
+                )}
+            </ScrollArea>
+        </>
+      )}
     </aside>
   );
 }

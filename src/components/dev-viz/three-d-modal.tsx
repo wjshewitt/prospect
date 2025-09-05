@@ -9,7 +9,7 @@ import { PolygonLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl';
 import { useMap } from '@vis.gl/react-google-maps';
 import { Button } from '../ui/button';
-import { Trash2, Star, Move3d, MousePointer, ZoomIn } from 'lucide-react';
+import { Move3d, MousePointer, ZoomIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const MAP_STYLE = 'mapbox://styles/mapbox/satellite-v9';
@@ -20,6 +20,8 @@ interface ThreeDVisualizationProps {
   boundary: Shape;
   elevationGrid: ElevationGrid;
   onDeleteAsset: (assetId: string) => void;
+  selectedAssetId: string | null;
+  setSelectedAssetId: (id: string | null) => void;
 }
 
 // Function to calculate the center of the boundary for the initial view state.
@@ -38,7 +40,7 @@ function NavigationGuide() {
         <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-md p-3 rounded-lg shadow-lg border text-xs text-foreground w-60">
             <h4 className="font-bold mb-2 flex items-center gap-2"><Move3d className="h-4 w-4" /> 3D Navigation</h4>
             <ul className="space-y-1.5">
-                <li className="flex items-center gap-2"><MousePointer className="h-4 w-4 text-muted-foreground" /> <strong>Pan:</strong> Left-click + Drag</li>
+                <li className="flex items-center gap-2"><MousePointer className="h-4 w-4 text-muted-foreground" /> <strong>Pan/Select:</strong> Left-click + Drag</li>
                 <li className="flex items-center gap-2"><Move3d className="h-4 w-4 text-muted-foreground" /> <strong>Rotate/Pitch:</strong> Right-click + Drag</li>
                 <li className="flex items-center gap-2"><ZoomIn className="h-4 w-4 text-muted-foreground" /> <strong>Zoom:</strong> Scroll wheel</li>
             </ul>
@@ -51,11 +53,12 @@ export function ThreeDVisualizationModal({
   zones,
   boundary,
   elevationGrid,
-  onDeleteAsset
+  onDeleteAsset,
+  selectedAssetId,
+  setSelectedAssetId,
 }: ThreeDVisualizationProps) {
   const map = useMap();
   const { toast } = useToast();
-  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
 
   // Set the initial view state to focus on the center of the boundary.
   const initialViewState = useMemo(() => {
@@ -104,8 +107,8 @@ export function ThreeDVisualizationModal({
         data: assets,
         getPolygon: d => d.path.map(p => [p.lng, p.lat]),
         getFillColor: d => selectedAssetId === d.id ? [255, 193, 7, 255] : [51, 65, 85, 255],
-        getLineColor: [15, 23, 42, 255],
-        lineWidthMinPixels: 1,
+        getLineColor: d => selectedAssetId === d.id ? [255, 255, 255, 255] : [15, 23, 42, 255],
+        lineWidthMinPixels: d => selectedAssetId === d.id ? 2 : 1,
         extruded: true,
         getElevation: (d: any) => (d.assetMeta?.floors || 1) * 3, // 3 meters per floor
         pickable: true,
@@ -139,7 +142,7 @@ export function ThreeDVisualizationModal({
 
 
     return [terrainLayer, boundaryLayer, zoneLayer, buildingLayer];
-  }, [elevationGrid, assets, zones, selectedAssetId, boundary]);
+  }, [elevationGrid, assets, zones, selectedAssetId, boundary, setSelectedAssetId]);
 
   if (!initialViewState) {
     return (
@@ -147,14 +150,6 @@ export function ThreeDVisualizationModal({
         <p>Loading 3D View...</p>
       </div>
     );
-  }
-
-  const handleDelete = () => {
-    if(selectedAssetId) {
-        onDeleteAsset(selectedAssetId);
-        setSelectedAssetId(null);
-        toast({ title: 'Asset Deleted', description: 'The selected building has been removed.' });
-    }
   }
 
   return (
@@ -175,25 +170,6 @@ export function ThreeDVisualizationModal({
       </DeckGL>
 
       <NavigationGuide />
-
-      {selectedAssetId && (
-        <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-primary/50 w-60">
-           <div className="flex items-center gap-2 mb-3">
-            <Star className="w-5 h-5 text-primary" />
-            <span className="font-bold text-base">Selected Building</span>
-          </div>
-          <p className="text-sm text-muted-foreground truncate mb-3">ID: {selectedAssetId}</p>
-          <Button 
-            variant="destructive" 
-            size="sm" 
-            className="w-full"
-            onClick={handleDelete}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete Building
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

@@ -82,7 +82,7 @@ function VisionPageContent() {
   const [elevationGrid, setElevationGrid] = useState<ElevationGrid | null>(null);
   const [isAnalysisVisible, setIsAnalysisVisible] = useState(true);
   const [is3DView, setIs3DView] = useState(false);
-
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
 
   const [siteName, setSiteName] = useState<string>('My Project');
   const [isNameSiteDialogOpen, setIsNameSiteDialogOpen] = useState(false);
@@ -375,12 +375,15 @@ function VisionPageContent() {
 
   const handleDeleteAsset = (assetId: string) => {
     setShapes(prev => prev.filter(s => s.id !== assetId));
+    setSelectedAssetId(null);
+    toast({ title: 'Asset Deleted', description: 'The selected building has been removed.' });
   }
 
 
   const handleToggle3DView = async () => {
     if (!is3DView) {
         // Switching TO 3D view
+        setSelectedShapeIds([]); // Clear 2D selections
         if (!projectBoundary) {
             toast({
               variant: 'destructive',
@@ -416,6 +419,9 @@ function VisionPageContent() {
                 return; // Don't switch to 3D if data fails
             }
         }
+    } else {
+      // Switching back to 2D
+      setSelectedAssetId(null); // Clear 3D selection
     }
     setIs3DView(!is3DView);
   }
@@ -460,6 +466,7 @@ function VisionPageContent() {
           setShapes={setShapes}
           setSelectedShapeIds={setSelectedShapeIds}
           onTutorialStart={handleTutorialStart}
+          is3DView={is3DView}
         />
         <main className="flex-1 relative bg-muted/20">
             {!is3DView && (
@@ -476,6 +483,8 @@ function VisionPageContent() {
               boundary={projectBoundary}
               elevationGrid={elevationGrid}
               onDeleteAsset={handleDeleteAsset}
+              selectedAssetId={selectedAssetId}
+              setSelectedAssetId={setSelectedAssetId}
             />
           ) : (
             <MapCanvas
@@ -494,35 +503,34 @@ function VisionPageContent() {
             />
           )}
           
-          {!is3DView && (
-            <Button 
-              size="icon" 
-              variant="outline"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-              className={cn("absolute top-16 right-4 z-10 bg-background/80 backdrop-blur-sm", !isSidebarOpen && "right-4")}
-            >
-              {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
-            </Button>
-          )}
+          <Button 
+            size="icon" 
+            variant="outline"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+            className={cn("absolute top-16 right-4 z-10 bg-background/80 backdrop-blur-sm", !isSidebarOpen && "right-4")}
+          >
+            {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
+          </Button>
 
         </main>
-        {!is3DView && (
-          <StatisticsSidebar 
-            shapes={shapes}
-            siteName={siteName}
-            isOpen={isSidebarOpen}
-            gridResolution={gridResolution} // Use immediate value for slider UI
-            setGridResolution={setGridResolution}
-            steepnessThreshold={steepnessThreshold}
-            setSteepnessThreshold={setSteepnessThreshold}
-            elevationGrid={elevationGrid}
-            isAnalysisVisible={isAnalysisVisible}
-            setIsAnalysisVisible={setIsAnalysisVisible}
-            selectedShapeIds={selectedShapeIds}
-            onGenerateLayout={handleGenerateLayout}
-            onGenerateSolarLayout={handleGenerateSolarLayout}
-          />
-        )}
+        <StatisticsSidebar 
+          shapes={shapes}
+          siteName={siteName}
+          isOpen={isSidebarOpen}
+          gridResolution={gridResolution} // Use immediate value for slider UI
+          setGridResolution={setGridResolution}
+          steepnessThreshold={steepnessThreshold}
+          setSteepnessThreshold={setSteepnessThreshold}
+          elevationGrid={elevationGrid}
+          isAnalysisVisible={isAnalysisVisible}
+          setIsAnalysisVisible={setIsAnalysisVisible}
+          selectedShapeIds={selectedShapeIds}
+          onGenerateLayout={handleGenerateLayout}
+          onGenerateSolarLayout={handleGenerateSolarLayout}
+          is3DView={is3DView}
+          selectedAssetId={selectedAssetId}
+          onDeleteAsset={handleDeleteAsset}
+        />
       </div>
       <NameSiteDialog 
         isOpen={isNameSiteDialogOpen}

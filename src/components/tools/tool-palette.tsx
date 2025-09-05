@@ -12,7 +12,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { BuildingPlacementDialog } from '@/components/ai/building-placement-dialog';
-import { MousePointer2, Square, Pen, PenTool, Shapes, Combine, Diff, WholeWord, Building, HelpCircle, Bot, Settings } from 'lucide-react';
+import { MousePointer2, Square, Pen, PenTool, Shapes, Combine, Diff, WholeWord, Building, HelpCircle, Bot, Settings, Eye } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useMemo, useState } from 'react';
@@ -27,6 +27,7 @@ type ToolPaletteProps = {
   setShapes: (shapes: Shape[]) => void;
   setSelectedShapeIds: (ids: string[]) => void;
   onTutorialStart: () => void;
+  is3DView: boolean;
 };
 
 const panTool: { id: Tool; label: string; icon: React.ReactNode } = {
@@ -46,6 +47,11 @@ const designTools: { id: Tool; label: string; icon: React.ReactNode }[] = [
     { id: 'asset', label: 'Place Building', icon: <Building /> },
 ];
 
+const threeDTools: { id: Tool; label: string; icon: React.ReactNode }[] = [
+    { id: 'pan', label: 'Select & Navigate', icon: <MousePointer2 /> },
+];
+
+
 const advancedTools: { id: string; label: string; tooltip: string; icon: React.ReactNode; action: 'union' | 'difference' }[] = [
     { id: 'union', label: 'Union (Merge)', tooltip: 'Combine two selected shapes into one.', icon: <Combine />, action: 'union' },
     { id: 'difference', label: 'Difference (Subtract)', tooltip: 'Subtract one shape from another.', icon: <Diff />, action: 'difference' },
@@ -59,6 +65,7 @@ export default function ToolPalette({
     setShapes,
     setSelectedShapeIds,
     onTutorialStart,
+    is3DView,
 }: ToolPaletteProps) {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
@@ -109,6 +116,145 @@ export default function ToolPalette({
     }
   }
 
+  const TwoDTools = () => (
+    <>
+      <div className="flex flex-col items-center gap-1">
+        {/* Pan Tool */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="w-full px-2 group/button">
+              <Button
+                variant="ghost"
+                className={cn(
+                  'w-full h-14 justify-center',
+                  selectedTool === panTool.id && 'bg-accent text-accent-foreground'
+                )}
+                onClick={() => setSelectedTool(panTool.id)}
+              >
+                {panTool.icon}
+              </Button>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="md:block hidden">
+            <p>{panTool.label} (Ctrl+Click to multi-select)</p>
+          </TooltipContent>
+        </Tooltip>
+
+        {/* Drawing Tools Dropdown */}
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="w-full px-2 group/button">
+                  <DropdownMenuTrigger asChild>
+                  <Button
+                      variant="ghost"
+                      className={cn(
+                      'w-full h-14 justify-center',
+                      !!activeDrawingTool && 'bg-accent text-accent-foreground'
+                      )}
+                  >
+                      {activeDrawingTool?.icon ?? <Shapes />}
+                  </Button>
+                </DropdownMenuTrigger>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="md:block hidden">
+              <p>Boundary Tools</p>
+            </TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent side="right">
+            {drawingTools.map(tool => (
+              <DropdownMenuItem key={tool.id} onClick={() => setSelectedTool(tool.id)} disabled={hasBoundary}>
+                <div className="flex items-center gap-2">
+                  {tool.icon}
+                  <span>{tool.label}</span>
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <Separator className="my-4 w-10/12 mx-auto" />
+      
+      {/* Design Tools */}
+      <div className="flex flex-col items-center gap-1">
+          {designTools.map(tool => (
+                <Tooltip key={tool.id}>
+                  <TooltipTrigger asChild>
+                      <div className="w-full px-2 group/button">
+                          <Button
+                              variant="ghost"
+                              className={cn(
+                                  'w-full h-14 justify-center',
+                                  selectedTool === tool.id && 'bg-accent text-accent-foreground'
+                              )}
+                              onClick={() => setSelectedTool(tool.id)}
+                              disabled={!hasBoundary}
+                          >
+                              {tool.icon}
+                          </Button>
+                      </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="md:block hidden">
+                      <p>{tool.label}</p>
+                      {!hasBoundary && <p className="text-muted-foreground text-xs">Draw a site boundary first</p>}
+                  </TooltipContent>
+                </Tooltip>
+          ))}
+      </div>
+
+      <Separator className="my-4 w-10/12 mx-auto" />
+
+
+      {/* Advanced Tools */}
+      <div className="flex flex-col items-center gap-1">
+          {advancedTools.map(tool => (
+                <Tooltip key={tool.id}>
+                  <TooltipTrigger asChild>
+                      <div className="w-full px-2 group/button">
+                          <Button
+                              variant="ghost"
+                              className="w-full h-14 justify-center"
+                              disabled={selectedShapeIds.length !== 2}
+                              onClick={() => handleAdvancedTool(tool.action)}
+                          >
+                              {tool.icon}
+                          </Button>
+                      </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="md:block hidden">
+                      <p className="font-semibold">{tool.label}</p>
+                      <p className="text-muted-foreground">{tool.tooltip}</p>
+                  </TooltipContent>
+                </Tooltip>
+          ))}
+      </div>
+    </>
+  );
+
+  const ThreeDTools = () => (
+    <div className="flex flex-col items-center gap-1">
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <div className="w-full px-2 group/button">
+                    <Button
+                        variant="ghost"
+                        className='w-full h-14 justify-center bg-accent text-accent-foreground'
+                        onClick={() => setSelectedTool('pan')}
+                    >
+                        <MousePointer2 />
+                    </Button>
+                </div>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+                <p>Select & Navigate</p>
+            </TooltipContent>
+        </Tooltip>
+    </div>
+);
+
+
   return (
     <aside
       id="tool-palette"
@@ -116,119 +262,8 @@ export default function ToolPalette({
       data-tutorial="step-0"
     >
       <TooltipProvider>
-        <div className="flex flex-col items-center gap-1">
-          {/* Pan Tool */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="w-full px-2 group/button">
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    'w-full h-14 justify-center',
-                    selectedTool === panTool.id && 'bg-accent text-accent-foreground'
-                  )}
-                  onClick={() => setSelectedTool(panTool.id)}
-                >
-                  {panTool.icon}
-                </Button>
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="md:block hidden">
-              <p>{panTool.label} (Ctrl+Click to multi-select)</p>
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Drawing Tools Dropdown */}
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="w-full px-2 group/button">
-                   <DropdownMenuTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        className={cn(
-                        'w-full h-14 justify-center',
-                        !!activeDrawingTool && 'bg-accent text-accent-foreground'
-                        )}
-                    >
-                        {activeDrawingTool?.icon ?? <Shapes />}
-                    </Button>
-                  </DropdownMenuTrigger>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="md:block hidden">
-                <p>Boundary Tools</p>
-              </TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent side="right">
-              {drawingTools.map(tool => (
-                <DropdownMenuItem key={tool.id} onClick={() => setSelectedTool(tool.id)} disabled={hasBoundary}>
-                  <div className="flex items-center gap-2">
-                    {tool.icon}
-                    <span>{tool.label}</span>
-                  </div>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        <Separator className="my-4 w-10/12 mx-auto" />
+        {is3DView ? <ThreeDTools /> : <TwoDTools />}
         
-        {/* Design Tools */}
-        <div className="flex flex-col items-center gap-1">
-            {designTools.map(tool => (
-                 <Tooltip key={tool.id}>
-                    <TooltipTrigger asChild>
-                        <div className="w-full px-2 group/button">
-                            <Button
-                                variant="ghost"
-                                className={cn(
-                                    'w-full h-14 justify-center',
-                                    selectedTool === tool.id && 'bg-accent text-accent-foreground'
-                                )}
-                                onClick={() => setSelectedTool(tool.id)}
-                                disabled={!hasBoundary}
-                            >
-                                {tool.icon}
-                            </Button>
-                        </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="md:block hidden">
-                        <p>{tool.label}</p>
-                        {!hasBoundary && <p className="text-muted-foreground text-xs">Draw a site boundary first</p>}
-                    </TooltipContent>
-                 </Tooltip>
-            ))}
-        </div>
-
-        <Separator className="my-4 w-10/12 mx-auto" />
-
-
-        {/* Advanced Tools */}
-        <div className="flex flex-col items-center gap-1">
-            {advancedTools.map(tool => (
-                 <Tooltip key={tool.id}>
-                    <TooltipTrigger asChild>
-                        <div className="w-full px-2 group/button">
-                            <Button
-                                variant="ghost"
-                                className="w-full h-14 justify-center"
-                                disabled={selectedShapeIds.length !== 2}
-                                onClick={() => handleAdvancedTool(tool.action)}
-                            >
-                                {tool.icon}
-                            </Button>
-                        </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="right" className="md:block hidden">
-                        <p className="font-semibold">{tool.label}</p>
-                        <p className="text-muted-foreground">{tool.tooltip}</p>
-                    </TooltipContent>
-                 </Tooltip>
-            ))}
-        </div>
-
         <div className="flex-grow" />
 
         <div className="w-full px-2 group/button">
