@@ -4,10 +4,12 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   experimental: {
-    // This allows the Next.js dev server to accept requests from any origin.
-    // This is needed for the cloud-based development environment.
-    allowedDevOrigins: ['*'],
+    // This is an existing experimental flag, which we will keep.
+    // The new flag needs to be outside this block.
   },
+  // This allows the Next.js dev server to accept requests from any origin.
+  // This is needed for the cloud-based development environment.
+  allowedDevOrigins: ['*'],
   env: {
     NEXT_PUBLIC_MAPBOX_TOKEN: 'pk.eyJ1Ijoid2pzaGV3aXR0IiwiYSI6ImNtZjczNGR4ajBkZjMybHM2MDFhazV0OTIifQ.EQrYlQl16I2Z9VKJHAArKw',
   },
