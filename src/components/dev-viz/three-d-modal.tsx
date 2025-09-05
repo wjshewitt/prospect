@@ -389,7 +389,6 @@ export function ThreeDVisualizationModal({
             const { triangles, calls } = renderer.info.render;
             setPerformanceStats({ fps, triangles, drawCalls: calls });
             lastTimeRef.current = now;
-            frameCountRef.current = 0;
             renderer.info.reset();
         }
         renderer.render(scene, camera);
@@ -412,7 +411,9 @@ export function ThreeDVisualizationModal({
         cancelAnimationFrame(animationFrameId);
         orbitControls.dispose();
         if (rendererRef.current) {
-          mountNode.removeChild(rendererRef.current.domElement);
+          if (mountNode.contains(rendererRef.current.domElement)) {
+            mountNode.removeChild(rendererRef.current.domElement);
+          }
           rendererRef.current.dispose();
           rendererRef.current = null;
         }
@@ -423,15 +424,34 @@ export function ThreeDVisualizationModal({
   }, [boundary, elevationGrid, assets, zones, settings]);
 
   useEffect(() => {
-    if (selectedAsset?.mesh) {
-        (selectedAsset.mesh.material as THREE.MeshStandardMaterial).color.set(0xffa500); // Orange
-    }
+    selectableMeshes.forEach(mesh => {
+        if(mesh.id === selectedAsset?.mesh.id) {
+             (mesh.material as THREE.MeshStandardMaterial).color.set(0xffa500); // Orange for selected
+        } else {
+            (mesh.material as THREE.MeshStandardMaterial).color.set(0xcccccc); // Gray
+        }
+    });
+
+    const currentSelectedMesh = selectedAsset?.mesh;
     return () => {
-        if (selectedAsset?.mesh) {
-            (selectedAsset.mesh.material as THREE.MeshStandardMaterial).color.set(0xcccccc); // Reset to gray
+        if(currentSelectedMesh) {
+            (currentSelectedMesh.material as THREE.MeshStandardMaterial).color.set(0xcccccc);
         }
     }
-  }, [selectedAsset]);
+}, [selectedAsset]);
+
+  const selectableMeshes = useMemo(() => {
+      const meshes: THREE.Mesh[] = [];
+      const scene = mountRef.current?.getElementsByTagName('canvas')[0]?.parentElement; // Not ideal, but works for this
+      if(scene) {
+          scene.traverse(obj => {
+              if(obj instanceof THREE.Mesh && obj.userData.shape) {
+                  meshes.push(obj);
+              }
+          })
+      }
+      return meshes;
+  }, [assets]); // Re-evaluate when assets change
 
   return (
     <div className="relative w-full h-full">
@@ -471,3 +491,5 @@ export function ThreeDVisualizationModal({
     </div>
   );
 }
+
+    
