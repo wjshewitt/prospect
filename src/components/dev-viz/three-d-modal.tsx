@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
@@ -20,42 +21,7 @@ const getPolygonCenter = (path: LatLng[]): LatLng => {
   return bounds.getCenter().toJSON();
 };
 
-const CompassPortal: React.FC<{ camera: THREE.Camera | null }> = ({ camera }) => {
-  const [rotation, setRotation] = useState(0);
-  const portalNode = useRef<HTMLDivElement | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    portalNode.current = document.createElement('div');
-    document.body.appendChild(portalNode.current);
-    setIsMounted(true);
-
-    return () => {
-      if (portalNode.current) {
-        document.body.removeChild(portalNode.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!camera) return;
-
-    const updateCompass = () => {
-      const vector = new THREE.Vector3();
-      camera.getWorldDirection(vector);
-      const angle = Math.atan2(vector.x, vector.z);
-      setRotation(angle);
-    };
-
-    const controls = (camera as any)._controls;
-    if (controls && controls.addEventListener) {
-      controls.addEventListener('change', updateCompass);
-      updateCompass();
-      return () => controls.removeEventListener('change', updateCompass);
-    }
-  }, [camera]);
-  
-  const compassJsx = (
+const Compass = ({ rotation }: { rotation: number }) => (
     <div className="absolute top-4 right-4 w-16 h-16 bg-background/50 rounded-full flex items-center justify-center text-foreground backdrop-blur-sm shadow-lg pointer-events-none z-50">
       <div
         className="relative w-full h-full transition-transform"
@@ -70,10 +36,7 @@ const CompassPortal: React.FC<{ camera: THREE.Camera | null }> = ({ camera }) =>
         <ArrowUp className="w-6 h-6 text-red-500" />
       </div>
     </div>
-  );
-
-  return isMounted && portalNode.current ? createPortal(compassJsx, portalNode.current) : null;
-};
+);
 
 
 // Elevation stats display
@@ -105,7 +68,7 @@ export function ThreeDVisualizationModal({
 }: ThreeDVisualizationProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const [compassRotation, setCompassRotation] = useState(0);
   const [selectedAsset, setSelectedAsset] = useState<{mesh: THREE.Mesh, shape: Shape} | null>(null);
   const [elevationStats, setElevationStats] = useState({ min: 0, max: 0, range: 0 });
   const [terrainQuality, setTerrainQuality] = useState<'low' | 'medium' | 'high'>('medium');
@@ -141,7 +104,6 @@ export function ThreeDVisualizationModal({
       0.1, 
       10000
     );
-    cameraRef.current = camera;
     
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -192,7 +154,16 @@ export function ThreeDVisualizationModal({
     orbitControls.minDistance = 10;
     orbitControls.maxDistance = 1000;
     orbitControls.maxPolarAngle = Math.PI / 2.1;
-    (camera as any)._controls = orbitControls;
+    
+    // Compass update logic
+    const updateCompass = () => {
+        const vector = new THREE.Vector3();
+        camera.getWorldDirection(vector);
+        const angle = Math.atan2(vector.x, vector.z);
+        setCompassRotation(angle);
+    };
+    orbitControls.addEventListener('change', updateCompass);
+    updateCompass();
 
     // Raycasting for selection
     const raycaster = new THREE.Raycaster();
@@ -610,7 +581,7 @@ export function ThreeDVisualizationModal({
       if (!mountNode) return;
       camera.aspect = mountNode.clientWidth / mountNode.clientHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
+      renderer.setSize(mountNode.clientWidth / mountNode.clientHeight);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     };
     window.addEventListener('resize', handleResize);
@@ -621,6 +592,7 @@ export function ThreeDVisualizationModal({
       mountNode.removeEventListener('click', onMouseClick);
       cancelAnimationFrame(animationFrameId);
 
+      orbitControls.removeEventListener('change', updateCompass);
       orbitControls.dispose();
 
       scene.traverse(object => {
@@ -639,12 +611,12 @@ export function ThreeDVisualizationModal({
         mountNode.removeChild(renderer.domElement);
       }
     };
-  }, [assets, zones, boundary, elevationGrid, terrainQuality]);
+  }, [assets, zones, boundary, elevationGrid, terrainQuality, onDeleteAsset, selectedAsset]);
 
   return (
     <div className="relative w-full h-full bg-black">
       <div ref={mountRef} className="w-full h-full" />
-      <CompassPortal camera={cameraRef.current} />
+      <Compass rotation={compassRotation} />
       
       {elevationStats.range > 0 && (
         <ElevationStats 
