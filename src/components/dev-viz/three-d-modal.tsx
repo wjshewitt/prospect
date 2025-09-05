@@ -136,6 +136,34 @@ interface ThreeDVisualizationProps {
   onDeleteAsset: (assetId: string) => void;
 }
 
+// Multi-point gradient for realistic terrain coloring
+const terrainGradient = [
+    { stop: 0.0, color: new THREE.Color(0x0D3F0D) },   // Deep green for lowlands
+    { stop: 0.2, color: new THREE.Color(0x3A7A3A) },   // Lighter green
+    { stop: 0.4, color: new THREE.Color(0x5C8B2A) },   // Grassy green
+    { stop: 0.55, color: new THREE.Color(0x8B7355) }, // Earthy brown
+    { stop: 0.7, color: new THREE.Color(0xA0826D) },  // Rocky brown
+    { stop: 0.85, color: new THREE.Color(0xC4A57B) }, // Light rock
+    { stop: 0.95, color: new THREE.Color(0xE8DCC6) }, // High altitude rock
+    { stop: 1.0, color: new THREE.Color(0xFAFAFA) }    // Snow caps
+];
+
+function getGradientColor(value: number): THREE.Color {
+    // Find the two stops the value is between
+    for (let i = 0; i < terrainGradient.length - 1; i++) {
+        const lower = terrainGradient[i];
+        const upper = terrainGradient[i + 1];
+        if (value >= lower.stop && value <= upper.stop) {
+            // Normalize the value within this segment
+            const t = (value - lower.stop) / (upper.stop - lower.stop);
+            return lower.color.clone().lerp(upper.color, t);
+        }
+    }
+    // Handle edge cases
+    return value < 0.5 ? terrainGradient[0].color : terrainGradient[terrainGradient.length - 1].color;
+}
+
+
 export function ThreeDVisualizationModal({
   assets,
   zones,
@@ -245,9 +273,7 @@ export function ThreeDVisualizationModal({
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.2;
     
-    if (mountNode.childNodes.length === 0) {
-        mountNode.appendChild(renderer.domElement);
-    }
+    mountNode.appendChild(renderer.domElement);
     rendererRef.current = renderer;
     
     // Enhanced environment mapping
@@ -433,6 +459,12 @@ export function ThreeDVisualizationModal({
       return { x: local.x, y: local.y };
     });
 
+    if (boundaryPoints.length < 3) {
+      console.error("Boundary has fewer than 3 points and cannot be rendered.");
+      mountNode.innerHTML = `<div style="color: white; display: flex; align-items: center; justify-content: center; height: 100%;">Invalid boundary data provided.</div>`;
+      return; 
+    }
+
     let bMinX = Infinity, bMaxX = -Infinity, bMinY = Infinity, bMaxY = -Infinity;
     boundaryPoints.forEach(p => {
       bMinX = Math.min(bMinX, p.x);
@@ -504,43 +536,16 @@ export function ThreeDVisualizationModal({
         let color: THREE.Color;
         
         if (settings.terrainStyle === 'realistic') {
-          // Rich, realistic terrain gradient
-          if (normalizedHeight < 0.1) {
-            // Deep forest green
-            color = new THREE.Color(0x0D3F0D).lerp(new THREE.Color(0x1A5C1A), normalizedHeight * 10);
-          } else if (normalizedHeight < 0.25) {
-            // Forest to grass
-            color = new THREE.Color(0x1A5C1A).lerp(new THREE.Color(0x3A7A3A), (normalizedHeight - 0.1) / 0.15);
-          } else if (normalizedHeight < 0.4) {
-            // Grass to meadow
-            color = new THREE.Color(0x3A7A3A).lerp(new THREE.Color(0x5C8B2A), (normalizedHeight - 0.25) / 0.15);
-          } else if (normalizedHeight < 0.55) {
-            // Meadow to scrubland
-            color = new THREE.Color(0x5C8B2A).lerp(new THREE.Color(0x8B7355), (normalizedHeight - 0.4) / 0.15);
-          } else if (normalizedHeight < 0.7) {
-            // Scrubland to rocky
-            color = new THREE.Color(0x8B7355).lerp(new THREE.Color(0xA0826D), (normalizedHeight - 0.55) / 0.15);
-          } else if (normalizedHeight < 0.85) {
-            // Rocky to barren
-            color = new THREE.Color(0xA0826D).lerp(new THREE.Color(0xC4A57B), (normalizedHeight - 0.7) / 0.15);
-          } else if (normalizedHeight < 0.95) {
-            // Barren to snow line
-            color = new THREE.Color(0xC4A57B).lerp(new THREE.Color(0xE8DCC6), (normalizedHeight - 0.85) / 0.1);
-          } else {
-            // Snow cap
-            color = new THREE.Color(0xE8DCC6).lerp(new THREE.Color(0xFAFAFA), (normalizedHeight - 0.95) / 0.05);
-          }
-          
-          // Add subtle variation based on position
+          color = getGradientColor(normalizedHeight);
+          // Add subtle random variation for texture
           const variation = (Math.sin(i * 0.1) * 0.5 + 0.5) * 0.05;
           color.r = Math.min(1, color.r * (1 + variation));
           color.g = Math.min(1, color.g * (1 + variation));
           color.b = Math.min(1, color.b * (1 - variation * 0.5));
+
         } else if (settings.terrainStyle === 'topographic') {
-          // Topographic style
-          color = new THREE.Color(0xFFFFFF); // Base color, contours will be added later
+          color = new THREE.Color(0xFFFFFF);
         } else { // satellite
-          // Placeholder for satellite texture - for now, a simple green
           color = new THREE.Color(0x3A7A3A);
         }
 
@@ -591,8 +596,6 @@ export function ThreeDVisualizationModal({
         const lineGeom = new THREE.BufferGeometry();
         const points: THREE.Vector3[] = [];
         
-        // This is a simplified approach. A proper contouring algorithm (e.g., marching squares) is complex.
-        // Here we just draw lines at the target elevation on the grid edges.
         const positions = (terrainMesh.geometry as THREE.BufferGeometry).attributes.position;
         for (let j = 0; j < positions.count - 1; j++) {
            if ((positions.getZ(j) > contourElev && positions.getZ(j+1) < contourElev) ||
@@ -616,7 +619,7 @@ export function ThreeDVisualizationModal({
         return new THREE.Vector3(local.x, local.y, elev + 0.5); // Slightly elevated
     });
     
-    const boundaryLineGeom = new THREE.BufferGeometry().setFromPoints([...boundaryLinePoints, boundaryLinePoints[0]]); // Close the loop
+    const boundaryLineGeom = new THREE.BufferGeometry().setFromPoints([...boundaryLinePoints, boundaryLinePoints[0]]);
     const boundaryLineMat = new THREE.LineBasicMaterial({ color: 0xffeb3b, linewidth: 3, transparent: true, opacity: 0.8 });
     const boundaryLine = new THREE.Line(boundaryLineGeom, boundaryLineMat);
     geoGroup.add(boundaryLine);
@@ -630,7 +633,7 @@ export function ThreeDVisualizationModal({
           return new THREE.Vector3(local.x, local.y, elev + 0.4);
       });
       
-      const zoneLineGeom = new THREE.BufferGeometry().setFromPoints([...zonePoints, zonePoints[0]]); // Close the loop
+      const zoneLineGeom = new THREE.BufferGeometry().setFromPoints([...zonePoints, zonePoints[0]]);
       const zoneLineMat = new THREE.LineDashedMaterial({ color: 0xff9800, dashSize: 3, gapSize: 2 });
       const zoneLine = new THREE.Line(zoneLineGeom, zoneLineMat);
       zoneLine.computeLineDistances();
@@ -690,6 +693,7 @@ export function ThreeDVisualizationModal({
     orbitControls.target.copy(center);
 
     const onResize = () => {
+      if (!mountRef.current || !rendererRef.current) return;
       camera.aspect = mountNode.clientWidth / mountNode.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
@@ -729,11 +733,11 @@ export function ThreeDVisualizationModal({
       mountNode.removeEventListener('click', onMouseClick);
       
       // Dispose Three.js objects
-      scene.traverse(object => {
+      scene.traverse((object: THREE.Object3D) => {
         if (object instanceof THREE.Mesh) {
           object.geometry.dispose();
           if (Array.isArray(object.material)) {
-            object.material.forEach(material => material.dispose());
+            object.material.forEach((material: THREE.Material) => material.dispose());
           } else {
             object.material.dispose();
           }
@@ -754,7 +758,6 @@ export function ThreeDVisualizationModal({
       <ElevationStats {...elevationStats} currentElev={cursorElevation} />
       {settings.showPerformance && <PerformanceMonitor {...performanceStats} />}
 
-      {/* Settings Panel */}
       <Popover>
         <PopoverTrigger asChild>
           <Button variant="outline" size="icon" className="absolute top-4 left-4 bg-background/80 backdrop-blur-md">
