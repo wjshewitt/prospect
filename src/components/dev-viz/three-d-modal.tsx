@@ -75,7 +75,7 @@ export function ThreeDVisualizationModal({
       maxZoom: 20,
       elevationData: grid,
       texture: `https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.png?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`,
-      bounds: [minX, minY, maxX, maxY], // Use the correct bounds from elevation analysis
+      bounds: [minX, minY, maxX, maxY],
       color: TERRAIN_COLOR,
       wireframe: false,
       elevationDecoder: {
@@ -84,7 +84,6 @@ export function ThreeDVisualizationModal({
         bScaler: 1 / 256,
         offset: -32768,
       },
-       // Match the vertical exaggeration from the previous implementation
       zScaler: 1.2,
     });
     
