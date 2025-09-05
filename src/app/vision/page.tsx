@@ -466,10 +466,10 @@ function VisionPageContent() {
           is3DView={is3DView}
         />
         <main className="flex-1 relative bg-muted/20">
-          <div 
-            className={cn(
-                "absolute top-0 z-10 w-full flex justify-center transition-all duration-300",
-                isSidebarOpen ? "pr-80" : "pr-0"
+          <div className={cn(
+                "absolute top-2 z-10 flex w-auto justify-center transition-all duration-300",
+                "left-1/2 -translate-x-1/2",
+                isSidebarOpen && "w-[calc(100%-40rem)]"
             )}>
               <AddressSearchBox onPlaceSelect={(place) => {
                   if (place.geometry?.location && map) {
@@ -576,5 +576,3 @@ export default function VisionPage() {
     </APIProvider>
     )
 }
-
-    
