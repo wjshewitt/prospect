@@ -12,9 +12,9 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { BuildingPlacementDialog } from '@/components/ai/building-placement-dialog';
-import { MousePointer2, Square, Pen, PenTool, Shapes, Combine, Diff, WholeWord, Building } from 'lucide-react';
+import { MousePointer2, Square, Pen, PenTool, Shapes, Combine, Diff, WholeWord, Building, HelpCircle, Bot, Settings, Popover, PopoverTrigger, PopoverContent } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { applyUnion, applyDifference } from '@/services/turf-operations';
 
@@ -25,6 +25,7 @@ type ToolPaletteProps = {
   shapes: Shape[];
   setShapes: (shapes: Shape[]) => void;
   setSelectedShapeIds: (ids: string[]) => void;
+  onTutorialStart: () => void;
 };
 
 const panTool: { id: Tool; label: string; icon: React.ReactNode } = {
@@ -55,8 +56,10 @@ export default function ToolPalette({
     selectedShapeIds,
     shapes,
     setShapes,
-    setSelectedShapeIds 
+    setSelectedShapeIds,
+    onTutorialStart,
 }: ToolPaletteProps) {
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   const activeDrawingTool = useMemo(() => 
     drawingTools.find(t => t.id === selectedTool),
@@ -228,16 +231,55 @@ export default function ToolPalette({
         <div className="flex-grow" />
 
         <div className="w-full px-2 group/button">
-            <Tooltip>
+            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+              <Tooltip>
                 <TooltipTrigger asChild>
-                    <div className="w-full">
-                        <BuildingPlacementDialog />
-                    </div>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-full h-14 justify-center"
+                        >
+                            <Settings className={cn(isPopoverOpen && 'animate-spin')} />
+                        </Button>
+                    </PopoverTrigger>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="md:block hidden">
-                    <p>AI Building Placement</p>
+                    <p>Help & AI Tools</p>
                 </TooltipContent>
-            </Tooltip>
+              </Tooltip>
+              <PopoverContent side="right" align="center" className="w-auto p-1">
+                  <div className="flex flex-col gap-1">
+                      <Tooltip>
+                          <TooltipTrigger asChild>
+                              <div className="w-full">
+                                  <BuildingPlacementDialog />
+                              </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="md:block hidden">
+                              <p>AI Building Placement</p>
+                          </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                           <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    className="w-full h-14 justify-center"
+                                    onClick={() => {
+                                        onTutorialStart();
+                                        setIsPopoverOpen(false);
+                                    }}
+                                >
+                                    <HelpCircle />
+                                </Button>
+                           </TooltipTrigger>
+                           <TooltipContent side="right" className="md:block hidden">
+                               <p>Start Tutorial</p>
+                           </TooltipContent>
+                      </Tooltip>
+                  </div>
+              </PopoverContent>
+            </Popover>
         </div>
       </TooltipProvider>
     </aside>

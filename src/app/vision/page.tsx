@@ -459,6 +459,7 @@ function VisionPageContent() {
           shapes={shapes}
           setShapes={setShapes}
           setSelectedShapeIds={setSelectedShapeIds}
+          onTutorialStart={handleTutorialStart}
         />
         <main className="flex-1 relative bg-muted/20">
             <AddressSearchBox onPlaceSelect={(place) => {
@@ -502,14 +503,6 @@ function VisionPageContent() {
             </Button>
           )}
 
-          <Button
-              variant="default"
-              size="icon"
-              className="absolute bottom-4 left-4 z-10 rounded-full h-12 w-12 shadow-lg"
-              onClick={handleTutorialStart}
-          >
-              <HelpCircle />
-          </Button>
         </main>
         {!is3DView && (
           <StatisticsSidebar 
