@@ -578,7 +578,7 @@ function VisionPageContent() {
           selectedShapeIds={selectedShapeIds}
           onGenerateLayout={handleGenerateLayout}
           onGenerateSolarLayout={handleGenerateSolarLayout}
-          is3DView={is3DView}
+          is3DView={is3DMode}
           selectedAssetId={selectedAssetId}
           onDeleteAsset={handleDeleteAsset}
         />
@@ -626,5 +626,3 @@ export default function VisionPage() {
     </APIProvider>
     )
 }
-
-    
