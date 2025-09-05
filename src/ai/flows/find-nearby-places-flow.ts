@@ -11,6 +11,9 @@ import {
   Place,
 } from '@googlemaps/google-maps-services-js';
 import * as turf from '@turf/turf';
+import { config } from 'dotenv';
+
+config();
 
 const FindNearbyPlacesInputSchema = z.object({
   lat: z.number().describe('Latitude of the center point.'),
