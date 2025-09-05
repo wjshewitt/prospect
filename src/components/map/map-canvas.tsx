@@ -220,14 +220,20 @@ const DrawnShapes: React.FC<{
         let strokeWeight = isSelected ? 3.5 : 2;
         let strokePosition: google.maps.StrokePosition | undefined = undefined;
         let zIndex = 1; 
-        let icons = undefined;
+        let icons; // Use default icons (solid line) initially
         
         if (isBoundary) {
-            strokeColor = 'hsl(var(--accent))';
+            strokeColor = 'hsl(var(--accent))'; // Bright orange
             strokeWeight = isSelected ? 4 : 3;
-            fillOpacity = isSelected ? 0.2 : 0.1;
+            fillOpacity = isSelected ? 0.15 : 0.05;
             zIndex = 5;
             strokePosition = google.maps.StrokePosition.OUTSIDE;
+            icons = [{
+                icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, strokeWeight, scale: 4 },
+                offset: '0',
+                repeat: '10px'
+            }];
+            strokeOpacity = 0; // Hide the solid line, let icons create the dash effect
         }
 
         if (isBuffer) {

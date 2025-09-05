@@ -9,7 +9,7 @@ import { PolygonLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl';
 import { useMap } from '@vis.gl/react-google-maps';
 import { Button } from '../ui/button';
-import { Trash2, Star } from 'lucide-react';
+import { Trash2, Star, Move3d, MousePointer, ZoomIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const MAP_STYLE = 'mapbox://styles/mapbox/satellite-v9';
@@ -32,6 +32,19 @@ const getBoundaryCenter = (boundary: Shape) => {
     latitude: center.lat(),
   };
 };
+
+function NavigationGuide() {
+    return (
+        <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-md p-3 rounded-lg shadow-lg border text-xs text-foreground w-60">
+            <h4 className="font-bold mb-2 flex items-center gap-2"><Move3d className="h-4 w-4" /> 3D Navigation</h4>
+            <ul className="space-y-1.5">
+                <li className="flex items-center gap-2"><MousePointer className="h-4 w-4 text-muted-foreground" /> <strong>Pan:</strong> Left-click + Drag</li>
+                <li className="flex items-center gap-2"><Move3d className="h-4 w-4 text-muted-foreground" /> <strong>Rotate/Pitch:</strong> Right-click + Drag</li>
+                <li className="flex items-center gap-2"><ZoomIn className="h-4 w-4 text-muted-foreground" /> <strong>Zoom:</strong> Scroll wheel</li>
+            </ul>
+        </div>
+    )
+}
 
 export function ThreeDVisualizationModal({
   assets,
@@ -63,10 +76,9 @@ export function ThreeDVisualizationModal({
 
     const { grid, nx, ny } = elevationGrid.pointGrid;
     const { minX, maxX, minY, maxY } = elevationGrid.xyBounds;
-    const { minElevation = 0, maxElevation = 0 } = elevationGrid;
 
-    // Use a fixed color for the terrain for a clean, analytical look.
-    const TERRAIN_COLOR: [number, number, number] = [170, 170, 180]; // A neutral grey
+    // A neutral grey for the terrain for a clean, analytical look.
+    const TERRAIN_COLOR: [number, number, number] = [170, 170, 180];
 
     // Terrain Layer for elevation visualization.
     const terrainLayer = new TerrainLayer({
@@ -93,7 +105,7 @@ export function ThreeDVisualizationModal({
         getPolygon: d => d.path.map(p => [p.lng, p.lat]),
         getFillColor: d => selectedAssetId === d.id ? [255, 193, 7, 255] : [51, 65, 85, 255],
         getLineColor: [15, 23, 42, 255],
-        getLineWidth: 1,
+        lineWidthMinPixels: 1,
         extruded: true,
         getElevation: (d: any) => (d.assetMeta?.floors || 1) * 3, // 3 meters per floor
         pickable: true,
@@ -109,12 +121,25 @@ export function ThreeDVisualizationModal({
         getPolygon: d => d.path.map(p => [p.lng, p.lat]),
         getFillColor: [255, 152, 0, 80], // Orange with some transparency
         getLineColor: [255, 152, 0, 200],
-        getLineWidth: 2,
+        lineWidthMinPixels: 2,
         extruded: false,
     });
 
-    return [terrainLayer, zoneLayer, buildingLayer];
-  }, [elevationGrid, assets, zones, selectedAssetId]);
+    const boundaryLayer = new PolygonLayer({
+        id: 'boundary-3d',
+        data: [boundary],
+        getPolygon: d => d.path.map(p => [p.lng, p.lat]),
+        getFillColor: [0,0,0,0], // transparent fill
+        getLineColor: [252, 165, 3, 255], // bright orange
+        getLineWidth: 4,
+        lineWidthMinPixels: 4,
+        getLineDashArray: [8, 4],
+        extruded: false,
+    });
+
+
+    return [terrainLayer, boundaryLayer, zoneLayer, buildingLayer];
+  }, [elevationGrid, assets, zones, selectedAssetId, boundary]);
 
   if (!initialViewState) {
     return (
@@ -139,16 +164,17 @@ export function ThreeDVisualizationModal({
         initialViewState={initialViewState}
         controller={true}
         style={{ position: 'relative', width: '100%', height: '100%' }}
-        onClick={() => {
-            // Deselect asset if clicking on something other than a building
-            if(selectedAssetId) {
-                // A small delay to allow the building's own onClick to fire first
-                setTimeout(() => setSelectedAssetId(null), 100);
-            }
+        onClick={(info, event) => {
+            // Deselect asset if clicking on something other than a building (info.object will be null)
+             if (!info.object) {
+                setSelectedAssetId(null);
+             }
         }}
       >
         <Map reuseMaps mapLib={map} mapStyle={MAP_STYLE} mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN} />
       </DeckGL>
+
+      <NavigationGuide />
 
       {selectedAssetId && (
         <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-primary/50 w-60">
