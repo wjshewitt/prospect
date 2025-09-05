@@ -8,12 +8,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { LandPlot, Building, ArrowRight } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
+import { formatDistanceToNow } from 'date-fns';
+
 
 interface Project {
     id: string;
     siteName: string;
     shapes: Shape[];
-    lastModified: Date;
+    lastModified: string; // ISO string
 }
 
 interface ProjectCardProps {
@@ -33,12 +35,15 @@ const calculateStats = (shapes: Shape[]) => {
 export function ProjectCard({ project }: ProjectCardProps) {
     const { totalAreaAcres, buildingCount } = calculateStats(project.shapes);
 
+    const lastModifiedDate = project.lastModified ? new Date(project.lastModified) : null;
+    const timeAgo = lastModifiedDate ? formatDistanceToNow(lastModifiedDate, { addSuffix: true }) : 'never';
+
     return (
         <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg hover:-translate-y-1 bg-card">
             <CardHeader>
                 <CardTitle className="truncate">{project.siteName}</CardTitle>
                 <CardDescription>
-                     Last opened: {project.lastModified.toLocaleDateString()}
+                     Last modified: {timeAgo}
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow space-y-3">
@@ -68,7 +73,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             </CardContent>
             <CardFooter className="border-t bg-muted/50 p-3">
                 <Button asChild variant="ghost" size="sm" className="w-full justify-start">
-                    <Link href={`/vision`}>
+                    <Link href={`/vision?projectId=${project.id}`}>
                         Open Project
                         <ArrowRight className="ml-auto h-4 w-4" />
                     </Link>
@@ -98,3 +103,5 @@ ProjectCard.Skeleton = function ProjectCardSkeleton() {
         </Card>
     )
 }
+
+    

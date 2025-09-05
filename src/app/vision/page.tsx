@@ -3,14 +3,14 @@
 
 import type { Shape, Tool, ElevationGrid, LatLng } from '@/lib/types';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { APIProvider, useMap } from '@vis.gl/react-google-maps';
 import Header from '@/components/layout/header';
 import ToolPalette from '@/components/tools/tool-palette';
 import StatisticsSidebar from '@/components/sidebar/statistics-sidebar';
 import { MapCanvas, uuid } from '@/components/map/map-canvas';
 import { Button } from '@/components/ui/button';
-import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon, HelpCircle, Loader2 } from 'lucide-react';
+import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThreeDVisualizationModal } from '@/components/dev-viz/three-d-modal';
 import { NameSiteDialog } from '@/components/map/name-site-dialog';
@@ -24,7 +24,7 @@ import { AddressSearchBox } from '@/components/map/address-search-box';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, addDoc } from 'firebase/firestore';
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -43,33 +43,12 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-// Function to expand bounds by a factor. factor=2.25 means new area is ~5x old area.
-function expandBounds(bounds: google.maps.LatLngBounds, factor: number) {
-    const center = bounds.getCenter();
-    const ne = bounds.getNorthEast();
-
-    const newNeLat = center.lat() + (ne.lat() - center.lat()) * factor;
-    const newNeLng = center.lng() + (ne.lng() - center.lng()) * factor;
-    const newSwLat = center.lat() - (center.lat() - bounds.getSouthWest().lat()) * factor;
-    const newSwLng = center.lng() - (center.lng() - bounds.getSouthWest().lng()) * factor;
-
-    return new google.maps.LatLngBounds(
-        new google.maps.LatLng(newSwLat, newSwLng),
-        new google.maps.LatLng(newNeLat, newNeLng)
-    );
-}
-
-function getBoundsOfShape(shape: Shape): google.maps.LatLngBounds {
-    const bounds = new google.maps.LatLngBounds();
-    shape.path.forEach(p => bounds.extend(p));
-    return bounds;
-}
-
-
 function VisionPageContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [shapes, setShapes] = useState<Shape[]>([]);
   const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<Tool>('pan');
@@ -96,6 +75,7 @@ function VisionPageContent() {
   const [mapState, setMapState] = useState<{center: LatLng, zoom: number} | null>(null);
   const { toast } = useToast();
   const map = useMap();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -109,6 +89,47 @@ function VisionPageContent() {
         setIsTutorialActive(true);
     }
   }, [hasCompletedTutorial]);
+
+  // Effect for loading project data
+  useEffect(() => {
+    const projectIdFromUrl = searchParams.get('projectId');
+    if (user && projectIdFromUrl) {
+        const loadProject = async () => {
+            setIsLoading(true);
+            try {
+                const projectDocRef = doc(db, 'users', user.uid, 'projects', projectIdFromUrl);
+                const docSnap = await getDoc(projectDocRef);
+                if (docSnap.exists()) {
+                    const projectData = docSnap.data();
+                    setSiteName(projectData.siteName || 'My Project');
+                    setShapes(projectData.shapes || []);
+                    setMapState(projectData.mapState || null);
+                    setProjectId(projectIdFromUrl);
+                } else {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Project Not Found',
+                        description: 'The requested project could not be loaded.',
+                    });
+                    router.push('/welcome');
+                }
+            } catch (error) {
+                console.error("Error loading project:", error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Load Failed',
+                    description: 'Could not load project data.',
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadProject();
+    } else {
+        setIsLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, searchParams, router]);
 
 
   useEffect(() => {
@@ -141,12 +162,13 @@ function VisionPageContent() {
   }, [selectedShapeIds, debouncedGridResolution]);
   
 
-  const projectBoundary = shapes.find(s => s.type !== 'buffer' && !s.zoneMeta && !s.assetMeta);
+  const projectBoundary = shapes.find(s => !s.bufferMeta && !s.zoneMeta && !s.assetMeta);
   const assets = shapes.filter(s => !!s.assetMeta);
   const zones = shapes.filter(s => !!s.zoneMeta);
 
   const handleClear = () => {
-    if (window.confirm('Are you sure you want to clear all drawings and data? This cannot be undone.')) {
+    if (window.confirm('Are you sure you want to clear all drawings and data? This will start a new, unsaved project.')) {
+        setProjectId(null);
         setShapes([]);
         setSelectedShapeIds([]);
         setElevationGrid(null);
@@ -164,12 +186,26 @@ function VisionPageContent() {
             siteName,
             shapes,
             mapState: map ? { center: map.getCenter()!.toJSON(), zoom: map.getZoom()! } : null,
+            lastModified: new Date().toISOString(),
         };
-        const userDocRef = doc(db, 'projects', user.uid);
-        await setDoc(userDocRef, projectData);
+
+        let docRef;
+        if (projectId) {
+            // Update existing project
+            docRef = doc(db, 'users', user.uid, 'projects', projectId);
+            await setDoc(docRef, projectData, { merge: true });
+        } else {
+            // Create new project
+            const projectsCollectionRef = collection(db, 'users', user.uid, 'projects');
+            docRef = await addDoc(projectsCollectionRef, projectData);
+            setProjectId(docRef.id);
+            // Update URL to reflect new project ID without full page reload
+            router.push(`/vision?projectId=${docRef.id}`, { scroll: false });
+        }
+        
         toast({
             title: 'Project Saved',
-            description: `Project "${siteName}" has been saved successfully to your account.`,
+            description: `Project "${siteName}" has been saved successfully.`,
         });
     } catch (error) {
         console.error("Failed to save project to Firestore:", error);
@@ -180,44 +216,6 @@ function VisionPageContent() {
         });
     }
   };
-
-  const handleLoad = async () => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'Not Logged In', description: 'You must be logged in to load a project.' });
-        return;
-    }
-    try {
-        const userDocRef = doc(db, 'projects', user.uid);
-        const docSnap = await getDoc(userDocRef);
-
-        if (docSnap.exists()) {
-            const projectData = docSnap.data();
-            setSiteName(projectData.siteName || 'My Project');
-            setShapes(projectData.shapes || []);
-            setMapState(projectData.mapState || null);
-            setSelectedShapeIds([]);
-            setElevationGrid(null);
-            toast({
-                title: 'Project Loaded',
-                description: `Project "${projectData.siteName || 'Untitled'}" has been loaded from your account.`,
-            });
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'No Saved Project',
-                description: 'No saved project data was found for your account.',
-            });
-        }
-    } catch (error) {
-        console.error("Failed to load project from Firestore:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Load Failed',
-            description: 'Could not load project data from the database.',
-        });
-    }
-  };
-
 
   const handleGenerateLayout = async (zoneId: string, density: 'low' | 'medium' | 'high') => {
     const zone = shapes.find(s => s.id === zoneId && !!s.zoneMeta);
@@ -426,7 +424,7 @@ function VisionPageContent() {
     setIs3DView(!is3DView);
   }
 
-  if (authLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-10 w-10 animate-spin" />
@@ -441,7 +439,6 @@ function VisionPageContent() {
         onSiteNameClick={() => setIsNameSiteDialogOpen(true)}
         onClear={handleClear}
         onSave={handleSave}
-        onLoad={handleLoad}
         hasShapes={shapes.length > 0}
         shapes={shapes}
         elevationGrid={elevationGrid}
@@ -575,3 +572,5 @@ export default function VisionPage() {
     </APIProvider>
     )
 }
+
+    

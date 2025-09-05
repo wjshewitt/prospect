@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, LogOut } from 'lucide-react';
@@ -19,14 +19,40 @@ interface Project {
     id: string;
     siteName: string;
     shapes: Shape[];
-    lastModified: Date;
+    lastModified: string;
 }
 
 export default function WelcomePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [project, setProject] = useState<Project | null>(null);
-  const [isLoadingProject, setIsLoadingProject] = useState(true);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+
+  const fetchProjects = useCallback(async () => {
+    if (user) {
+        setIsLoadingProjects(true);
+        try {
+            const projectsCollectionRef = collection(db, 'users', user.uid, 'projects');
+            const q = query(projectsCollectionRef, orderBy('lastModified', 'desc'));
+            const querySnapshot = await getDocs(q);
+            const userProjects: Project[] = [];
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                userProjects.push({
+                    id: doc.id,
+                    siteName: data.siteName || 'Untitled Project',
+                    shapes: data.shapes || [],
+                    lastModified: data.lastModified,
+                });
+            });
+            setProjects(userProjects);
+        } catch (error) {
+            console.error("Failed to fetch projects:", error);
+        } finally {
+            setIsLoadingProjects(false);
+        }
+      }
+  }, [user]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -35,31 +61,8 @@ export default function WelcomePage() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    const fetchProject = async () => {
-      if (user) {
-        setIsLoadingProject(true);
-        try {
-            const userDocRef = doc(db, 'projects', user.uid);
-            const docSnap = await getDoc(userDocRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                setProject({
-                    id: user.uid,
-                    siteName: data.siteName || 'My Project',
-                    shapes: data.shapes || [],
-                    lastModified: data.mapState?.center ? new Date() : new Date(0), // Placeholder logic
-                });
-            }
-        } catch (error) {
-            console.error("Failed to fetch project:", error);
-        } finally {
-            setIsLoadingProject(false);
-        }
-      }
-    };
-
-    fetchProject();
-  }, [user]);
+    fetchProjects();
+  }, [fetchProjects]);
 
   const handleSignOut = async () => {
     await signOut(auth);
@@ -106,14 +109,14 @@ export default function WelcomePage() {
                 </div>
 
                 <div className="mt-8">
-                    {isLoadingProject ? (
+                    {isLoadingProjects ? (
                         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
                             <ProjectCard.Skeleton />
                             <ProjectCard.Skeleton />
                         </div>
-                    ) : project ? (
-                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                           <ProjectCard project={project} />
+                    ) : projects.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                           {projects.map(p => <ProjectCard key={p.id} project={p} />)}
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-white/50 p-12 text-center">
@@ -133,3 +136,5 @@ export default function WelcomePage() {
     </div>
   );
 }
+
+    
