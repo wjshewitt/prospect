@@ -45,16 +45,21 @@ export function AddressSearchBox({ onPlaceSelect }: AddressSearchBoxProps) {
 
     return (
         <div className="group relative">
+            {/* Collapsed Tab */}
             <div className={cn(
-                "absolute -top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center",
-                "h-8 w-24 rounded-b-lg border-x border-b border-border bg-background shadow-sm",
-                "transition-all duration-300 ease-in-out",
-                "group-hover:opacity-0 group-hover:invisible"
+                "flex items-center justify-center cursor-pointer",
+                "h-8 w-28 rounded-b-lg border-x border-b border-border bg-background shadow-sm",
+                "transition-opacity duration-300 ease-in-out",
+                "group-hover:opacity-0"
             )}>
-                <span className="text-xs font-medium text-muted-foreground">Search</span>
+                <span className="text-xs font-medium text-muted-foreground">Search Location</span>
             </div>
+            
+            {/* Expanded Input */}
             <div className={cn(
-                "relative w-0 transition-all duration-300 ease-in-out group-hover:w-96",
+                "absolute top-0 left-1/2 -translate-x-1/2",
+                "w-96",
+                "transition-opacity duration-300 ease-in-out",
                 "opacity-0 invisible group-hover:opacity-100 group-hover:visible"
             )}>
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
