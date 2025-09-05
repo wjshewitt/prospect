@@ -214,16 +214,19 @@ const DrawnShapes: React.FC<{
         const isBufferedParent = bufferedParentIds.has(shape.id);
         
         let fillColor = 'hsl(var(--primary))';
-        let fillOpacity = isBoundary ? 0.2 : 1.0;
+        let fillOpacity = 0.2;
         let strokeColor = 'hsl(var(--primary))';
-        let strokeOpacity = isSelected ? 1.0 : 0.8;
+        let strokeOpacity = 0.8;
         let strokeWeight = isSelected ? 3.5 : 2;
         let strokePosition: google.maps.StrokePosition | undefined = undefined;
         let zIndex = 1; 
         let icons = undefined;
         
         if (isBoundary) {
-            zIndex = 1;
+            strokeColor = 'hsl(var(--accent))';
+            strokeWeight = isSelected ? 4 : 3;
+            fillOpacity = isSelected ? 0.2 : 0.1;
+            zIndex = 5;
             strokePosition = google.maps.StrokePosition.OUTSIDE;
         }
 

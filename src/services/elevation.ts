@@ -2,7 +2,6 @@
 
 // src/services/elevation.ts
 import type { Shape, LatLng, ElevationGrid, ElevationGridCell } from '@/lib/types';
-import axios from 'axios';
 
 const MAX_GRID_POINTS = 500; // Keep total points reasonable for performance
 
@@ -80,72 +79,6 @@ async function fetchElevationsFromGoogle(
         }
     }
     return results;
-}
-
-/**
- * Fetch elevations from Mapbox Terrain-RGB tiles.
- */
-async function fetchElevationsFromMapbox(locations: LatLng[]): Promise<(number | null)[]> {
-    const accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-    if (!accessToken) {
-        console.error("Mapbox token is not configured.");
-        return locations.map(() => null);
-    }
-    
-    const ZOOM = 15; // Zoom level for terrain detail
-    const TILE_SIZE = 256;
-
-    const mercator = (lat: number, lng: number) => {
-        const sin = Math.sin(lat * Math.PI / 180);
-        const x = lng / 360 + 0.5;
-        const y = 0.5 - 0.25 * Math.log((1 + sin) / (1 - sin)) / Math.PI;
-        return { x, y };
-    }
-
-    const tileRequests = new Map<string, { url: string; points: { index: number; x: number; y: number }[] }>();
-
-    locations.forEach((loc, index) => {
-        const { x, y } = mercator(loc.lat, loc.lng);
-        const tileX = Math.floor(x * (2 ** ZOOM));
-        const tileY = Math.floor(y * (2 ** ZOOM));
-        const key = `${tileX}-${tileY}`;
-
-        if (!tileRequests.has(key)) {
-            tileRequests.set(key, {
-                url: `https://api.mapbox.com/v4/mapbox.terrain-rgb/${ZOOM}/${tileX}/${tileY}.pngraw?access_token=${accessToken}`,
-                points: [],
-            });
-        }
-        
-        const pixelX = Math.floor((x * (2 ** ZOOM) - tileX) * TILE_SIZE);
-        const pixelY = Math.floor((y * (2 ** ZOOM) - tileY) * TILE_SIZE);
-        
-        tileRequests.get(key)!.points.push({ index, x: pixelX, y: pixelY });
-    });
-
-    const elevations: (number | null)[] = new Array(locations.length).fill(null);
-
-    await Promise.all(
-      Array.from(tileRequests.values()).map(async ({ url, points }) => {
-        try {
-          const response = await axios.get(url, { responseType: 'arraybuffer' });
-          const imgData = new Uint8Array(response.data);
-          
-          points.forEach(({ index, x, y }) => {
-            const i = (y * TILE_SIZE + x) * 4;
-            const r = imgData[i];
-            const g = imgData[i + 1];
-            const b = imgData[i + 2];
-            const elev = -10000 + ((r * 256 * 256 + g * 256 + b) * 0.1);
-            elevations[index] = elev;
-          });
-        } catch (error) {
-          console.error(`Failed to fetch Mapbox tile: ${url}`, error);
-        }
-      })
-    );
-    
-    return elevations;
 }
 
 
@@ -231,23 +164,12 @@ export async function analyzeElevation(
         }
     }
     
-    // Fetch elevations from both services in parallel
-    const [googleElevations, mapboxElevations] = await Promise.all([
-        fetchElevationsFromGoogle(locations, elevationService),
-        fetchElevationsFromMapbox(locations)
-    ]);
+    // Fetch elevations from Google
+    const googleElevations = await fetchElevationsFromGoogle(locations, elevationService);
     
-    // Combine elevations
     const z = new Float64Array(totalPts).map((_, k) => {
         const gElev = googleElevations[k];
-        const mElev = mapboxElevations[k];
-
-        if (gElev !== null && mElev !== null) {
-            return (gElev + mElev) / 2; // Average if both exist
-        }
-        if (gElev !== null) return gElev; // Fallback to Google
-        if (mElev !== null) return mElev; // Fallback to Mapbox
-        return NaN; // No data from either
+        return gElev !== null ? gElev : NaN;
     });
 
 
