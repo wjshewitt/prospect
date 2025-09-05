@@ -154,7 +154,12 @@ export function ThreeDVisualization({
              }
         }}
       >
-        <Map mapStyle={MAP_STYLE} mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN} />
+        <Map 
+          mapStyle={MAP_STYLE} 
+          mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+          preventStyleDiffing
+          interactive={false}
+        />
       </DeckGL>
       <NavigationGuide />
     </div>
