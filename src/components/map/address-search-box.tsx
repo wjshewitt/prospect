@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMap } from '@vis.gl/react-google-maps';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface AddressSearchBoxProps {
     onPlaceSelect: (place: google.maps.places.PlaceResult) => void;
@@ -43,8 +44,19 @@ export function AddressSearchBox({ onPlaceSelect }: AddressSearchBoxProps) {
     }, [autoComplete, onPlaceSelect]);
 
     return (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-full max-w-sm z-10">
-            <div className="relative">
+        <div className="group relative">
+            <div className={cn(
+                "absolute -top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center",
+                "h-8 w-24 rounded-b-lg border-x border-b border-border bg-background shadow-sm",
+                "transition-all duration-300 ease-in-out",
+                "group-hover:opacity-0 group-hover:invisible"
+            )}>
+                <span className="text-xs font-medium text-muted-foreground">Search</span>
+            </div>
+            <div className={cn(
+                "relative w-0 transition-all duration-300 ease-in-out group-hover:w-96",
+                "opacity-0 invisible group-hover:opacity-100 group-hover:visible"
+            )}>
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                     ref={inputRef}
@@ -55,5 +67,3 @@ export function AddressSearchBox({ onPlaceSelect }: AddressSearchBoxProps) {
         </div>
     );
 }
-
-    

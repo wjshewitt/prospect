@@ -20,7 +20,6 @@ import { useToast } from '@/hooks/use-toast';
 import { analyzeElevation } from '@/services/elevation';
 import { generateBuildingLayout } from '@/ai/flows/generate-building-layout-flow';
 import { generateSolarLayout } from '@/ai/flows/generate-solar-layout-flow';
-import { AddressSearchBox } from '@/components/map/address-search-box';
 
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
@@ -466,13 +465,6 @@ function VisionPageContent() {
           is3DView={is3DView}
         />
         <main className="flex-1 relative bg-muted/20">
-            {!is3DView && (
-              <AddressSearchBox onPlaceSelect={(place) => {
-                  if (place.geometry?.location) {
-                      map?.moveCamera({center: place.geometry.location, zoom: 18});
-                  }
-              }} />
-            )}
           {is3DView && projectBoundary && elevationGrid ? (
             <ThreeDVisualizationModal
               assets={assets}
@@ -504,7 +496,7 @@ function VisionPageContent() {
             size="icon" 
             variant="outline"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className={cn("absolute top-16 right-4 z-10 bg-background/80 backdrop-blur-sm", !isSidebarOpen && "right-4")}
+            className={cn("absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm", !isSidebarOpen && "right-4")}
           >
             {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
           </Button>
@@ -572,5 +564,3 @@ export default function VisionPage() {
     </APIProvider>
     )
 }
-
-    

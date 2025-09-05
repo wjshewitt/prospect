@@ -20,6 +20,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { AddressSearchBox } from '../map/address-search-box';
+import { useMap } from '@vis.gl/react-google-maps';
 
 type HeaderProps = {
   siteName: string;
@@ -35,6 +37,7 @@ type HeaderProps = {
 export default function Header({ siteName, onSiteNameClick, onClear, onSave, hasShapes, shapes, elevationGrid, children }: HeaderProps) {
   const { user } = useAuth();
   const router = useRouter();
+  const map = useMap();
 
   const handleSignOut = async () => {
     await signOut(auth);
@@ -45,7 +48,7 @@ export default function Header({ siteName, onSiteNameClick, onClear, onSave, has
   const zones = shapes.filter(s => !!s.zoneMeta);
 
   return (
-    <header className="flex items-center justify-between h-16 px-4 md:px-6 border-b shrink-0 z-10 bg-background/80 backdrop-blur-sm">
+    <header className="relative flex items-center justify-between h-16 px-4 md:px-6 border-b shrink-0 z-10 bg-background/80 backdrop-blur-sm">
       <div className="flex items-center gap-4">
         <Link href="/welcome" className="flex items-center gap-2">
           <Map className="h-7 w-7 text-primary" />
@@ -93,6 +96,15 @@ export default function Header({ siteName, onSiteNameClick, onClear, onSave, has
             </>
         )}
       </div>
+
+       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <AddressSearchBox onPlaceSelect={(place) => {
+                if (place.geometry?.location) {
+                    map?.moveCamera({center: place.geometry.location, zoom: 18});
+                }
+            }} />
+        </div>
+
       <div className="flex items-center gap-2">
         {children}
         {user && (
@@ -115,5 +127,3 @@ export default function Header({ siteName, onSiteNameClick, onClear, onSave, has
     </header>
   );
 }
-
-    
