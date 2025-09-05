@@ -24,6 +24,7 @@ import { generateSolarLayout } from '@/ai/flows/generate-solar-layout-flow';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, collection, addDoc } from 'firebase/firestore';
+import { AddressSearchBox } from '@/components/map/address-search-box';
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -465,6 +466,17 @@ function VisionPageContent() {
           is3DView={is3DView}
         />
         <main className="flex-1 relative bg-muted/20">
+          <div 
+            className={cn(
+                "absolute top-0 z-10 w-full flex justify-center transition-all duration-300",
+                isSidebarOpen ? "pr-80" : "pr-0"
+            )}>
+              <AddressSearchBox onPlaceSelect={(place) => {
+                  if (place.geometry?.location && map) {
+                      map.moveCamera({center: place.geometry.location, zoom: 18});
+                  }
+              }} />
+          </div>
           {is3DView && projectBoundary && elevationGrid ? (
             <ThreeDVisualizationModal
               assets={assets}
@@ -564,3 +576,5 @@ export default function VisionPage() {
     </APIProvider>
     )
 }
+
+    
