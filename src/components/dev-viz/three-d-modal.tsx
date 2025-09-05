@@ -416,44 +416,16 @@ export function ThreeDVisualizationModal({
         return (grid[clampedJ * nx + clampedI] || minElev) * exaggeration;
       }
 
-      // Bicubic interpolation for smoother terrain
+      // Bilinear interpolation for speed/simplicity. Can be upgraded to bicubic.
       const s = u - i;
       const t = v - j;
-      const s2 = s * s;
-      const s3 = s2 * s;
-      const t2 = t * t;
-      const t3 = t2 * t;
-
-      // Get 4x4 grid for bicubic interpolation
-      const vals: number[][] = [];
-      for (let dy = -1; dy <= 2; dy++) {
-        const row: number[] = [];
-        for (let dx = -1; dx <= 2; dx++) {
-          const xi = Math.max(0, Math.min(nx - 1, i + dx));
-          const yi = Math.max(0, Math.min(ny - 1, j + dy));
-          row.push((grid[yi * nx + xi] || minElev) * exaggeration);
-        }
-        vals.push(row);
-      }
-
-      // Hermite interpolation coefficients
-      const a = [
-        -0.5, 1.5, -1.5, 0.5,
-        1.0, -2.5, 2.0, -0.5,
-        -0.5, 0.0, 0.5, 0.0,
-        0.0, 1.0, 0.0, 0.0
-      ];
-
-      let result = 0;
-      for (let m = 0; m < 4; m++) {
-        for (let n = 0; n < 4; n++) {
-          const coef = a[m * 4] * (m === 0 ? 1 : m === 1 ? s : m === 2 ? s2 : s3) *
-                      a[n * 4] * (n === 0 ? 1 : n === 1 ? t : n === 2 ? t2 : t3);
-          result += vals[n][m] * coef;
-        }
-      }
-
-      return result;
+      const z00 = (grid[j * nx + i] || minElev) * exaggeration;
+      const z10 = (grid[j * nx + (i + 1)] || minElev) * exaggeration;
+      const z01 = (grid[(j + 1) * nx + i] || minElev) * exaggeration;
+      const z11 = (grid[(j + 1) * nx + (i + 1)] || minElev) * exaggeration;
+      const z1 = z00 + s * (z10 - z00);
+      const z2 = z01 + s * (z11 - z01);
+      return z1 + t * (z2 - z1);
     };
 
     const boundaryPoints = boundary.path.map(p => {
@@ -476,7 +448,6 @@ export function ThreeDVisualizationModal({
 
 
     // Enhanced terrain quality settings
-    const areaSize = Math.PI * renderRadius * renderRadius;
     let gridResolution: number;
     
     if (settings.terrainQuality === 'ultra') {
@@ -511,61 +482,13 @@ export function ThreeDVisualizationModal({
       );
       
       const positions = geom.attributes.position;
-      const normals = [];
       
-      // Apply elevation with smoothing
+      // Apply elevation
       for (let i = 0; i < positions.count; i++) {
         const x = positions.getX(i) + (bMinX + bMaxX) / 2;
         const y = positions.getY(i) + (bMinY + bMaxY) / 2;
         const z = getElevationAt(x, y);
         positions.setZ(i, z);
-      }
-      
-      // Smooth terrain for better visuals
-      if (levelIndex === 0 && settings.terrainQuality !== 'low') {
-        const smoothingPasses = settings.terrainQuality === 'ultra' ? 3 : 2;
-        
-        for (let pass = 0; pass < smoothingPasses; pass++) {
-          const newZ = new Float32Array(positions.count);
-          
-          for (let i = 0; i <= level.segments; i++) {
-            for (let j = 0; j <= level.segments; j++) {
-              const idx = i * (level.segments + 1) + j;
-              let sumZ = positions.getZ(idx) * 4; // Center weight
-              let weight = 4;
-              
-              // 8-connected smoothing with edge preservation
-              const neighbors = [
-                [-1, -1, 0.707], [-1, 0, 1], [-1, 1, 0.707],
-                [0, -1, 1], [0, 1, 1],
-                [1, -1, 0.707], [1, 0, 1], [1, 1, 0.707]
-              ];
-              
-              for (const [di, dj, w] of neighbors) {
-                const ni = i + di;
-                const nj = j + dj;
-                if (ni >= 0 && ni <= level.segments && nj >= 0 && nj <= level.segments) {
-                  const nIdx = ni * (level.segments + 1) + nj;
-                  const neighborZ = positions.getZ(nIdx);
-                  const diff = Math.abs(neighborZ - positions.getZ(idx));
-                  
-                  // Edge-preserving weight
-                  if (diff < elevRange * 0.15) {
-                    const edgeWeight = Math.exp(-diff * diff / (elevRange * elevRange * 0.01));
-                    sumZ += neighborZ * w * edgeWeight;
-                    weight += w * edgeWeight;
-                  }
-                }
-              }
-              
-              newZ[idx] = sumZ / weight;
-            }
-          }
-          
-          for (let i = 0; i < positions.count; i++) {
-            positions.setZ(i, newZ[i]);
-          }
-        }
       }
       
       geom.computeVertexNormals();
@@ -823,7 +746,7 @@ export function ThreeDVisualizationModal({
         mountNode.removeChild(renderer.domElement);
       }
     };
-  }, [boundary, elevationGrid, assets, zones, geoUtils, settings, selectedAsset, onDeleteAsset]);
+  }, [boundary, elevationGrid, assets, zones, geoUtils, settings, selectedAsset, onKeyDown, onDeleteAsset]);
   
   return (
     <div className="w-full h-full relative" ref={mountRef}>
