@@ -52,7 +52,7 @@ export function ThreeDVisualization({
   const layers = useMemo(() => {
     if (!elevationGrid.pointGrid || !elevationGrid.xyBounds) return [];
 
-    const { grid, nx, ny } = elevationGrid.pointGrid;
+    const { grid } = elevationGrid.pointGrid;
     const { minX, maxX, minY, maxY } = elevationGrid.xyBounds;
 
     // A neutral grey for the terrain for a clean, analytical look.
@@ -68,11 +68,8 @@ export function ThreeDVisualization({
       bounds: [minX, minY, maxX, maxY],
       color: [255, 255, 255],
       wireframe: false,
-      elevationDecoder: {
-        rScaler: 1 / 256,
-        gScaler: 1,
-        bScaler: 256,
-        offset: 0,
+      material: {
+        diffuse: 0.9,
       },
       zScaler: 1.2,
     });
