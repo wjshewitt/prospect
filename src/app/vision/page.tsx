@@ -2,17 +2,17 @@
 'use client';
 
 import type { Shape, Tool, ElevationGrid, LatLng } from '@/lib/types';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { APIProvider, useMap } from '@vis.gl/react-google-maps';
+import { APIProvider, useMap, Map as GoogleMap, MapCameraChangedEvent } from '@vis.gl/react-google-maps';
 import Header from '@/components/layout/header';
 import ToolPalette from '@/components/tools/tool-palette';
 import StatisticsSidebar from '@/components/sidebar/statistics-sidebar';
 import { MapCanvas, uuid } from '@/components/map/map-canvas';
 import { Button } from '@/components/ui/button';
-import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon, Loader2 } from 'lucide-react';
+import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon, Loader2, Split, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ThreeDVisualizationModal } from '@/components/dev-viz/three-d-modal';
+import { ThreeDVisualization } from '@/components/dev-viz/three-d-modal';
 import { NameSiteDialog } from '@/components/map/name-site-dialog';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { TutorialGuide } from '@/components/tutorial/tutorial-guide';
@@ -20,7 +20,6 @@ import { useToast } from '@/hooks/use-toast';
 import { analyzeElevation } from '@/services/elevation';
 import { generateBuildingLayout } from '@/ai/flows/generate-building-layout-flow';
 import { generateSolarLayout } from '@/ai/flows/generate-solar-layout-flow';
-
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, collection, addDoc } from 'firebase/firestore';
@@ -43,6 +42,14 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+const INITIAL_VIEW_STATE = {
+    longitude: -2.244644,
+    latitude: 53.483959,
+    zoom: 7,
+    pitch: 0,
+    bearing: 0,
+};
+
 function VisionPageContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -60,7 +67,8 @@ function VisionPageContent() {
   const [steepnessThreshold, setSteepnessThreshold] = useState<number>(8); // default 8 percent
   const [elevationGrid, setElevationGrid] = useState<ElevationGrid | null>(null);
   const [isAnalysisVisible, setIsAnalysisVisible] = useState(true);
-  const [is3DView, setIs3DView] = useState(false);
+  
+  const [isSplitView, setIsSplitView] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
 
   const [siteName, setSiteName] = useState<string>('My Project');
@@ -70,12 +78,21 @@ function VisionPageContent() {
   const [hasCompletedTutorial, setHasCompletedTutorial] = useLocalStorage('landvision-tutorial-complete', false);
   const [isTutorialActive, setIsTutorialActive] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
+  
+  const [viewState, setViewState] = useState<any>(INITIAL_VIEW_STATE);
 
-  // State to preserve map position
-  const [mapState, setMapState] = useState<{center: LatLng, zoom: number} | null>(null);
   const { toast } = useToast();
-  const map = useMap();
   const [isLoading, setIsLoading] = useState(true);
+
+  const onMapCameraChanged = useCallback((ev: MapCameraChangedEvent) => {
+    const {center, zoom} = ev.detail;
+    setViewState((prev: any) => ({
+      ...prev,
+      latitude: center.lat,
+      longitude: center.lng,
+      zoom: zoom,
+    }));
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -103,7 +120,15 @@ function VisionPageContent() {
                     const projectData = docSnap.data();
                     setSiteName(projectData.siteName || 'My Project');
                     setShapes(projectData.shapes || []);
-                    setMapState(projectData.mapState || null);
+                    if (projectData.mapState) {
+                       setViewState({
+                          latitude: projectData.mapState.center.lat,
+                          longitude: projectData.mapState.center.lng,
+                          zoom: projectData.mapState.zoom,
+                          pitch: 0,
+                          bearing: 0,
+                       })
+                    }
                     setProjectId(projectIdFromUrl);
                 } else {
                     toast({
@@ -185,7 +210,7 @@ function VisionPageContent() {
         const projectData = {
             siteName,
             shapes,
-            mapState: map ? { center: map.getCenter()!.toJSON(), zoom: map.getZoom()! } : null,
+            mapState: viewState ? { center: { lat: viewState.latitude, lng: viewState.longitude }, zoom: viewState.zoom } : null,
             lastModified: new Date().toISOString(),
         };
 
@@ -219,7 +244,7 @@ function VisionPageContent() {
 
   const handleGenerateLayout = async (zoneId: string, density: 'low' | 'medium' | 'high') => {
     const zone = shapes.find(s => s.id === zoneId && !!s.zoneMeta);
-    if (!zone || !map) return;
+    if (!zone) return;
 
     toast({
       title: 'Generating AI Layout...',
@@ -279,7 +304,7 @@ function VisionPageContent() {
 
     const handleGenerateSolarLayout = async (zoneId: string, density: 'low' | 'medium' | 'high') => {
     const zone = shapes.find(s => s.id === zoneId && s.zoneMeta?.kind === 'solar');
-    if (!zone || !map) return;
+    if (!zone) return;
 
     toast({
       title: 'Generating Solar Layout...',
@@ -377,20 +402,18 @@ function VisionPageContent() {
     toast({ title: 'Asset Deleted', description: 'The selected building has been removed.' });
   }
 
-
-  const handleToggle3DView = async () => {
-    if (!is3DView) {
-        // Switching TO 3D view
-        setSelectedShapeIds([]); // Clear 2D selections
+  const handleToggleSplitView = async () => {
+    if (!isSplitView) {
+        // Switching TO split view
         if (!projectBoundary) {
             toast({
               variant: 'destructive',
-              title: '3D View Error',
+              title: 'Split View Error',
               description: 'A project boundary is required for the 3D view.',
             });
             return;
         }
-        if (!window.google || !map) {
+        if (!window.google) {
              toast({
               variant: 'destructive',
               title: 'API Error',
@@ -408,21 +431,26 @@ function VisionPageContent() {
                 const elevationService = new window.google.maps.ElevationService();
                 grid = await analyzeElevation(projectBoundary, elevationService, gridResolution);
                 setElevationGrid(grid);
+                setViewState((vs: any) => ({...vs, pitch: 45}));
             } catch(e) {
                  toast({
                     variant: 'destructive',
                     title: 'Elevation API Error',
                     description: 'Could not fetch elevation data for 3D view.',
                 });
-                return; // Don't switch to 3D if data fails
+                return; // Don't switch if data fails
             }
+        } else {
+            setViewState((vs: any) => ({...vs, pitch: 45}));
         }
     } else {
-      // Switching back to 2D
+      // Switching back from split view
       setSelectedAssetId(null); // Clear 3D selection
+      setViewState((vs: any) => ({...vs, pitch: 0, bearing: 0 }));
     }
-    setIs3DView(!is3DView);
+    setIsSplitView(!isSplitView);
   }
+
 
   if (authLoading || isLoading) {
     return (
@@ -446,12 +474,12 @@ function VisionPageContent() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleToggle3DView}
+            onClick={handleToggleSplitView}
             disabled={!projectBoundary}
             data-tutorial="step-4"
           >
-            {is3DView ? <MapIcon className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
-            {is3DView ? '2D View' : '3D View'}
+            <Split className="h-4 w-4 mr-2" />
+            {isSplitView ? '2D View' : 'Split View'}
           </Button>
       </Header>
       <div className="flex flex-1 overflow-hidden">
@@ -463,52 +491,71 @@ function VisionPageContent() {
           setShapes={setShapes}
           setSelectedShapeIds={setSelectedShapeIds}
           onTutorialStart={handleTutorialStart}
-          is3DView={is3DView}
+          is3DView={isSplitView}
         />
-        <main className="flex-1 relative bg-muted/20">
+        <main className="flex-1 relative bg-muted/20 flex">
           <div className={cn(
-                "absolute top-2 z-10 flex w-auto justify-center transition-all duration-300",
-                "left-1/2 -translate-x-1/2",
-                isSidebarOpen && "w-[calc(100%-40rem)]"
+                "absolute top-2 left-0 z-10 flex w-auto justify-center transition-all duration-300",
+                 isSplitView ? 'w-1/2' : 'w-full',
+                 isSidebarOpen && !isSplitView && "pr-80"
             )}>
               <AddressSearchBox onPlaceSelect={(place) => {
-                  if (place.geometry?.location && map) {
-                      map.moveCamera({center: place.geometry.location, zoom: 18});
+                  if (place.geometry?.location) {
+                      setViewState({
+                          ...viewState,
+                          latitude: place.geometry.location.lat(),
+                          longitude: place.geometry.location.lng(),
+                          zoom: 18,
+                      });
                   }
               }} />
           </div>
-          {is3DView && projectBoundary && elevationGrid ? (
-            <ThreeDVisualizationModal
-              assets={assets}
-              zones={zones}
-              boundary={projectBoundary}
-              elevationGrid={elevationGrid}
-              onDeleteAsset={handleDeleteAsset}
-              selectedAssetId={selectedAssetId}
-              setSelectedAssetId={setSelectedAssetId}
-            />
-          ) : (
-            <MapCanvas
-              shapes={shapes}
-              setShapes={setShapes}
-              selectedTool={selectedTool}
-              setSelectedTool={setSelectedTool}
-              steepnessThreshold={steepnessThreshold}
-              elevationGrid={elevationGrid}
-              isAnalysisVisible={isAnalysisVisible}
-              selectedShapeIds={selectedShapeIds}
-              setSelectedShapeIds={setSelectedShapeIds}
-              onBoundaryDrawn={handleBoundaryDrawn}
-              mapState={mapState}
-              onMapStateChange={setMapState}
-            />
-          )}
+          
+            <div className={cn('relative h-full transition-all duration-300', isSplitView ? 'w-1/2' : 'w-full')}>
+                <MapCanvas
+                shapes={shapes}
+                setShapes={setShapes}
+                selectedTool={selectedTool}
+                setSelectedTool={setSelectedTool}
+                steepnessThreshold={steepnessThreshold}
+                elevationGrid={elevationGrid}
+                isAnalysisVisible={isAnalysisVisible}
+                selectedShapeIds={selectedShapeIds}
+                setSelectedShapeIds={setSelectedShapeIds}
+                onBoundaryDrawn={handleBoundaryDrawn}
+                viewState={viewState}
+                onViewStateChange={setViewState}
+                onCameraChanged={onMapCameraChanged}
+                />
+            </div>
+          
+          {isSplitView && (
+            <div className='relative w-1/2 h-full border-l'>
+                {projectBoundary && elevationGrid ? (
+                    <ThreeDVisualization
+                        assets={assets}
+                        zones={zones}
+                        boundary={projectBoundary}
+                        elevationGrid={elevationGrid}
+                        onDeleteAsset={handleDeleteAsset}
+                        selectedAssetId={selectedAssetId}
+                        setSelectedAssetId={setSelectedAssetId}
+                        viewState={viewState}
+                        onViewStateChange={setViewState}
+                    />
+                ) : (
+                    <div className="flex items-center justify-center h-full">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                )}
+            </div>
+           )}
           
           <Button 
             size="icon" 
             variant="outline"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className={cn("absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm", !isSidebarOpen && "right-4")}
+            className={cn("absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm")}
           >
             {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
           </Button>
@@ -528,7 +575,7 @@ function VisionPageContent() {
           selectedShapeIds={selectedShapeIds}
           onGenerateLayout={handleGenerateLayout}
           onGenerateSolarLayout={handleGenerateSolarLayout}
-          is3DView={is3DView}
+          is3DView={isSplitView}
           selectedAssetId={selectedAssetId}
           onDeleteAsset={handleDeleteAsset}
         />
@@ -553,7 +600,6 @@ function VisionPageContent() {
 
 
 export default function VisionPage() {
-
     if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">

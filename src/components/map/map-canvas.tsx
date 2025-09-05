@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import {Map, useMap, useApiIsLoaded, InfoWindow} from '@vis.gl/react-google-maps';
+import {Map, useMap, useApiIsLoaded, InfoWindow, MapCameraChangedEvent} from '@vis.gl/react-google-maps';
 import type { Shape, Tool, ElevationGrid, ElevationGridCell, LatLng } from '@/lib/types';
 import { ShapeContextMenu } from './shape-context-menu';
 import { useToast } from '@/hooks/use-toast';
@@ -25,8 +25,9 @@ interface MapCanvasProps {
   setSelectedShapeIds: (ids: string[]) => void;
   onBoundaryDrawn: (shape: Omit<Shape, 'id'>) => void;
   className?: string;
-  mapState: { center: LatLng; zoom: number } | null;
-  onMapStateChange: (state: { center: LatLng; zoom: number }) => void;
+  viewState: any;
+  onViewStateChange: (state: any) => void;
+  onCameraChanged: (e: MapCameraChangedEvent) => void;
 }
 
 interface ContextMenuState {
@@ -588,8 +589,9 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   setSelectedShapeIds,
   onBoundaryDrawn,
   className,
-  mapState,
-  onMapStateChange,
+  viewState,
+  onViewStateChange,
+  onCameraChanged,
 }) => {
   const isLoaded = useApiIsLoaded();
   const map = useMap();
@@ -827,24 +829,13 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     }
   }, [map, closeContextMenu, setSelectedShapeIds, selectedTool, setShapes, projectBoundary, toast, isInteractingWithShape]);
   
-  const handleCameraChange = () => {
-      if (!map) return;
-      const center = map.getCenter();
-      const zoom = map.getZoom();
-      if (center && zoom) {
-        onMapStateChange({ center: center.toJSON(), zoom });
-      }
-  };
-
 
   return (
     <div className={className ?? 'relative w-full h-full'}>
       <Map
-        defaultCenter={{lat: 53.483959, lng: -2.244644}}
-        defaultZoom={7}
-        center={mapState?.center}
-        zoom={mapState?.zoom}
-        onCameraChanged={handleCameraChange}
+        center={{lat: viewState.latitude, lng: viewState.longitude}}
+        zoom={viewState.zoom}
+        onCameraChanged={onCameraChanged}
         mapTypeId="satellite"
         tilt={0}
         gestureHandling={!isDrawing && !isInteractingWithShape ? 'greedy' : 'none'}
@@ -888,5 +879,3 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
-
-    

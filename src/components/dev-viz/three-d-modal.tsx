@@ -1,16 +1,13 @@
 
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import type { Shape, ElevationGrid } from '@/lib/types';
 import DeckGL from '@deck.gl/react';
 import { TerrainLayer } from '@deck.gl/geo-layers';
 import { PolygonLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl';
-import { useMap } from '@vis.gl/react-google-maps';
-import { Button } from '../ui/button';
 import { Move3d, MousePointer, ZoomIn } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
 const MAP_STYLE = 'mapbox://styles/mapbox/satellite-v9';
 
@@ -22,18 +19,9 @@ interface ThreeDVisualizationProps {
   onDeleteAsset: (assetId: string) => void;
   selectedAssetId: string | null;
   setSelectedAssetId: (id: string | null) => void;
+  viewState: any;
+  onViewStateChange: (state: any) => void;
 }
-
-// Function to calculate the center of the boundary for the initial view state.
-const getBoundaryCenter = (boundary: Shape) => {
-  const bounds = new window.google.maps.LatLngBounds();
-  boundary.path.forEach(p => bounds.extend(p));
-  const center = bounds.getCenter();
-  return {
-    longitude: center.lng(),
-    latitude: center.lat(),
-  };
-};
 
 function NavigationGuide() {
     return (
@@ -48,7 +36,7 @@ function NavigationGuide() {
     )
 }
 
-export function ThreeDVisualizationModal({
+export function ThreeDVisualization({
   assets,
   zones,
   boundary,
@@ -56,22 +44,9 @@ export function ThreeDVisualizationModal({
   onDeleteAsset,
   selectedAssetId,
   setSelectedAssetId,
+  viewState,
+  onViewStateChange,
 }: ThreeDVisualizationProps) {
-  const map = useMap();
-  const { toast } = useToast();
-
-  // Set the initial view state to focus on the center of the boundary.
-  const initialViewState = useMemo(() => {
-    if (!boundary) return null;
-    const { latitude, longitude } = getBoundaryCenter(boundary);
-    return {
-      latitude,
-      longitude,
-      zoom: 15,
-      pitch: 60,
-      bearing: 0,
-    };
-  }, [boundary]);
 
   // Memoize layer creation for performance.
   const layers = useMemo(() => {
@@ -144,7 +119,7 @@ export function ThreeDVisualizationModal({
     return [terrainLayer, boundaryLayer, zoneLayer, buildingLayer];
   }, [elevationGrid, assets, zones, selectedAssetId, boundary, setSelectedAssetId]);
 
-  if (!initialViewState) {
+  if (!viewState) {
     return (
       <div className="w-full h-full flex items-center justify-center">
         <p>Loading 3D View...</p>
@@ -156,7 +131,8 @@ export function ThreeDVisualizationModal({
     <div className="w-full h-full relative">
       <DeckGL
         layers={layers}
-        initialViewState={initialViewState}
+        viewState={viewState}
+        onViewStateChange={({viewState}) => onViewStateChange(viewState)}
         controller={true}
         style={{ position: 'relative', width: '100%', height: '100%' }}
         onClick={(info, event) => {
@@ -166,9 +142,8 @@ export function ThreeDVisualizationModal({
              }
         }}
       >
-        <Map reuseMaps mapLib={map} mapStyle={MAP_STYLE} mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN} />
+        <Map mapStyle={MAP_STYLE} mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN} />
       </DeckGL>
-
       <NavigationGuide />
     </div>
   );
