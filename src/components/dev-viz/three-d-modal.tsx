@@ -12,7 +12,7 @@ import { Button } from '../ui/button';
 import { Trash2, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
+const MAP_STYLE = 'mapbox://styles/mapbox/satellite-v9';
 
 interface ThreeDVisualizationProps {
   assets: Shape[];
@@ -74,15 +74,14 @@ export function ThreeDVisualizationModal({
       minZoom: 0,
       maxZoom: 20,
       elevationData: grid,
-      texture: `https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.png?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`,
       bounds: [minX, minY, maxX, maxY],
       color: TERRAIN_COLOR,
       wireframe: false,
       elevationDecoder: {
-        rScaler: 256,
+        rScaler: 1 / 256,
         gScaler: 1,
-        bScaler: 1 / 256,
-        offset: -32768,
+        bScaler: 256,
+        offset: 0,
       },
       zScaler: 1.2,
     });
@@ -148,7 +147,7 @@ export function ThreeDVisualizationModal({
             }
         }}
       >
-        <Map reuseMaps mapLib={map} mapStyle={MAP_STYLE} />
+        <Map reuseMaps mapLib={map} mapStyle={MAP_STYLE} mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN} />
       </DeckGL>
 
       {selectedAssetId && (
