@@ -19,6 +19,7 @@ type StatisticsSidebarProps = {
   shapes: Shape[];
   siteName: string;
   isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
   gridResolution: number;
   setGridResolution: (res: number) => void;
   steepnessThreshold: number;
@@ -38,30 +39,30 @@ type SidebarView = 'stats' | 'summary';
 
 const SQ_METERS_TO_ACRES = 0.000247105;
 
-const ThreeDAssetPanel = ({ selectedAssetId, onDeleteAsset }: { selectedAssetId: string, onDeleteAsset: (id: string) => void }) => {
+const ThreeDAssetPanel = ({ selectedAssetId, onDeleteAsset }: { selectedAssetId: string | null, onDeleteAsset: (id: string) => void }) => {
     return (
         <div className="p-4">
             <Card>
                 <CardHeader>
                     <CardTitle className="text-base flex items-center justify-between">
-                        <span>Selected Building</span>
+                        <span>3D Mode</span>
                         <Building className="h-5 w-5 text-muted-foreground" />
                     </CardTitle>
-                    <CardDescription>
-                        Actions for the selected 3D asset.
-                    </CardDescription>
+                    {!selectedAssetId && <CardDescription>Select a building in the 3D view to see its details and actions.</CardDescription>}
                 </CardHeader>
-                <CardContent className="space-y-4">
-                    <p className="text-xs text-muted-foreground break-all">ID: {selectedAssetId}</p>
-                    <Button 
-                        variant="destructive"
-                        className="w-full"
-                        onClick={() => onDeleteAsset(selectedAssetId)}
-                    >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Building
-                    </Button>
-                </CardContent>
+                {selectedAssetId && (
+                  <CardContent className="space-y-4">
+                      <p className="text-xs text-muted-foreground break-all">ID: {selectedAssetId}</p>
+                      <Button 
+                          variant="destructive"
+                          className="w-full"
+                          onClick={() => onDeleteAsset(selectedAssetId)}
+                      >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Building
+                      </Button>
+                  </CardContent>
+                )}
             </Card>
         </div>
     );
@@ -71,6 +72,7 @@ export default function StatisticsSidebar({
     shapes, 
     siteName,
     isOpen,
+    setIsOpen,
     gridResolution,
     setGridResolution,
     steepnessThreshold,
@@ -141,12 +143,11 @@ export default function StatisticsSidebar({
         "border-l bg-background/80 backdrop-blur-sm flex-col transition-all duration-300 ease-in-out",
         isOpen ? "w-80 flex" : "w-0 hidden"
       )}
+      style={{'--stats-sidebar-width': '20rem'} as React.CSSProperties}
     >
-      {is3DView && selectedAssetId && (
+      {is3DView ? (
         <ThreeDAssetPanel selectedAssetId={selectedAssetId} onDeleteAsset={onDeleteAsset} />
-      )}
-      
-      {!is3DView && (
+      ) : (
         <>
             <ViewSwitcher />
             <Separator />

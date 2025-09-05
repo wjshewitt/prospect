@@ -10,7 +10,7 @@ import ToolPalette from '@/components/tools/tool-palette';
 import StatisticsSidebar from '@/components/sidebar/statistics-sidebar';
 import { MapCanvas, uuid } from '@/components/map/map-canvas';
 import { Button } from '@/components/ui/button';
-import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon, Loader2, Split, Trash2 } from 'lucide-react';
+import { PanelRightClose, PanelLeftClose, Eye, Map as MapIcon, Loader2, View, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThreeDVisualization } from '@/components/dev-viz/three-d-modal';
 import { NameSiteDialog } from '@/components/map/name-site-dialog';
@@ -68,7 +68,7 @@ function VisionPageContent() {
   const [elevationGrid, setElevationGrid] = useState<ElevationGrid | null>(null);
   const [isAnalysisVisible, setIsAnalysisVisible] = useState(true);
   
-  const [isSplitView, setIsSplitView] = useState(false);
+  const [is3DMode, setIs3DMode] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
 
   const [siteName, setSiteName] = useState<string>('My Project');
@@ -402,13 +402,13 @@ function VisionPageContent() {
     toast({ title: 'Asset Deleted', description: 'The selected building has been removed.' });
   }
 
-  const handleToggleSplitView = async () => {
-    if (!isSplitView) {
-        // Switching TO split view
+  const handleToggle3DView = async () => {
+    if (!is3DMode) {
+        // Switching TO 3D view
         if (!projectBoundary) {
             toast({
               variant: 'destructive',
-              title: 'Split View Error',
+              title: '3D View Error',
               description: 'A project boundary is required for the 3D view.',
             });
             return;
@@ -421,7 +421,8 @@ function VisionPageContent() {
             });
             return;
         }
-
+        
+        setIsSidebarOpen(false); // Collapse sidebar when entering 3D mode
         toast({ title: 'Generating 3D View...', description: 'Please wait, this may take a moment.' });
         
         let grid = elevationGrid;
@@ -438,17 +439,19 @@ function VisionPageContent() {
                     title: 'Elevation API Error',
                     description: 'Could not fetch elevation data for 3D view.',
                 });
+                setIsSidebarOpen(true); // Restore sidebar
                 return; // Don't switch if data fails
             }
         } else {
             setViewState((vs: any) => ({...vs, pitch: 45}));
         }
     } else {
-      // Switching back from split view
+      // Switching back from 3D view
       setSelectedAssetId(null); // Clear 3D selection
       setViewState((vs: any) => ({...vs, pitch: 0, bearing: 0 }));
+      setIsSidebarOpen(true); // Re-open sidebar when leaving 3D mode
     }
-    setIsSplitView(!isSplitView);
+    setIs3DMode(!is3DMode);
   }
 
 
@@ -474,12 +477,12 @@ function VisionPageContent() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleToggleSplitView}
+            onClick={handleToggle3DView}
             disabled={!projectBoundary}
             data-tutorial="step-4"
           >
-            <Split className="h-4 w-4 mr-2" />
-            {isSplitView ? '2D View' : 'Split View'}
+            <View className="h-4 w-4 mr-2" />
+            {is3DMode ? '2D View' : '3D View'}
           </Button>
       </Header>
       <div className="flex flex-1 overflow-hidden">
@@ -491,71 +494,74 @@ function VisionPageContent() {
           setShapes={setShapes}
           setSelectedShapeIds={setSelectedShapeIds}
           onTutorialStart={handleTutorialStart}
-          is3DView={isSplitView}
+          is3DView={is3DMode}
         />
         <main className="flex-1 relative bg-muted/20 flex">
-          <div className={cn(
-                "absolute top-2 left-0 z-10 flex w-auto justify-center transition-all duration-300",
-                 isSplitView ? 'w-1/2' : 'w-full',
-                 isSidebarOpen && !isSplitView && "pr-80"
-            )}>
-              <AddressSearchBox onPlaceSelect={(place) => {
-                  if (place.geometry?.location) {
-                      setViewState({
-                          ...viewState,
-                          latitude: place.geometry.location.lat(),
-                          longitude: place.geometry.location.lng(),
-                          zoom: 18,
-                      });
-                  }
-              }} />
-          </div>
+            <div
+                className="absolute top-2 z-10 transition-all duration-300"
+                style={{
+                    left: 'var(--tool-palette-width, 4rem)',
+                    right: isSidebarOpen ? 'var(--stats-sidebar-width, 20rem)' : '0',
+                }}
+            >
+                <div className="flex justify-center">
+                    <AddressSearchBox onPlaceSelect={(place) => {
+                        if (place.geometry?.location) {
+                            setViewState({
+                                ...viewState,
+                                latitude: place.geometry.location.lat(),
+                                longitude: place.geometry.location.lng(),
+                                zoom: 18,
+                            });
+                        }
+                    }} />
+                </div>
+            </div>
           
-            <div className={cn('relative h-full transition-all duration-300', isSplitView ? 'w-1/2' : 'w-full')}>
+            {is3DMode ? (
+                 <div className='relative w-full h-full'>
+                    {projectBoundary && elevationGrid ? (
+                        <ThreeDVisualization
+                            assets={assets}
+                            zones={zones}
+                            boundary={projectBoundary}
+                            elevationGrid={elevationGrid}
+                            onDeleteAsset={handleDeleteAsset}
+                            selectedAssetId={selectedAssetId}
+                            setSelectedAssetId={setSelectedAssetId}
+                            viewState={viewState}
+                            onViewStateChange={setViewState}
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center h-full">
+                            <Loader2 className="h-8 w-8 animate-spin" />
+                        </div>
+                    )}
+                </div>
+            ) : (
                 <MapCanvas
-                shapes={shapes}
-                setShapes={setShapes}
-                selectedTool={selectedTool}
-                setSelectedTool={setSelectedTool}
-                steepnessThreshold={steepnessThreshold}
-                elevationGrid={elevationGrid}
-                isAnalysisVisible={isAnalysisVisible}
-                selectedShapeIds={selectedShapeIds}
-                setSelectedShapeIds={setSelectedShapeIds}
-                onBoundaryDrawn={handleBoundaryDrawn}
-                viewState={viewState}
-                onViewStateChange={setViewState}
-                onCameraChanged={onMapCameraChanged}
+                    shapes={shapes}
+                    setShapes={setShapes}
+                    selectedTool={selectedTool}
+                    setSelectedTool={setSelectedTool}
+                    steepnessThreshold={steepnessThreshold}
+                    elevationGrid={elevationGrid}
+                    isAnalysisVisible={isAnalysisVisible}
+                    selectedShapeIds={selectedShapeIds}
+                    setSelectedShapeIds={setSelectedShapeIds}
+                    onBoundaryDrawn={handleBoundaryDrawn}
+                    viewState={viewState}
+                    onViewStateChange={setViewState}
+                    onCameraChanged={onMapCameraChanged}
                 />
-            </div>
+            )}
           
-          {isSplitView && (
-            <div className='relative w-1/2 h-full border-l'>
-                {projectBoundary && elevationGrid ? (
-                    <ThreeDVisualization
-                        assets={assets}
-                        zones={zones}
-                        boundary={projectBoundary}
-                        elevationGrid={elevationGrid}
-                        onDeleteAsset={handleDeleteAsset}
-                        selectedAssetId={selectedAssetId}
-                        setSelectedAssetId={setSelectedAssetId}
-                        viewState={viewState}
-                        onViewStateChange={setViewState}
-                    />
-                ) : (
-                    <div className="flex items-center justify-center h-full">
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                    </div>
-                )}
-            </div>
-           )}
           
           <Button 
             size="icon" 
             variant="outline"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className={cn("absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm")}
+            className={cn("absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm", is3DMode && "hidden")}
           >
             {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
           </Button>
@@ -565,6 +571,7 @@ function VisionPageContent() {
           shapes={shapes}
           siteName={siteName}
           isOpen={isSidebarOpen}
+          setIsOpen={setIsSidebarOpen}
           gridResolution={gridResolution} // Use immediate value for slider UI
           setGridResolution={setGridResolution}
           steepnessThreshold={steepnessThreshold}
@@ -575,7 +582,7 @@ function VisionPageContent() {
           selectedShapeIds={selectedShapeIds}
           onGenerateLayout={handleGenerateLayout}
           onGenerateSolarLayout={handleGenerateSolarLayout}
-          is3DView={isSplitView}
+          is3DView={is3DMode}
           selectedAssetId={selectedAssetId}
           onDeleteAsset={handleDeleteAsset}
         />

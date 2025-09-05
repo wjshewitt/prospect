@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { signOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { AddressSearchBox } from '../map/address-search-box';
 
 type HeaderProps = {
   siteName: string;
@@ -93,7 +94,7 @@ export default function Header({ siteName, onSiteNameClick, onClear, onSave, has
             </>
         )}
       </div>
-
+      
       <div className="flex items-center gap-2">
         {children}
         {user && (
@@ -116,5 +117,3 @@ export default function Header({ siteName, onSiteNameClick, onClear, onSave, has
     </header>
   );
 }
-
-    

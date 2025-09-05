@@ -12,7 +12,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { BuildingPlacementDialog } from '@/components/ai/building-placement-dialog';
-import { MousePointer2, Square, Pen, PenTool, Shapes, Combine, Diff, WholeWord, Building, HelpCircle, Bot, Settings, Eye } from 'lucide-react';
+import { MousePointer2, Square, Pen, PenTool, Shapes, Combine, Diff, WholeWord, Building, HelpCircle, Bot, Settings, Eye, View } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useMemo, useState } from 'react';
@@ -260,6 +260,7 @@ export default function ToolPalette({
       id="tool-palette"
       className="w-16 border-r bg-background/80 backdrop-blur-sm flex flex-col items-center py-4 z-10"
       data-tutorial="step-0"
+      style={{'--tool-palette-width': '4rem'} as React.CSSProperties}
     >
       <TooltipProvider>
         {is3DView ? <ThreeDTools /> : <TwoDTools />}
