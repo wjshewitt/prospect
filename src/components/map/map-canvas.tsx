@@ -220,7 +220,6 @@ const DrawnShapes: React.FC<{
         let strokeWeight = isSelected ? 3.5 : 2;
         let strokePosition: google.maps.StrokePosition | undefined = undefined;
         let zIndex = 1; 
-        let icons; // Use default icons (solid line) initially
         
         if (isBoundary) {
             strokeColor = 'hsl(var(--accent))'; // Bright orange
@@ -228,12 +227,7 @@ const DrawnShapes: React.FC<{
             fillOpacity = isSelected ? 0.15 : 0.05;
             zIndex = 5;
             strokePosition = google.maps.StrokePosition.OUTSIDE;
-            icons = [{
-                icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, strokeWeight, scale: 4 },
-                offset: '0',
-                repeat: '10px'
-            }];
-            strokeOpacity = 0; // Hide the solid line, let icons create the dash effect
+            strokeOpacity = 0.9;
         }
 
         if (isBuffer) {
@@ -242,11 +236,6 @@ const DrawnShapes: React.FC<{
             strokeColor = 'hsl(var(--accent))';
             strokeWeight = 2.5;
             zIndex = isSelected ? 6 : 3;
-            icons = [{
-                icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, strokeWeight, scale: 4 },
-                offset: '0',
-                repeat: '15px'
-            }];
         } else if(isBufferedParent) {
             strokeOpacity = 0; // Hide the solid line for the parent of a buffer
         }
@@ -288,7 +277,6 @@ const DrawnShapes: React.FC<{
           editable: isEditing,
           draggable: isMoving,
           zIndex,
-          icons,
         };
 
         const poly = new google.maps.Polygon(polyOptions);
