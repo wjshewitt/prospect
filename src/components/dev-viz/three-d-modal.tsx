@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
@@ -536,12 +537,12 @@ export function ThreeDVisualizationModal({
         let color: THREE.Color;
         
         if (settings.terrainStyle === 'realistic') {
-          color = getGradientColor(normalizedHeight);
+          color = new THREE.Color(0xcccccc); // Monotone base
           // Add subtle random variation for texture
-          const variation = (Math.sin(i * 0.1) * 0.5 + 0.5) * 0.05;
+          const variation = (Math.sin(i * 0.1) * 0.5 + 0.5) * 0.1;
           color.r = Math.min(1, color.r * (1 + variation));
           color.g = Math.min(1, color.g * (1 + variation));
-          color.b = Math.min(1, color.b * (1 - variation * 0.5));
+          color.b = Math.min(1, color.b * (1 + variation));
 
         } else if (settings.terrainStyle === 'topographic') {
           color = new THREE.Color(0xFFFFFF);
@@ -620,8 +621,15 @@ export function ThreeDVisualizationModal({
     });
     
     const boundaryLineGeom = new THREE.BufferGeometry().setFromPoints([...boundaryLinePoints, boundaryLinePoints[0]]);
-    const boundaryLineMat = new THREE.LineBasicMaterial({ color: 0xffeb3b, linewidth: 3, transparent: true, opacity: 0.8 });
-    const boundaryLine = new THREE.Line(boundaryLineGeom, boundaryLineMat);
+    const boundaryLineMat = new LineMaterial({ 
+        color: 0xffeb3b, 
+        linewidth: 4, 
+        resolution: new THREE.Vector2(mountNode.clientWidth, mountNode.clientHeight),
+        dashed: false,
+        opacity: 1
+    });
+    const fatBoundaryGeom = new WireframeGeometry2(boundaryLineGeom);
+    const boundaryLine = new Wireframe(fatBoundaryGeom, boundaryLineMat);
     geoGroup.add(boundaryLine);
 
 
@@ -634,9 +642,16 @@ export function ThreeDVisualizationModal({
       });
       
       const zoneLineGeom = new THREE.BufferGeometry().setFromPoints([...zonePoints, zonePoints[0]]);
-      const zoneLineMat = new THREE.LineDashedMaterial({ color: 0xff9800, dashSize: 3, gapSize: 2 });
-      const zoneLine = new THREE.Line(zoneLineGeom, zoneLineMat);
-      zoneLine.computeLineDistances();
+      const zoneLineMat = new LineMaterial({ 
+        color: 0xff9800,
+        linewidth: 2,
+        dashed: true,
+        dashSize: 5,
+        gapSize: 3,
+        resolution: new THREE.Vector2(mountNode.clientWidth, mountNode.clientHeight)
+      });
+      const fatZoneGeom = new WireframeGeometry2(zoneLineGeom);
+      const zoneLine = new Wireframe(fatZoneGeom, zoneLineMat);
       geoGroup.add(zoneLine);
     });
     
