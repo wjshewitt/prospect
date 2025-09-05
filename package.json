@@ -44,6 +44,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "deck.gl": "^9.0.22",
+    "@deck.gl/geo-layers": "^9.0.22",
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.6.0",
     "firebase": "^11.9.1",

@@ -4,7 +4,8 @@
 import React, { useMemo, useState } from 'react';
 import type { Shape, ElevationGrid } from '@/lib/types';
 import DeckGL from '@deck.gl/react';
-import { TerrainLayer, PolygonLayer } from '@deck.gl/layers';
+import { TerrainLayer } from '@deck.gl/geo-layers';
+import { PolygonLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl';
 import { useMap } from '@vis.gl/react-google-maps';
 import { Button } from '../ui/button';
