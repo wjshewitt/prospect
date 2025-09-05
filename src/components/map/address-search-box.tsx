@@ -68,7 +68,7 @@ export function AddressSearchBox({ onPlaceSelect }: AddressSearchBoxProps) {
                 <Input
                     ref={inputRef}
                     placeholder="Search for a location..."
-                    className="w-full pl-10 pr-4 py-2 shadow-md !rounded-t-none" // Remove top radius to meet header
+                    className="w-full pl-10 pr-4 py-2 shadow-md !rounded-t-none"
                 />
             </div>
         </div>
