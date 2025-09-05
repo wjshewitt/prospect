@@ -5,7 +5,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Shape, LatLng, ElevationGrid } from '@/lib/types';
-import { ArrowUp, Layers, MousePointer, Settings, Mountain, Grid3x3, ChevronsUpDown, Shadows, Sigma } from 'lucide-react';
+import { ArrowUp, Layers, MousePointer, Settings, Mountain, Grid3x3, ChevronsUpDown, Star, Sigma } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -682,7 +682,7 @@ export function ThreeDVisualizationModal({
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="shadow-switch" className="flex items-center gap-2"><Shadows className="h-4 w-4" /> Shadows</Label>
+                    <Label htmlFor="shadow-switch" className="flex items-center gap-2"><Star className="h-4 w-4" /> Shadows</Label>
                     <Switch
                         id="shadow-switch"
                         checked={settings.showShadows}
