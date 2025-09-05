@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Shape, LatLng, ElevationGrid } from '@/lib/types';
@@ -19,9 +20,22 @@ const getPolygonCenter = (path: LatLng[]): LatLng => {
   return bounds.getCenter().toJSON();
 };
 
-// Compass component
-const Compass = ({ camera }: { camera: THREE.Camera | null }) => {
+const CompassPortal: React.FC<{ camera: THREE.Camera | null }> = ({ camera }) => {
   const [rotation, setRotation] = useState(0);
+  const portalNode = useRef<HTMLDivElement | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    portalNode.current = document.createElement('div');
+    document.body.appendChild(portalNode.current);
+    setIsMounted(true);
+
+    return () => {
+      if (portalNode.current) {
+        document.body.removeChild(portalNode.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!camera) return;
@@ -40,9 +54,9 @@ const Compass = ({ camera }: { camera: THREE.Camera | null }) => {
       return () => controls.removeEventListener('change', updateCompass);
     }
   }, [camera]);
-
-  return (
-    <div className="absolute top-4 right-4 w-16 h-16 bg-background/50 rounded-full flex items-center justify-center text-foreground backdrop-blur-sm shadow-lg pointer-events-none">
+  
+  const compassJsx = (
+    <div className="absolute top-4 right-4 w-16 h-16 bg-background/50 rounded-full flex items-center justify-center text-foreground backdrop-blur-sm shadow-lg pointer-events-none z-50">
       <div
         className="relative w-full h-full transition-transform"
         style={{ transform: `rotate(${-rotation}rad)` }}
@@ -57,7 +71,10 @@ const Compass = ({ camera }: { camera: THREE.Camera | null }) => {
       </div>
     </div>
   );
+
+  return isMounted && portalNode.current ? createPortal(compassJsx, portalNode.current) : null;
 };
+
 
 // Elevation stats display
 const ElevationStats = ({ min, max, range }: { min: number; max: number; range: number }) => (
@@ -627,7 +644,7 @@ export function ThreeDVisualizationModal({
   return (
     <div className="relative w-full h-full bg-black">
       <div ref={mountRef} className="w-full h-full" />
-      <Compass camera={cameraRef.current} />
+      <CompassPortal camera={cameraRef.current} />
       
       {elevationStats.range > 0 && (
         <ElevationStats 
@@ -680,3 +697,5 @@ export function ThreeDVisualizationModal({
     </div>
   );
 }
+
+    
