@@ -1,18 +1,19 @@
-
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Shape, LatLng, ElevationGrid } from '@/lib/types';
-import { ArrowUp, Layers, MousePointer, Settings, Mountain, Grid3x3, ChevronsUpDown, Star, Sigma } from 'lucide-react';
+import { ArrowUp, Layers, MousePointer, Settings, Mountain, Grid3x3, ChevronsUpDown, Star, Sigma, Eye, Sun, Cloud } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Label } from '../ui/label';
 import { Switch } from '../ui/switch';
 import { Slider } from '../ui/slider';
-
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
+import { Wireframe } from 'three/examples/jsm/lines/Wireframe.js';
+import { WireframeGeometry2 } from 'three/examples/jsm/lines/WireframeGeometry2.js';
 
 // Helper to calculate the center of a polygon
 const getPolygonCenter = (path: LatLng[]): LatLng => {
@@ -28,60 +29,60 @@ const getPolygonCenter = (path: LatLng[]): LatLng => {
 
 // Enhanced Compass with elevation indicator
 const Compass = ({ rotation, elevation }: { rotation: number; elevation: number }) => (
-  <div className="absolute top-4 right-4 bg-background/80 backdrop-blur-sm rounded-lg shadow-lg p-2 pointer-events-none z-50">
+  <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-md rounded-xl shadow-2xl p-3 pointer-events-none z-50 border border-white/20">
     <div className="w-16 h-16 relative">
       <div
         className="relative w-full h-full transition-transform duration-200"
         style={{ transform: `rotate(${-rotation}rad)` }}
       >
-        <div className="absolute top-0.5 left-1/2 -translate-x-1/2 font-bold text-sm text-red-500">N</div>
-        <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-xs text-muted-foreground">S</div>
-        <div className="absolute left-0.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">W</div>
-        <div className="absolute right-0.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">E</div>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 font-bold text-base text-red-600 drop-shadow-md">N</div>
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 text-sm text-muted-foreground">S</div>
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">W</div>
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">E</div>
       </div>
       <div className="absolute inset-0 flex items-center justify-center">
-        <ArrowUp className="w-6 h-6 text-red-500" />
+        <ArrowUp className="w-7 h-7 text-red-600 drop-shadow-lg" />
       </div>
     </div>
-    <div className="text-xs text-center mt-1 text-muted-foreground">
+    <div className="text-xs text-center mt-1 font-semibold">
       {Math.abs(elevation).toFixed(0)}°
     </div>
   </div>
 );
 
-// Enhanced elevation stats with gradient visualization
+// Enhanced elevation stats with better visualization
 const ElevationStats = ({ min, max, range, currentElev }: { 
   min: number; 
   max: number; 
   range: number;
   currentElev?: number;
 }) => (
-  <div className="absolute bottom-4 left-4 bg-background/80 backdrop-blur-sm p-3 rounded-lg shadow-lg">
-    <div className="flex items-center gap-2 mb-2">
-      <Mountain className="w-4 h-4" />
-      <span className="font-semibold text-sm">Elevation</span>
+  <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-white/20">
+    <div className="flex items-center gap-2 mb-3">
+      <Mountain className="w-5 h-5 text-primary" />
+      <span className="font-bold text-base">Elevation</span>
     </div>
-    <div className="space-y-1 text-xs">
-      <div className="flex justify-between gap-4">
+    <div className="space-y-1.5 text-sm">
+      <div className="flex justify-between gap-6">
         <span className="text-muted-foreground">Min:</span>
-        <span className="font-mono">{min.toFixed(1)}m</span>
+        <span className="font-mono font-semibold">{min.toFixed(1)}m</span>
       </div>
-      <div className="flex justify-between gap-4">
+      <div className="flex justify-between gap-6">
         <span className="text-muted-foreground">Max:</span>
-        <span className="font-mono">{max.toFixed(1)}m</span>
+        <span className="font-mono font-semibold">{max.toFixed(1)}m</span>
       </div>
-      <div className="flex justify-between gap-4">
+      <div className="flex justify-between gap-6">
         <span className="text-muted-foreground">Range:</span>
-        <span className="font-mono">{range.toFixed(1)}m</span>
+        <span className="font-mono font-semibold">{range.toFixed(1)}m</span>
       </div>
       {currentElev !== undefined && (
-        <div className="flex justify-between gap-4 pt-1 border-t">
+        <div className="flex justify-between gap-6 pt-2 mt-2 border-t border-white/10">
           <span className="text-muted-foreground">Cursor:</span>
-          <span className="font-mono text-primary">{currentElev.toFixed(1)}m</span>
+          <span className="font-mono font-bold text-primary">{currentElev.toFixed(1)}m</span>
         </div>
       )}
     </div>
-    <div className="mt-2 h-2 bg-gradient-to-r from-green-600 via-yellow-600 to-orange-600 rounded-full" />
+    <div className="mt-3 h-3 rounded-full overflow-hidden bg-gradient-to-r from-emerald-600 via-amber-500 to-red-600 shadow-inner" />
   </div>
 );
 
@@ -91,19 +92,22 @@ const PerformanceMonitor = ({ fps, triangles, drawCalls }: {
   triangles: number;
   drawCalls: number;
 }) => (
-  <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-sm p-2 rounded-lg shadow-lg text-xs space-y-1">
-    <div className="flex justify-between gap-4">
+  <div className="absolute top-24 right-4 bg-background/90 backdrop-blur-md p-3 rounded-xl shadow-2xl text-sm space-y-1.5 border border-white/20">
+    <div className="flex justify-between gap-6">
       <span className="text-muted-foreground">FPS:</span>
-      <span className={cn("font-mono", fps < 30 ? "text-red-500" : fps < 50 ? "text-yellow-500" : "text-green-500")}>
+      <span className={cn("font-mono font-bold", 
+        fps < 30 ? "text-red-500" : 
+        fps < 50 ? "text-yellow-500" : 
+        "text-green-500")}>
         {fps.toFixed(0)}
       </span>
     </div>
-    <div className="flex justify-between gap-4">
+    <div className="flex justify-between gap-6">
       <span className="text-muted-foreground">Triangles:</span>
       <span className="font-mono">{(triangles / 1000).toFixed(1)}k</span>
     </div>
-    <div className="flex justify-between gap-4">
-      <span className="text-muted-foreground">Draw Calls:</span>
+    <div className="flex justify-between gap-6">
+      <span className="text-muted-foreground">Draws:</span>
       <span className="font-mono">{drawCalls}</span>
     </div>
   </div>
@@ -111,12 +115,17 @@ const PerformanceMonitor = ({ fps, triangles, drawCalls }: {
 
 // Enhanced visualization settings
 interface VisualizationSettings {
-  terrainQuality: 'low' | 'medium' | 'high' | 'adaptive';
+  terrainQuality: 'low' | 'medium' | 'high' | 'ultra';
   showWireframe: boolean;
   showShadows: boolean;
   terrainExaggeration: number;
   useLOD: boolean;
   showPerformance: boolean;
+  ambientIntensity: number;
+  sunIntensity: number;
+  fogDensity: number;
+  showContours: boolean;
+  terrainStyle: 'realistic' | 'topographic' | 'satellite';
 }
 
 interface ThreeDVisualizationProps {
@@ -149,15 +158,20 @@ export function ThreeDVisualizationModal({
   const [cursorElevation, setCursorElevation] = useState<number | undefined>();
   const [performanceStats, setPerformanceStats] = useState({ fps: 60, triangles: 0, drawCalls: 0 });
   const [settings, setSettings] = useState<VisualizationSettings>({
-    terrainQuality: 'adaptive',
+    terrainQuality: 'high',
     showWireframe: false,
     showShadows: true,
-    terrainExaggeration: 1.0,
+    terrainExaggeration: 1.2,
     useLOD: true,
     showPerformance: false,
+    ambientIntensity: 0.4,
+    sunIntensity: 1.8,
+    fogDensity: 0.0003,
+    showContours: false,
+    terrainStyle: 'realistic'
   });
 
-  // Local projection utility for this component
+  // Local projection utility
   const geoUtils = useMemo(() => {
     const center = getPolygonCenter(boundary.path);
     const R = 6371000;
@@ -190,6 +204,8 @@ export function ThreeDVisualizationModal({
       setSettings(prev => ({ ...prev, showWireframe: !prev.showWireframe }));
     } else if (event.key === 'p') {
       setSettings(prev => ({ ...prev, showPerformance: !prev.showPerformance }));
+    } else if (event.key === 'c') {
+      setSettings(prev => ({ ...prev, showContours: !prev.showContours }));
     }
   }, [selectedAsset, onDeleteAsset]);
 
@@ -198,86 +214,109 @@ export function ThreeDVisualizationModal({
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [onKeyDown]);
 
-  // Main scene setup
+  // Main enhanced scene setup
   useEffect(() => {
     if (!mountRef.current || !boundary || !elevationGrid || !elevationGrid.pointGrid) return;
 
     const mountNode = mountRef.current;
     let animationFrameId: number;
 
+    // Enhanced scene with better atmosphere
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB);
-    scene.fog = new THREE.FogExp2(0x87CEEB, 0.0005);
+    const skyGradient = new THREE.Color(0x87CEEB).lerp(new THREE.Color(0xB0E0E6), 0.5);
+    scene.background = skyGradient;
+    scene.fog = new THREE.FogExp2(skyGradient, settings.fogDensity);
     sceneRef.current = scene;
 
+    // High-quality renderer setup
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       powerPreference: 'high-performance',
+      alpha: false,
+      logarithmicDepthBuffer: true,
+      precision: 'highp'
     });
     renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = settings.showShadows;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.autoUpdate = true;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMappingExposure = 1.2;
     
     if (mountNode.childNodes.length === 0) {
         mountNode.appendChild(renderer.domElement);
     }
     rendererRef.current = renderer;
     
+    // Enhanced environment mapping
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmremGenerator.fromScene(new THREE.Scene()).texture;
+    const renderTarget = pmremGenerator.fromScene(scene);
+    scene.environment = renderTarget.texture;
 
     const camera = new THREE.PerspectiveCamera(
-      60,
+      55,
       mountNode.clientWidth / mountNode.clientHeight,
       0.1,
       50000
     );
     cameraRef.current = camera;
     
-    const ambientLight = new THREE.AmbientLight(0xFFFFFF, 0.3);
+    // Enhanced lighting system for better depth and shadows
+    const ambientLight = new THREE.AmbientLight(0xFFFFFF, settings.ambientIntensity);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xFFF8DC, 1.5);
-    sunLight.position.set(200, 400, 150);
+    // Primary sun light with realistic color temperature
+    const sunLight = new THREE.DirectionalLight(0xFFF5E6, settings.sunIntensity);
+    sunLight.position.set(300, 600, 200);
     sunLight.castShadow = settings.showShadows;
-    sunLight.shadow.camera.near = 1;
-    sunLight.shadow.camera.far = 2000;
-    sunLight.shadow.camera.left = -500;
-    sunLight.shadow.camera.right = 500;
-    sunLight.shadow.camera.top = 500;
-    sunLight.shadow.camera.bottom = -500;
-    sunLight.shadow.mapSize.width = 4096;
-    sunLight.shadow.mapSize.height = 4096;
-    sunLight.shadow.bias = -0.0005;
-    sunLight.shadow.normalBias = 0.02;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 3000;
+    sunLight.shadow.camera.left = -800;
+    sunLight.shadow.camera.right = 800;
+    sunLight.shadow.camera.top = 800;
+    sunLight.shadow.camera.bottom = -800;
+    sunLight.shadow.mapSize.width = 8192;
+    sunLight.shadow.mapSize.height = 8192;
+    sunLight.shadow.bias = -0.00005;
+    sunLight.shadow.normalBias = 0.01;
+    sunLight.shadow.radius = 4;
+    sunLight.shadow.blurSamples = 25;
     scene.add(sunLight);
 
-    const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x4F7F14, 0.4);
+    // Sky-ground hemisphere light for natural ambient
+    const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0x3B5323, 0.5);
     scene.add(hemiLight);
 
-    const fillLight1 = new THREE.DirectionalLight(0xFFFFFF, 0.2);
-    fillLight1.position.set(-150, 200, -100);
+    // Multiple fill lights for eliminating harsh shadows
+    const fillLight1 = new THREE.DirectionalLight(0xFFE4E1, 0.3);
+    fillLight1.position.set(-200, 300, -150);
     scene.add(fillLight1);
 
-    const fillLight2 = new THREE.DirectionalLight(0xFFE4B5, 0.15);
-    fillLight2.position.set(100, 150, -200);
+    const fillLight2 = new THREE.DirectionalLight(0xE6E6FA, 0.25);
+    fillLight2.position.set(150, 250, -300);
     scene.add(fillLight2);
 
+    // Rim light for edge definition
+    const rimLight = new THREE.DirectionalLight(0xFFFFFF, 0.2);
+    rimLight.position.set(0, 100, -400);
+    scene.add(rimLight);
+
+    // Enhanced orbit controls
     const orbitControls = new OrbitControls(camera, renderer.domElement);
     orbitControls.enableDamping = true;
-    orbitControls.dampingFactor = 0.08;
-    orbitControls.rotateSpeed = 0.5;
-    orbitControls.zoomSpeed = 1.2;
+    orbitControls.dampingFactor = 0.05;
+    orbitControls.rotateSpeed = 0.6;
+    orbitControls.zoomSpeed = 1.0;
     orbitControls.panSpeed = 0.8;
     orbitControls.screenSpacePanning = true;
     orbitControls.minDistance = 5;
     orbitControls.maxDistance = 5000;
-    orbitControls.maxPolarAngle = Math.PI / 2.1;
+    orbitControls.maxPolarAngle = Math.PI * 0.495;
     orbitControls.enablePan = true;
+    orbitControls.autoRotate = false;
+    orbitControls.autoRotateSpeed = 0.5;
 
     const updateCameraInfo = () => {
       const vector = new THREE.Vector3();
@@ -291,7 +330,9 @@ export function ThreeDVisualizationModal({
     orbitControls.addEventListener('change', updateCameraInfo);
     updateCameraInfo();
 
+    // Enhanced raycasting
     const raycaster = new THREE.Raycaster();
+    raycaster.params.Line!.threshold = 3;
     const mouse = new THREE.Vector2();
     let terrainMesh: THREE.Mesh | null = null;
 
@@ -306,7 +347,7 @@ export function ThreeDVisualizationModal({
         const intersects = raycaster.intersectObject(terrainMesh);
         if (intersects.length > 0) {
           const point = intersects[0].point;
-          setCursorElevation(point.z);
+          setCursorElevation(point.z / settings.terrainExaggeration);
         } else {
           setCursorElevation(undefined);
         }
@@ -343,16 +384,15 @@ export function ThreeDVisualizationModal({
     geoGroup.rotation.x = -Math.PI / 2;
     scene.add(geoGroup);
 
+    // Process elevation data
     const { grid, nx, ny } = elevationGrid.pointGrid!;
     const { minX, maxX, minY, maxY } = elevationGrid.xyBounds!;
 
     let minElev = Infinity, maxElev = -Infinity;
-    const validElevations: number[] = [];
     for (let i = 0; i < grid.length; i++) {
       if (isFinite(grid[i])) {
         minElev = Math.min(minElev, grid[i]);
         maxElev = Math.max(maxElev, grid[i]);
-        validElevations.push(grid[i]);
       }
     }
     const elevRange = maxElev - minElev;
@@ -360,6 +400,7 @@ export function ThreeDVisualizationModal({
 
     const exaggeration = settings.terrainExaggeration;
 
+    // Enhanced elevation interpolation with smoothing
     const getElevationAt = (x: number, y: number): number => {
       if (!grid || nx < 2 || ny < 2) return minElev * exaggeration;
       
@@ -375,15 +416,44 @@ export function ThreeDVisualizationModal({
         return (grid[clampedJ * nx + clampedI] || minElev) * exaggeration;
       }
 
+      // Bicubic interpolation for smoother terrain
       const s = u - i;
       const t = v - j;
+      const s2 = s * s;
+      const s3 = s2 * s;
+      const t2 = t * t;
+      const t3 = t2 * t;
 
-      const p00 = (grid[j * nx + i] || minElev) * exaggeration;
-      const p10 = (grid[j * nx + (i + 1)] || minElev) * exaggeration;
-      const p01 = (grid[(j + 1) * nx + i] || minElev) * exaggeration;
-      const p11 = (grid[(j + 1) * nx + (i + 1)] || minElev) * exaggeration;
-      
-      return p00 * (1 - s) * (1 - t) + p10 * s * (1 - t) + p01 * (1 - s) * t + p11 * s * t;
+      // Get 4x4 grid for bicubic interpolation
+      const vals: number[][] = [];
+      for (let dy = -1; dy <= 2; dy++) {
+        const row: number[] = [];
+        for (let dx = -1; dx <= 2; dx++) {
+          const xi = Math.max(0, Math.min(nx - 1, i + dx));
+          const yi = Math.max(0, Math.min(ny - 1, j + dy));
+          row.push((grid[yi * nx + xi] || minElev) * exaggeration);
+        }
+        vals.push(row);
+      }
+
+      // Hermite interpolation coefficients
+      const a = [
+        -0.5, 1.5, -1.5, 0.5,
+        1.0, -2.5, 2.0, -0.5,
+        -0.5, 0.0, 0.5, 0.0,
+        0.0, 1.0, 0.0, 0.0
+      ];
+
+      let result = 0;
+      for (let m = 0; m < 4; m++) {
+        for (let n = 0; n < 4; n++) {
+          const coef = a[m * 4] * (m === 0 ? 1 : m === 1 ? s : m === 2 ? s2 : s3) *
+                      a[n * 4] * (n === 0 ? 1 : n === 1 ? t : n === 2 ? t2 : t3);
+          result += vals[n][m] * coef;
+        }
+      }
+
+      return result;
     };
 
     const boundaryPoints = boundary.path.map(p => {
@@ -401,347 +471,433 @@ export function ThreeDVisualizationModal({
 
     const boundaryWidth = bMaxX - bMinX;
     const boundaryHeight = bMaxY - bMinY;
-    const boundaryRadius = Math.sqrt(boundaryWidth * boundaryWidth + boundaryHeight * boundaryHeight) / 2;
-    const renderRadius = boundaryRadius * 1.25;
+    const terrainPadding = Math.max(boundaryWidth, boundaryHeight) * 0.15;
+    const renderRadius = (Math.sqrt(boundaryWidth * boundaryWidth + boundaryHeight * boundaryHeight) / 2 + terrainPadding) * 1.25;
 
+
+    // Enhanced terrain quality settings
     const areaSize = Math.PI * renderRadius * renderRadius;
     let gridResolution: number;
     
-    if (settings.terrainQuality === 'adaptive') {
-      if (areaSize < 10000) gridResolution = 150;
-      else if (areaSize < 100000) gridResolution = 100;
-      else if (areaSize < 1000000) gridResolution = 75;
-      else gridResolution = 50;
+    if (settings.terrainQuality === 'ultra') {
+      gridResolution = 256;
+    } else if (settings.terrainQuality === 'high') {
+      gridResolution = 192;
+    } else if (settings.terrainQuality === 'medium') {
+      gridResolution = 128;
     } else {
-      gridResolution = settings.terrainQuality === 'high' ? 150 : 
-                      settings.terrainQuality === 'medium' ? 75 : 30;
+      gridResolution = 64;
     }
     
-    const segments = Math.max(10, Math.min(gridResolution, Math.floor(renderRadius * 2)));
+    const segments = Math.max(20, Math.min(gridResolution, Math.floor(renderRadius * 2 / 5)));
 
+    // Create high-quality LOD terrain
     const lod = new THREE.LOD();
-    const lodLevels = [
+    const lodLevels = settings.useLOD ? [
         { distance: 0, segments: segments },
-        { distance: 500, segments: Math.floor(segments / 2) },
-        { distance: 1000, segments: Math.floor(segments / 4) },
-        { distance: 2000, segments: Math.max(10, Math.floor(segments / 8)) }
-    ];
+        { distance: 300, segments: Math.max(20, Math.floor(segments * 0.6)) },
+        { distance: 600, segments: Math.max(15, Math.floor(segments * 0.4)) },
+        { distance: 1200, segments: Math.max(10, Math.floor(segments * 0.2)) }
+    ] : [{ distance: 0, segments: segments }];
 
-    lodLevels.forEach(level => {
+    lodLevels.forEach((level, levelIndex) => {
       if (level.segments < 1) return;
-      const geom = new THREE.PlaneGeometry(renderRadius * 2, renderRadius * 2, level.segments, level.segments);
+      
+      const geom = new THREE.PlaneGeometry(
+        renderRadius * 2, 
+        renderRadius * 2, 
+        level.segments, 
+        level.segments
+      );
       
       const positions = geom.attributes.position;
+      const normals = [];
+      
+      // Apply elevation with smoothing
       for (let i = 0; i < positions.count; i++) {
         const x = positions.getX(i) + (bMinX + bMaxX) / 2;
         const y = positions.getY(i) + (bMinY + bMaxY) / 2;
         const z = getElevationAt(x, y);
         positions.setZ(i, z);
       }
+      
+      // Smooth terrain for better visuals
+      if (levelIndex === 0 && settings.terrainQuality !== 'low') {
+        const smoothingPasses = settings.terrainQuality === 'ultra' ? 3 : 2;
+        
+        for (let pass = 0; pass < smoothingPasses; pass++) {
+          const newZ = new Float32Array(positions.count);
+          
+          for (let i = 0; i <= level.segments; i++) {
+            for (let j = 0; j <= level.segments; j++) {
+              const idx = i * (level.segments + 1) + j;
+              let sumZ = positions.getZ(idx) * 4; // Center weight
+              let weight = 4;
+              
+              // 8-connected smoothing with edge preservation
+              const neighbors = [
+                [-1, -1, 0.707], [-1, 0, 1], [-1, 1, 0.707],
+                [0, -1, 1], [0, 1, 1],
+                [1, -1, 0.707], [1, 0, 1], [1, 1, 0.707]
+              ];
+              
+              for (const [di, dj, w] of neighbors) {
+                const ni = i + di;
+                const nj = j + dj;
+                if (ni >= 0 && ni <= level.segments && nj >= 0 && nj <= level.segments) {
+                  const nIdx = ni * (level.segments + 1) + nj;
+                  const neighborZ = positions.getZ(nIdx);
+                  const diff = Math.abs(neighborZ - positions.getZ(idx));
+                  
+                  // Edge-preserving weight
+                  if (diff < elevRange * 0.15) {
+                    const edgeWeight = Math.exp(-diff * diff / (elevRange * elevRange * 0.01));
+                    sumZ += neighborZ * w * edgeWeight;
+                    weight += w * edgeWeight;
+                  }
+                }
+              }
+              
+              newZ[idx] = sumZ / weight;
+            }
+          }
+          
+          for (let i = 0; i < positions.count; i++) {
+            positions.setZ(i, newZ[i]);
+          }
+        }
+      }
+      
       geom.computeVertexNormals();
+      geom.attributes.position.needsUpdate = true;
       
-      const material = new THREE.MeshStandardMaterial({
-        vertexColors: true,
-        roughness: 0.85,
-        metalness: 0.0,
-        wireframe: settings.showWireframe
-      });
-      
+      // Create rich terrain colors
       const colors = new Float32Array(positions.count * 3);
+      
       for (let i = 0; i < positions.count; i++) {
         const z = positions.getZ(i);
         const normalizedHeight = (z / exaggeration - minElev) / (elevRange || 1);
         
         let color: THREE.Color;
-        if (normalizedHeight < 0.2) {
-          color = new THREE.Color(0x2D5016).lerp(new THREE.Color(0x4A6F28), normalizedHeight * 5);
-        } else if (normalizedHeight < 0.5) {
-          color = new THREE.Color(0x4A6F28).lerp(new THREE.Color(0x8B7355), (normalizedHeight - 0.2) * 3.33);
-        } else if (normalizedHeight < 0.8) {
-          color = new THREE.Color(0x8B7355).lerp(new THREE.Color(0xC4A57B), (normalizedHeight - 0.5) * 3.33);
-        } else {
-          color = new THREE.Color(0xC4A57B).lerp(new THREE.Color(0xE8DCC6), (normalizedHeight - 0.8) * 5);
-        }
         
-        colors[i * 3] = color.r;
-        colors[i * 3 + 1] = color.g;
-        colors[i * 3 + 2] = color.b;
+        if (settings.terrainStyle === 'realistic') {
+          // Rich, realistic terrain gradient
+          if (normalizedHeight < 0.1) {
+            // Deep forest green
+            color = new THREE.Color(0x0D3F0D).lerp(new THREE.Color(0x1A5C1A), normalizedHeight * 10);
+          } else if (normalizedHeight < 0.25) {
+            // Forest to grass
+            color = new THREE.Color(0x1A5C1A).lerp(new THREE.Color(0x3A7A3A), (normalizedHeight - 0.1) / 0.15);
+          } else if (normalizedHeight < 0.4) {
+            // Grass to meadow
+            color = new THREE.Color(0x3A7A3A).lerp(new THREE.Color(0x5C8B2A), (normalizedHeight - 0.25) / 0.15);
+          } else if (normalizedHeight < 0.55) {
+            // Meadow to scrubland
+            color = new THREE.Color(0x5C8B2A).lerp(new THREE.Color(0x8B7355), (normalizedHeight - 0.4) / 0.15);
+          } else if (normalizedHeight < 0.7) {
+            // Scrubland to rocky
+            color = new THREE.Color(0x8B7355).lerp(new THREE.Color(0xA0826D), (normalizedHeight - 0.55) / 0.15);
+          } else if (normalizedHeight < 0.85) {
+            // Rocky to barren
+            color = new THREE.Color(0xA0826D).lerp(new THREE.Color(0xC4A57B), (normalizedHeight - 0.7) / 0.15);
+          } else if (normalizedHeight < 0.95) {
+            // Barren to snow line
+            color = new THREE.Color(0xC4A57B).lerp(new THREE.Color(0xE8DCC6), (normalizedHeight - 0.85) / 0.1);
+          } else {
+            // Snow cap
+            color = new THREE.Color(0xE8DCC6).lerp(new THREE.Color(0xFAFAFA), (normalizedHeight - 0.95) / 0.05);
+          }
+          
+          // Add subtle variation based on position
+          const variation = (Math.sin(i * 0.1) * 0.5 + 0.5) * 0.05;
+          color.r = Math.min(1, color.r * (1 + variation));
+          color.g = Math.min(1, color.g * (1 + variation));
+          color.b = Math.min(1, color.b * (1 - variation * 0.5));
+        } else if (settings.terrainStyle === 'topographic') {
+          // Topographic style
+          color = new THREE.Color(0xFFFFFF); // Base color, contours will be added later
+        } else { // satellite
+          // Placeholder for satellite texture - for now, a simple green
+          color = new THREE.Color(0x3A7A3A);
+        }
+
+        color.toArray(colors, i * 3);
       }
-      geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
       
-      const mesh = new THREE.Mesh(geom, material);
-      mesh.castShadow = level.distance === 0;
+      geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+      // Terrain material with better physical properties
+      const terrainMaterial = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        roughness: 0.9,
+        metalness: 0.1,
+        flatShading: false,
+        wireframe: settings.showWireframe,
+        side: THREE.FrontSide,
+        dithering: true,
+        envMapIntensity: 0.1
+      });
+      
+      const mesh = new THREE.Mesh(geom, terrainMaterial);
       mesh.receiveShadow = true;
-      mesh.position.set((bMinX + bMaxX) / 2, (bMinY + bMaxY) / 2, 0);
+      mesh.castShadow = true;
+      
+      if (levelIndex === 0) {
+        terrainMesh = mesh;
+      }
       
       lod.addLevel(mesh, level.distance);
     });
-    
-    geoGroup.add(lod);
-    terrainMesh = lod.children[0] as THREE.Mesh;
 
-    // Draw boundary line
+    geoGroup.add(lod);
+    
+    // Add contour lines if enabled
+    if (settings.showContours && terrainMesh) {
+      const contourMaterial = new LineMaterial({
+        color: 0x000000,
+        linewidth: 1.5,
+        resolution: new THREE.Vector2(mountNode.clientWidth, mountNode.clientHeight),
+        dashed: false,
+        opacity: 0.3
+      });
+      const numContours = 20;
+      const contourInterval = elevRange / numContours;
+
+      for (let i = 1; i < numContours; i++) {
+        const contourElev = (minElev + i * contourInterval) * exaggeration;
+        const lineGeom = new THREE.BufferGeometry();
+        const points: THREE.Vector3[] = [];
+        
+        // This is a simplified approach. A proper contouring algorithm (e.g., marching squares) is complex.
+        // Here we just draw lines at the target elevation on the grid edges.
+        const positions = (terrainMesh.geometry as THREE.BufferGeometry).attributes.position;
+        for (let j = 0; j < positions.count - 1; j++) {
+           if ((positions.getZ(j) > contourElev && positions.getZ(j+1) < contourElev) ||
+               (positions.getZ(j) < contourElev && positions.getZ(j+1) > contourElev)) {
+                 points.push(new THREE.Vector3(positions.getX(j), positions.getY(j), contourElev + 0.2));
+                 points.push(new THREE.Vector3(positions.getX(j+1), positions.getY(j+1), contourElev + 0.2));
+           }
+        }
+        lineGeom.setFromPoints(points);
+        
+        const fatLineGeom = new WireframeGeometry2(lineGeom);
+        const contourLine = new Wireframe(fatLineGeom, contourMaterial);
+        geoGroup.add(contourLine);
+      }
+    }
+    
+    // Create boundary line
     const boundaryLinePoints = boundary.path.map(p => {
         const local = geoUtils.toLocal(p.lat, p.lng);
-        return new THREE.Vector3(local.x, local.y, getElevationAt(local.x, local.y) + 0.5);
+        const elev = getElevationAt(local.x, local.y);
+        return new THREE.Vector3(local.x, local.y, elev + 0.5); // Slightly elevated
     });
-    // Close the loop
-    if (boundaryLinePoints.length > 0) {
-        boundaryLinePoints.push(boundaryLinePoints[0]);
-    }
-    const boundaryLineGeometry = new THREE.BufferGeometry().setFromPoints(boundaryLinePoints);
-    const boundaryLineMaterial = new THREE.LineBasicMaterial({
-        color: 0xffffff,
-        linewidth: 2,
-        transparent: true,
-        opacity: 0.7
-    });
-    const boundaryLine = new THREE.Line(boundaryLineGeometry, boundaryLineMaterial);
+    
+    const boundaryLineGeom = new THREE.BufferGeometry().setFromPoints([...boundaryLinePoints, boundaryLinePoints[0]]); // Close the loop
+    const boundaryLineMat = new THREE.LineBasicMaterial({ color: 0xffeb3b, linewidth: 3, transparent: true, opacity: 0.8 });
+    const boundaryLine = new THREE.Line(boundaryLineGeom, boundaryLineMat);
     geoGroup.add(boundaryLine);
 
 
-    // Draw zones
+    // Create zones
     zones.forEach(zone => {
-      const zoneShape = new THREE.Shape();
       const zonePoints = zone.path.map(p => {
+          const local = geoUtils.toLocal(p.lat, p.lng);
+          const elev = getElevationAt(local.x, local.y);
+          return new THREE.Vector3(local.x, local.y, elev + 0.4);
+      });
+      
+      const zoneLineGeom = new THREE.BufferGeometry().setFromPoints([...zonePoints, zonePoints[0]]); // Close the loop
+      const zoneLineMat = new THREE.LineDashedMaterial({ color: 0xff9800, dashSize: 3, gapSize: 2 });
+      const zoneLine = new THREE.Line(zoneLineGeom, zoneLineMat);
+      zoneLine.computeLineDistances();
+      geoGroup.add(zoneLine);
+    });
+    
+    // Create assets
+    selectableMeshesRef.current = [];
+    const assetMaterial = new THREE.MeshStandardMaterial({
+      color: 0x009688,
+      roughness: 0.5,
+      metalness: 0.3,
+      emissive: 0x111111,
+    });
+    const selectedMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffc107,
+      roughness: 0.3,
+      metalness: 0.5,
+      emissive: 0xffaa00,
+      emissiveIntensity: 0.7
+    });
+
+    assets.forEach(asset => {
+      const assetShapePoints = asset.path.map(p => {
         const local = geoUtils.toLocal(p.lat, p.lng);
         return new THREE.Vector2(local.x, local.y);
       });
-      zoneShape.moveTo(zonePoints[0].x, zonePoints[0].y);
-      for (let i = 1; i < zonePoints.length; i++) {
-        zoneShape.lineTo(zonePoints[i].x, zonePoints[i].y);
-      }
-      const zoneGeometry = new THREE.ShapeGeometry(zoneShape);
+      const assetShape = new THREE.Shape(assetShapePoints);
+      const extrudeSettings = { depth: 5, bevelEnabled: false };
+      const geometry = new THREE.ExtrudeGeometry(assetShape, extrudeSettings);
       
-      // Drape zone on terrain
-      const positions = zoneGeometry.attributes.position;
-      for (let i = 0; i < positions.count; i++) {
-        const x = positions.getX(i);
-        const y = positions.getY(i);
-        positions.setZ(i, getElevationAt(x, y) + 0.25); // increased offset
-      }
+      const localCenter = getPolygonCenter(asset.path);
+      const localPos = geoUtils.toLocal(localCenter.lat, localCenter.lng);
+      const baseElevation = getElevationAt(localPos.x, localPos.y);
       
-      const zoneMaterial = new THREE.MeshBasicMaterial({
-        color: zone.zoneMeta?.kind === 'residential' ? 0x4ade80 : 0x60a5fa,
-        transparent: true,
-        opacity: 0.3,
-        side: THREE.DoubleSide,
-      });
-      const zoneMesh = new THREE.Mesh(zoneGeometry, zoneMaterial);
-      geoGroup.add(zoneMesh);
+      const assetMesh = new THREE.Mesh(geometry, assetMaterial);
+      assetMesh.position.z = baseElevation;
+      assetMesh.castShadow = true;
+      assetMesh.receiveShadow = true;
+      assetMesh.userData = { shape: asset };
+      geoGroup.add(assetMesh);
+      selectableMeshesRef.current.push(assetMesh);
     });
 
-    // Draw assets
-    const newSelectableMeshes: THREE.Mesh[] = [];
-    assets.forEach(asset => {
-        if (!asset.assetMeta) return;
-
-        const assetCenter = getPolygonCenter(asset.path);
-        const localCenter = geoUtils.toLocal(assetCenter.lat, assetCenter.lng);
-        const elevation = getElevationAt(localCenter.x, localCenter.y);
-        
-        let buildingWidth = 8, buildingDepth = 10;
-        if(asset.path.length === 4) {
-          const p0_ll = geoUtils.toLocal(asset.path[0].lat, asset.path[0].lng);
-          const p1_ll = geoUtils.toLocal(asset.path[1].lat, asset.path[1].lng);
-          const p3_ll = geoUtils.toLocal(asset.path[3].lat, asset.path[3].lng);
-          const p0 = new THREE.Vector2(p0_ll.x, p0_ll.y);
-          const p1 = new THREE.Vector2(p1_ll.x, p1_ll.y);
-          const p3 = new THREE.Vector2(p3_ll.x, p3_ll.y);
-          buildingWidth = p0.distanceTo(p3);
-          buildingDepth = p0.distanceTo(p1);
-        }
-
-        const height = (asset.assetMeta.floors || 1) * 3; // 3m per floor
-        
-        const geometry = new THREE.BoxGeometry(buildingWidth, buildingDepth, height);
-        const material = new THREE.MeshStandardMaterial({
-            color: asset.assetMeta.assetType === 'solar_panel' ? 0x0f172a : 0x78716c,
-            roughness: 0.7,
-            metalness: 0.1,
-        });
-
-        const assetMesh = new THREE.Mesh(geometry, material);
-        assetMesh.position.set(localCenter.x, localCenter.y, elevation + height / 2);
-        assetMesh.rotation.z = - (asset.assetMeta.rotation || 0) * Math.PI / 180;
-
-        assetMesh.castShadow = true;
-        assetMesh.receiveShadow = true;
-        assetMesh.userData = { shape: asset };
-        newSelectableMeshes.push(assetMesh);
-        geoGroup.add(assetMesh);
-    });
-    selectableMeshesRef.current = newSelectableMeshes;
-
-
-    // Center camera
-    const centerVec = geoUtils.toLocal(geoUtils.center.lat, geoUtils.center.lng);
-    const boundingBox = new THREE.Box3().setFromObject(geoGroup);
-    const size = boundingBox.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
+    // Handle selection highlighting
+    if (selectedAsset) {
+      const selectedMesh = selectableMeshesRef.current.find(m => m.userData.shape.id === selectedAsset.shape.id);
+      if (selectedMesh) {
+        selectedMesh.material = selectedMaterial;
+      }
+    }
     
-    camera.position.set(centerVec.x, centerVec.y - maxDim * 1.2, maxElev + maxDim * 0.8);
-    orbitControls.target.set(centerVec.x, centerVec.y, maxElev / 2);
-    orbitControls.update();
+    // Set camera position
+    const center = new THREE.Vector3((bMinX + bMaxX) / 2, (bMinY + bMaxY) / 2, (minElev + elevRange / 4) * exaggeration);
+    camera.position.set(center.x, center.y - boundaryHeight * 1.5, center.z + boundaryHeight * 1.2);
+    camera.lookAt(center);
+    orbitControls.target.copy(center);
 
-    const animate = () => {
-      animationFrameId = requestAnimationFrame(animate);
-      
-      orbitControls.update();
-      renderer.render(scene, camera);
-
-      // Performance monitoring
-      frameCountRef.current++;
-      const currentTime = performance.now();
-      if (currentTime - lastTimeRef.current >= 1000) {
-        setPerformanceStats({
-          fps: frameCountRef.current,
-          triangles: renderer.info.render.triangles,
-          drawCalls: renderer.info.render.calls,
-        });
-        frameCountRef.current = 0;
-        lastTimeRef.current = currentTime;
-      }
-    };
-    animate();
-
-    const handleResize = () => {
+    const onResize = () => {
       camera.aspect = mountNode.clientWidth / mountNode.clientHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(mountNode.clientWidth, mountNode.clientHeight);
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', onResize);
+    
+    // Animation loop
+    const animate = () => {
+      animationFrameId = requestAnimationFrame(animate);
+      orbitControls.update();
+      lod.update(camera);
+      
+      // Performance monitoring
+      frameCountRef.current++;
+      const now = performance.now();
+      const delta = now - lastTimeRef.current;
+      if (delta >= 1000) {
+        const fps = frameCountRef.current;
+        setPerformanceStats({
+          fps: fps,
+          triangles: renderer.info.render.triangles,
+          drawCalls: renderer.info.render.calls
+        });
+        frameCountRef.current = 0;
+        lastTimeRef.current = now;
+      }
+      
+      renderer.render(scene, camera);
+    };
+
+    animate();
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', onResize);
       mountNode.removeEventListener('mousemove', onMouseMove);
       mountNode.removeEventListener('click', onMouseClick);
-      orbitControls.dispose();
-      if (renderer.domElement && mountNode.contains(renderer.domElement)) {
-          mountNode.removeChild(renderer.domElement);
-      }
-      renderer.dispose();
-      // Clear scene children
-      scene.traverse((object) => {
+      
+      // Dispose Three.js objects
+      scene.traverse(object => {
         if (object instanceof THREE.Mesh) {
-            object.geometry.dispose();
-            if (Array.isArray(object.material)) {
-                object.material.forEach(material => material.dispose());
-            } else {
-                object.material.dispose();
-            }
+          object.geometry.dispose();
+          if (Array.isArray(object.material)) {
+            object.material.forEach(material => material.dispose());
+          } else {
+            object.material.dispose();
+          }
         }
       });
-      while(scene.children.length > 0){ 
-        scene.remove(scene.children[0]);
+      renderer.dispose();
+      pmremGenerator.dispose();
+      
+      if (mountNode && renderer.domElement && mountNode.contains(renderer.domElement)) {
+        mountNode.removeChild(renderer.domElement);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boundary, assets, zones, elevationGrid, geoUtils, settings]);
-
-
-  const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0xffea00, side: THREE.BackSide });
-  const normalMaterial = useMemo(() => new THREE.MeshStandardMaterial({
-      color: 0x78716c,
-      roughness: 0.7,
-      metalness: 0.1,
-  }), []);
-
-  useEffect(() => {
-    // Reset all to normal material
-    selectableMeshesRef.current.forEach(mesh => {
-        if (mesh.material !== normalMaterial) mesh.material = normalMaterial;
-    });
-
-    if(selectedAsset) {
-        const outlineMesh = selectedAsset.mesh.clone();
-        outlineMesh.material = outlineMaterial;
-        outlineMesh.scale.set(1.05, 1.05, 1.05);
-        selectedAsset.mesh.add(outlineMesh);
-        
-        return () => {
-            selectedAsset.mesh.remove(outlineMesh);
-        }
-    }
-  }, [selectedAsset, outlineMaterial, normalMaterial]);
-
-
+  }, [boundary, elevationGrid, assets, zones, geoUtils, settings, selectedAsset, onDeleteAsset]);
+  
   return (
-    <div className="relative w-full h-full bg-blue-200">
-      <div ref={mountRef} className="w-full h-full" />
+    <div className="w-full h-full relative" ref={mountRef}>
       <Compass rotation={compassRotation} elevation={cameraElevation} />
-      <ElevationStats 
-        min={elevationStats.min} 
-        max={elevationStats.max} 
-        range={elevationStats.range}
-        currentElev={cursorElevation} 
-      />
-      
-      {/* Visualization Settings Popover */}
-      <div className="absolute bottom-4 right-4 z-50">
-        <Popover>
-            <PopoverTrigger asChild>
-                <Button variant="secondary" size="icon" className="rounded-full h-12 w-12 shadow-lg">
-                    <Settings className="h-6 w-6" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-4 space-y-4" side="top" align="end">
-                <div className="space-y-2">
-                  <h4 className="font-medium leading-none">Viz Settings</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Adjust visual parameters of the 3D model.
-                  </p>
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="wireframe-switch" className="flex items-center gap-2"><Grid3x3 className="h-4 w-4" /> Wireframe</Label>
-                    <Switch
-                        id="wireframe-switch"
-                        checked={settings.showWireframe}
-                        onCheckedChange={(checked) => setSettings(s => ({...s, showWireframe: checked}))}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="shadow-switch" className="flex items-center gap-2"><Star className="h-4 w-4" /> Shadows</Label>
-                    <Switch
-                        id="shadow-switch"
-                        checked={settings.showShadows}
-                        onCheckedChange={(checked) => setSettings(s => ({...s, showShadows: checked}))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="exaggeration-slider" className="flex items-center gap-2"><ChevronsUpDown className="h-4 w-4" /> Exaggeration</Label>
-                    <Slider
-                      id="exaggeration-slider"
-                      min={0.1}
-                      max={3}
-                      step={0.1}
-                      value={[settings.terrainExaggeration]}
-                      onValueChange={([val]) => setSettings(s => ({...s, terrainExaggeration: val}))}
-                    />
-                  </div>
-                   <div className="flex items-center justify-between">
-                    <Label htmlFor="perf-switch" className="flex items-center gap-2"><Sigma className="h-4 w-4" /> Performance</Label>
-                    <Switch
-                        id="perf-switch"
-                        checked={settings.showPerformance}
-                        onCheckedChange={(checked) => setSettings(s => ({...s, showPerformance: checked}))}
-                    />
-                  </div>
-                </div>
-            </PopoverContent>
-        </Popover>
-      </div>
+      <ElevationStats {...elevationStats} currentElev={cursorElevation} />
+      {settings.showPerformance && <PerformanceMonitor {...performanceStats} />}
 
-      {settings.showPerformance && (
-        <PerformanceMonitor {...performanceStats} />
+      {/* Settings Panel */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="icon" className="absolute top-4 left-4 bg-background/80 backdrop-blur-md">
+            <Settings className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 ml-4 space-y-4">
+          <div className="space-y-2">
+            <h4 className="font-medium leading-none">Visualization Settings</h4>
+            <p className="text-sm text-muted-foreground">Adjust the look and performance.</p>
+          </div>
+          <div className="grid gap-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="perf-mode">Show Performance</Label>
+              <Switch id="perf-mode" checked={settings.showPerformance} onCheckedChange={c => setSettings(s => ({...s, showPerformance: c}))} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="wireframe-mode">Show Wireframe</Label>
+              <Switch id="wireframe-mode" checked={settings.showWireframe} onCheckedChange={c => setSettings(s => ({...s, showWireframe: c}))} />
+            </div>
+             <div className="flex items-center justify-between">
+              <Label htmlFor="contours-mode">Show Contours</Label>
+              <Switch id="contours-mode" checked={settings.showContours} onCheckedChange={c => setSettings(s => ({...s, showContours: c}))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Terrain Exaggeration: {settings.terrainExaggeration.toFixed(1)}x</Label>
+              <Slider 
+                defaultValue={[1.2]} 
+                value={[settings.terrainExaggeration]}
+                min={0.1} max={5} step={0.1} 
+                onValueChange={([v]) => setSettings(s => ({...s, terrainExaggeration: v}))}
+              />
+            </div>
+             <div className="space-y-2">
+              <Label>Sun Intensity: {settings.sunIntensity.toFixed(1)}</Label>
+              <Slider 
+                defaultValue={[1.8]} 
+                value={[settings.sunIntensity]}
+                min={0} max={5} step={0.1} 
+                onValueChange={([v]) => setSettings(s => ({...s, sunIntensity: v}))}
+              />
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {selectedAsset && (
+        <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-md p-4 rounded-xl shadow-2xl border border-primary/50">
+           <div className="flex items-center gap-2 mb-2">
+            <Star className="w-5 h-5 text-primary" />
+            <span className="font-bold text-base">Selected Asset</span>
+          </div>
+          <p className="text-sm text-muted-foreground">ID: {selectedAsset.shape.id}</p>
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            className="w-full mt-3"
+            onClick={() => {
+              onDeleteAsset(selectedAsset.shape.id);
+              setSelectedAsset(null);
+            }}
+          >
+            Delete
+          </Button>
+        </div>
       )}
-       {selectedAsset && (
-         <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-background/80 backdrop-blur-sm p-2 px-4 rounded-lg shadow-lg text-sm font-semibold">
-           Selected: {selectedAsset.shape.assetMeta?.key || 'Building'}
-         </div>
-       )}
     </div>
   );
 }
