@@ -161,7 +161,8 @@ function VisionPageContent() {
     const runAnalysis = async () => {
         const shapeToAnalyze = shapes.find(s => s.id === selectedShapeIds[0]);
 
-        if (selectedShapeIds.length === 1 && shapeToAnalyze && window.google && !shapeToAnalyze.assetMeta) { // Don't analyze individual assets
+        // Ensure this only runs on the client where google object is available
+        if (typeof window !== 'undefined' && window.google && selectedShapeIds.length === 1 && shapeToAnalyze && !shapeToAnalyze.assetMeta) {
             try {
                 const elevationService = new window.google.maps.ElevationService();
                 const grid = await analyzeElevation(shapeToAnalyze, elevationService, debouncedGridResolution);
@@ -175,11 +176,9 @@ function VisionPageContent() {
                 });
                 setElevationGrid(null); // Clear grid on error
             }
-        } else {
-            // If not exactly one shape is selected, clear the grid
-            if (elevationGrid !== null) {
-                setElevationGrid(null);
-            }
+        } else if (elevationGrid !== null) {
+            // If conditions aren't met, clear the grid.
+            setElevationGrid(null);
         }
     };
     runAnalysis();
@@ -579,7 +578,7 @@ function VisionPageContent() {
           selectedShapeIds={selectedShapeIds}
           onGenerateLayout={handleGenerateLayout}
           onGenerateSolarLayout={handleGenerateSolarLayout}
-          is3DView={is3DMode}
+          is3DView={is3DView}
           selectedAssetId={selectedAssetId}
           onDeleteAsset={handleDeleteAsset}
         />
@@ -627,3 +626,5 @@ export default function VisionPage() {
     </APIProvider>
     )
 }
+
+    
