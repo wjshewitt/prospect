@@ -5,9 +5,13 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Shape, LatLng, ElevationGrid } from '@/lib/types';
-import { ArrowUp, Layers, MousePointer, Settings, Mountain, Grid3x3 } from 'lucide-react';
+import { ArrowUp, Layers, MousePointer, Settings, Mountain, Grid3x3, ChevronsUpDown, Shadows, Sigma } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Label } from '../ui/label';
+import { Switch } from '../ui/switch';
+import { Slider } from '../ui/slider';
 
 
 // Helper to calculate the center of a polygon
@@ -109,13 +113,10 @@ const PerformanceMonitor = ({ fps, triangles, drawCalls }: {
 interface VisualizationSettings {
   terrainQuality: 'low' | 'medium' | 'high' | 'adaptive';
   showWireframe: boolean;
-  showGrid: boolean;
   showShadows: boolean;
   terrainExaggeration: number;
   useLOD: boolean;
   showPerformance: boolean;
-  vectorTiles: boolean;
-  ambientOcclusion: boolean;
 }
 
 interface ThreeDVisualizationProps {
@@ -150,15 +151,11 @@ export function ThreeDVisualizationModal({
   const [settings, setSettings] = useState<VisualizationSettings>({
     terrainQuality: 'adaptive',
     showWireframe: false,
-    showGrid: false,
     showShadows: true,
     terrainExaggeration: 1.0,
     useLOD: true,
     showPerformance: false,
-    vectorTiles: false,
-    ambientOcclusion: true
   });
-  const [showSettings, setShowSettings] = useState(false);
 
   // Local projection utility for this component
   const geoUtils = useMemo(() => {
@@ -191,12 +188,8 @@ export function ThreeDVisualizationModal({
       setSelectedAsset(null);
     } else if (event.key === 'w') {
       setSettings(prev => ({ ...prev, showWireframe: !prev.showWireframe }));
-    } else if (event.key === 'g') {
-      setSettings(prev => ({ ...prev, showGrid: !prev.showGrid }));
     } else if (event.key === 'p') {
       setSettings(prev => ({ ...prev, showPerformance: !prev.showPerformance }));
-    } else if (event.key === 's') {
-      setShowSettings(prev => !prev);
     }
   }, [selectedAsset, onDeleteAsset]);
 
@@ -528,9 +521,12 @@ export function ThreeDVisualizationModal({
         
         let buildingWidth = 8, buildingDepth = 10;
         if(asset.path.length === 4) {
-          const p0 = new THREE.Vector3(asset.path[0].lat, asset.path[0].lng, 0);
-          const p1 = new THREE.Vector3(asset.path[1].lat, asset.path[1].lng, 0);
-          const p3 = new THREE.Vector3(asset.path[3].lat, asset.path[3].lng, 0);
+          const p0_ll = geoUtils.toLocal(asset.path[0].lat, asset.path[0].lng);
+          const p1_ll = geoUtils.toLocal(asset.path[1].lat, asset.path[1].lng);
+          const p3_ll = geoUtils.toLocal(asset.path[3].lat, asset.path[3].lng);
+          const p0 = new THREE.Vector2(p0_ll.x, p0_ll.y);
+          const p1 = new THREE.Vector2(p1_ll.x, p1_ll.y);
+          const p3 = new THREE.Vector2(p3_ll.x, p3_ll.y);
           buildingWidth = p0.distanceTo(p3);
           buildingDepth = p0.distanceTo(p1);
         }
@@ -660,6 +656,63 @@ export function ThreeDVisualizationModal({
         range={elevationStats.range}
         currentElev={cursorElevation} 
       />
+      
+      {/* Visualization Settings Popover */}
+      <div className="absolute bottom-4 right-4 z-50">
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="secondary" size="icon" className="rounded-full h-12 w-12 shadow-lg">
+                    <Settings className="h-6 w-6" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-4 space-y-4" side="top" align="end">
+                <div className="space-y-2">
+                  <h4 className="font-medium leading-none">Viz Settings</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Adjust visual parameters of the 3D model.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="wireframe-switch" className="flex items-center gap-2"><Grid3x3 className="h-4 w-4" /> Wireframe</Label>
+                    <Switch
+                        id="wireframe-switch"
+                        checked={settings.showWireframe}
+                        onCheckedChange={(checked) => setSettings(s => ({...s, showWireframe: checked}))}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="shadow-switch" className="flex items-center gap-2"><Shadows className="h-4 w-4" /> Shadows</Label>
+                    <Switch
+                        id="shadow-switch"
+                        checked={settings.showShadows}
+                        onCheckedChange={(checked) => setSettings(s => ({...s, showShadows: checked}))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="exaggeration-slider" className="flex items-center gap-2"><ChevronsUpDown className="h-4 w-4" /> Exaggeration</Label>
+                    <Slider
+                      id="exaggeration-slider"
+                      min={0.1}
+                      max={3}
+                      step={0.1}
+                      value={[settings.terrainExaggeration]}
+                      onValueChange={([val]) => setSettings(s => ({...s, terrainExaggeration: val}))}
+                    />
+                  </div>
+                   <div className="flex items-center justify-between">
+                    <Label htmlFor="perf-switch" className="flex items-center gap-2"><Sigma className="h-4 w-4" /> Performance</Label>
+                    <Switch
+                        id="perf-switch"
+                        checked={settings.showPerformance}
+                        onCheckedChange={(checked) => setSettings(s => ({...s, showPerformance: checked}))}
+                    />
+                  </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+      </div>
+
       {settings.showPerformance && (
         <PerformanceMonitor {...performanceStats} />
       )}
