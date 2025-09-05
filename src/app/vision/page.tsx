@@ -498,24 +498,23 @@ function VisionPageContent() {
         />
         <main className="flex-1 relative bg-muted/20 flex">
             <div
-                className="absolute top-2 z-10 transition-all duration-300"
+                className="absolute top-2 z-10 flex justify-center"
                 style={{
                     left: 'var(--tool-palette-width, 4rem)',
                     right: isSidebarOpen ? 'var(--stats-sidebar-width, 20rem)' : '0',
+                    transition: 'right 0.3s ease-in-out',
                 }}
             >
-                <div className="flex justify-center">
-                    <AddressSearchBox onPlaceSelect={(place) => {
-                        if (place.geometry?.location) {
-                            setViewState({
-                                ...viewState,
-                                latitude: place.geometry.location.lat(),
-                                longitude: place.geometry.location.lng(),
-                                zoom: 18,
-                            });
-                        }
-                    }} />
-                </div>
+                <AddressSearchBox onPlaceSelect={(place) => {
+                    if (place.geometry?.location) {
+                        setViewState({
+                            ...viewState,
+                            latitude: place.geometry.location.lat(),
+                            longitude: place.geometry.location.lng(),
+                            zoom: 18,
+                        });
+                    }
+                }} />
             </div>
           
             {is3DMode ? (
@@ -561,7 +560,7 @@ function VisionPageContent() {
             size="icon" 
             variant="outline"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            className={cn("absolute top-4 right-4 z-10 bg-background/80 backdrop-blur-sm", is3DMode && "hidden")}
+            className={cn("absolute top-14 right-4 z-10 bg-background/80 backdrop-blur-sm")}
           >
             {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
           </Button>
@@ -623,6 +622,7 @@ export default function VisionPage() {
     return (
      <APIProvider 
       apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+      mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
       libraries={['drawing', 'geometry', 'elevation', 'places']}
     >
         <VisionPageContent />

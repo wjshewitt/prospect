@@ -92,13 +92,27 @@ export function ThreeDVisualization({
         }
     });
 
+    const getZoneColor = (kind: Shape['zoneMeta']['kind']) => {
+        switch(kind) {
+            case 'residential': return [134, 239, 172, 100]; // green
+            case 'commercial': return [147, 197, 253, 100]; // blue
+            case 'amenity': return [252, 211, 77, 100]; // amber
+            case 'green_space': return [34, 197, 94, 80]; // darker green
+            case 'solar': return [251, 146, 60, 100]; // orange
+            default: return [100, 100, 100, 100];
+        }
+    }
+
     // Polygon layer for zones
     const zoneLayer = new PolygonLayer({
         id: 'zones',
         data: zones,
         getPolygon: d => d.path.map(p => [p.lng, p.lat]),
-        getFillColor: [255, 152, 0, 80], // Orange with some transparency
-        getLineColor: [255, 152, 0, 200],
+        getFillColor: (d: any) => getZoneColor(d.zoneMeta.kind),
+        getLineColor: (d: any) => {
+            const color = getZoneColor(d.zoneMeta.kind);
+            return [...color.slice(0,3), 200];
+        },
         lineWidthMinPixels: 2,
         extruded: false,
     });

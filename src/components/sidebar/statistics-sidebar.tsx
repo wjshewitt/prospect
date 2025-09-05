@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { BarChart3, LandPlot, HelpCircle, LayoutGrid, Info, ChevronDown, Sparkles, ChevronLeft, ChevronRight, Building, Trash2 } from 'lucide-react';
+import { BarChart3, LandPlot, HelpCircle, LayoutGrid, Info, ChevronDown, Sparkles, ChevronLeft, ChevronRight, Building, Trash2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ElevationAnalysis } from './elevation-analysis';
 import { DevelopmentDetails } from './development-details';
@@ -39,7 +39,10 @@ type SidebarView = 'stats' | 'summary';
 
 const SQ_METERS_TO_ACRES = 0.000247105;
 
-const ThreeDAssetPanel = ({ selectedAssetId, onDeleteAsset }: { selectedAssetId: string | null, onDeleteAsset: (id: string) => void }) => {
+const ThreeDAssetPanel = ({ shapes, selectedAssetId, onDeleteAsset }: { shapes: Shape[], selectedAssetId: string | null, onDeleteAsset: (id: string) => void }) => {
+    
+    const selectedAsset = shapes.find(s => s.id === selectedAssetId);
+
     return (
         <div className="p-4">
             <Card>
@@ -50,9 +53,21 @@ const ThreeDAssetPanel = ({ selectedAssetId, onDeleteAsset }: { selectedAssetId:
                     </CardTitle>
                     {!selectedAssetId && <CardDescription>Select a building in the 3D view to see its details and actions.</CardDescription>}
                 </CardHeader>
-                {selectedAssetId && (
+                {selectedAssetId && selectedAsset && (
                   <CardContent className="space-y-4">
-                      <p className="text-xs text-muted-foreground break-all">ID: {selectedAssetId}</p>
+                      <div>
+                          <p className="text-sm font-medium capitalize">{selectedAsset.assetMeta?.key.replace(/_/g, ' ')}</p>
+                          <p className="text-xs text-muted-foreground break-all">ID: {selectedAssetId}</p>
+                      </div>
+
+                       <Button 
+                          variant="outline"
+                          className="w-full"
+                          disabled // Future functionality
+                      >
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit Properties
+                      </Button>
                       <Button 
                           variant="destructive"
                           className="w-full"
@@ -146,7 +161,7 @@ export default function StatisticsSidebar({
       style={{'--stats-sidebar-width': '20rem'} as React.CSSProperties}
     >
       {is3DView ? (
-        <ThreeDAssetPanel selectedAssetId={selectedAssetId} onDeleteAsset={onDeleteAsset} />
+        <ThreeDAssetPanel shapes={shapes} selectedAssetId={selectedAssetId} onDeleteAsset={onDeleteAsset} />
       ) : (
         <>
             <ViewSwitcher />

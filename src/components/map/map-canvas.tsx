@@ -836,6 +836,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         center={{lat: viewState.latitude, lng: viewState.longitude}}
         zoom={viewState.zoom}
         onCameraChanged={onCameraChanged}
+        mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
         mapTypeId="satellite"
         tilt={0}
         gestureHandling={!isDrawing && !isInteractingWithShape ? 'greedy' : 'none'}
