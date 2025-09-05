@@ -26,7 +26,6 @@ interface MapCanvasProps {
   onBoundaryDrawn: (shape: Omit<Shape, 'id'>) => void;
   className?: string;
   viewState: any;
-  onViewStateChange: (state: any) => void;
   onCameraChanged: (e: MapCameraChangedEvent) => void;
 }
 
@@ -590,7 +589,6 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   onBoundaryDrawn,
   className,
   viewState,
-  onViewStateChange,
   onCameraChanged,
 }) => {
   const isLoaded = useApiIsLoaded();

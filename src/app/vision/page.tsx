@@ -432,7 +432,6 @@ function VisionPageContent() {
                 const elevationService = new window.google.maps.ElevationService();
                 grid = await analyzeElevation(projectBoundary, elevationService, gridResolution);
                 setElevationGrid(grid);
-                setViewState((vs: any) => ({...vs, pitch: 45}));
             } catch(e) {
                  toast({
                     variant: 'destructive',
@@ -442,13 +441,10 @@ function VisionPageContent() {
                 setIsSidebarOpen(true); // Restore sidebar
                 return; // Don't switch if data fails
             }
-        } else {
-            setViewState((vs: any) => ({...vs, pitch: 45}));
         }
     } else {
       // Switching back from 3D view
       setSelectedAssetId(null); // Clear 3D selection
-      setViewState((vs: any) => ({...vs, pitch: 0, bearing: 0 }));
       setIsSidebarOpen(true); // Re-open sidebar when leaving 3D mode
     }
     setIs3DMode(!is3DMode);
@@ -528,8 +524,11 @@ function VisionPageContent() {
                             onDeleteAsset={handleDeleteAsset}
                             selectedAssetId={selectedAssetId}
                             setSelectedAssetId={setSelectedAssetId}
-                            viewState={viewState}
-                            onViewStateChange={setViewState}
+                            initialViewState={{
+                                ...viewState,
+                                pitch: 45,
+                                bearing: 0
+                            }}
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full">
@@ -550,7 +549,6 @@ function VisionPageContent() {
                     setSelectedShapeIds={setSelectedShapeIds}
                     onBoundaryDrawn={handleBoundaryDrawn}
                     viewState={viewState}
-                    onViewStateChange={setViewState}
                     onCameraChanged={onMapCameraChanged}
                 />
             )}

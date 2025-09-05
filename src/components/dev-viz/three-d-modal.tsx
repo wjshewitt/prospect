@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import type { Shape, ElevationGrid } from '@/lib/types';
 import DeckGL from '@deck.gl/react';
 import { TerrainLayer } from '@deck.gl/geo-layers';
@@ -19,8 +19,7 @@ interface ThreeDVisualizationProps {
   onDeleteAsset: (assetId: string) => void;
   selectedAssetId: string | null;
   setSelectedAssetId: (id: string | null) => void;
-  viewState: any;
-  onViewStateChange: (state: any) => void;
+  initialViewState: any;
 }
 
 function NavigationGuide() {
@@ -44,9 +43,15 @@ export function ThreeDVisualization({
   onDeleteAsset,
   selectedAssetId,
   setSelectedAssetId,
-  viewState,
-  onViewStateChange,
+  initialViewState,
 }: ThreeDVisualizationProps) {
+
+  const [viewState, setViewState] = useState(initialViewState);
+
+  // Update internal view state if the initial state prop changes (e.g., when re-entering 3D mode)
+  useEffect(() => {
+    setViewState(initialViewState);
+  }, [initialViewState]);
 
   // Memoize layer creation for performance.
   const layers = useMemo(() => {
@@ -54,9 +59,6 @@ export function ThreeDVisualization({
 
     const { grid } = elevationGrid.pointGrid;
     const { minX, maxX, minY, maxY } = elevationGrid.xyBounds;
-
-    // A neutral grey for the terrain for a clean, analytical look.
-    const TERRAIN_COLOR: [number, number, number] = [170, 170, 180];
 
     // Terrain Layer for elevation visualization.
     const terrainLayer = new TerrainLayer({
@@ -66,8 +68,6 @@ export function ThreeDVisualization({
       elevationData: grid,
       texture: MAP_STYLE,
       bounds: [minX, minY, maxX, maxY],
-      color: [255, 255, 255],
-      wireframe: false,
       material: {
         diffuse: 0.9,
       },
@@ -144,7 +144,7 @@ export function ThreeDVisualization({
       <DeckGL
         layers={layers}
         viewState={viewState}
-        onViewStateChange={({viewState}) => onViewStateChange(viewState)}
+        onViewStateChange={({viewState}) => setViewState(viewState)}
         controller={true}
         style={{ position: 'relative', width: '100%', height: '100%' }}
         onClick={(info, event) => {
