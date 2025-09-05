@@ -2,6 +2,7 @@
 
 // src/services/elevation.ts
 import type { Shape, LatLng, ElevationGrid, ElevationGridCell } from '@/lib/types';
+import axios from 'axios';
 
 const MAX_GRID_POINTS = 500; // Keep total points reasonable for performance
 
@@ -50,32 +51,28 @@ function boundsXY(poly: google.maps.Polygon, proj: ReturnType<typeof makeLocalPr
 
 
 /**
- * Fetch elevations for a list of locations, batched for the API.
+ * Fetch elevations for a list of locations from Google Maps, batched for the API.
  */
-async function fetchElevationsInBatches(
+async function fetchElevationsFromGoogle(
     locations: LatLng[],
     elevationService: google.maps.ElevationService
-): Promise<google.maps.ElevationResult[]> {
+): Promise<(number | null)[]> {
 
     const batchSize = 512; // API limit
-    const results: google.maps.ElevationResult[] = [];
+    const results: (number | null)[] = [];
     
     for (let i = 0; i < locations.length; i += batchSize) {
         const batch = locations.slice(i, i + batchSize);
         try {
             const response = await elevationService.getElevationForLocations({ locations: batch });
             if (response.results) {
-                results.push(...response.results);
+                results.push(...response.results.map(r => r.elevation));
+            } else {
+                results.push(...batch.map(() => null));
             }
         } catch (e) {
-            console.error("Elevation API batch failed:", e);
-            // Push dummy results with NaN elevation to avoid breaking the analysis
-            const failedResults = batch.map(loc => ({
-                location: new google.maps.LatLng(loc),
-                elevation: NaN,
-                resolution: 0,
-            }));
-            results.push(...failedResults);
+            console.error("Google Elevation API batch failed:", e);
+            results.push(...batch.map(() => null));
         }
          // Add a small delay to avoid hitting rate limits
          if (i + batchSize < locations.length) {
@@ -83,6 +80,72 @@ async function fetchElevationsInBatches(
         }
     }
     return results;
+}
+
+/**
+ * Fetch elevations from Mapbox Terrain-RGB tiles.
+ */
+async function fetchElevationsFromMapbox(locations: LatLng[]): Promise<(number | null)[]> {
+    const accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!accessToken) {
+        console.error("Mapbox token is not configured.");
+        return locations.map(() => null);
+    }
+    
+    const ZOOM = 15; // Zoom level for terrain detail
+    const TILE_SIZE = 256;
+
+    const mercator = (lat: number, lng: number) => {
+        const sin = Math.sin(lat * Math.PI / 180);
+        const x = lng / 360 + 0.5;
+        const y = 0.5 - 0.25 * Math.log((1 + sin) / (1 - sin)) / Math.PI;
+        return { x, y };
+    }
+
+    const tileRequests = new Map<string, { url: string; points: { index: number; x: number; y: number }[] }>();
+
+    locations.forEach((loc, index) => {
+        const { x, y } = mercator(loc.lat, loc.lng);
+        const tileX = Math.floor(x * (2 ** ZOOM));
+        const tileY = Math.floor(y * (2 ** ZOOM));
+        const key = `${tileX}-${tileY}`;
+
+        if (!tileRequests.has(key)) {
+            tileRequests.set(key, {
+                url: `https://api.mapbox.com/v4/mapbox.terrain-rgb/${ZOOM}/${tileX}/${tileY}.pngraw?access_token=${accessToken}`,
+                points: [],
+            });
+        }
+        
+        const pixelX = Math.floor((x * (2 ** ZOOM) - tileX) * TILE_SIZE);
+        const pixelY = Math.floor((y * (2 ** ZOOM) - tileY) * TILE_SIZE);
+        
+        tileRequests.get(key)!.points.push({ index, x: pixelX, y: pixelY });
+    });
+
+    const elevations: (number | null)[] = new Array(locations.length).fill(null);
+
+    await Promise.all(
+      Array.from(tileRequests.values()).map(async ({ url, points }) => {
+        try {
+          const response = await axios.get(url, { responseType: 'arraybuffer' });
+          const imgData = new Uint8Array(response.data);
+          
+          points.forEach(({ index, x, y }) => {
+            const i = (y * TILE_SIZE + x) * 4;
+            const r = imgData[i];
+            const g = imgData[i + 1];
+            const b = imgData[i + 2];
+            const elev = -10000 + ((r * 256 * 256 + g * 256 + b) * 0.1);
+            elevations[index] = elev;
+          });
+        } catch (error) {
+          console.error(`Failed to fetch Mapbox tile: ${url}`, error);
+        }
+      })
+    );
+    
+    return elevations;
 }
 
 
@@ -168,13 +231,25 @@ export async function analyzeElevation(
         }
     }
     
-    // Fetch elevations for all grid points
-    const elevResults = await fetchElevationsInBatches(locations, elevationService);
-    const z = new Float64Array(totalPts).map((_, k) =>
-        elevResults[k] && typeof elevResults[k].elevation === 'number'
-            ? elevResults[k].elevation
-            : NaN
-    );
+    // Fetch elevations from both services in parallel
+    const [googleElevations, mapboxElevations] = await Promise.all([
+        fetchElevationsFromGoogle(locations, elevationService),
+        fetchElevationsFromMapbox(locations)
+    ]);
+    
+    // Combine elevations
+    const z = new Float64Array(totalPts).map((_, k) => {
+        const gElev = googleElevations[k];
+        const mElev = mapboxElevations[k];
+
+        if (gElev !== null && mElev !== null) {
+            return (gElev + mElev) / 2; // Average if both exist
+        }
+        if (gElev !== null) return gElev; // Fallback to Google
+        if (mElev !== null) return mElev; // Fallback to Mapbox
+        return NaN; // No data from either
+    });
+
 
     // Compute slope at each grid point
     const slopesPoint = computeSlopePointGrid(z, nx, ny, dx, dy);
@@ -207,7 +282,7 @@ export async function analyzeElevation(
             const s00 = slopesPoint[j * nx + i];
             const s10 = slopesPoint[j * nx + (i + 1)];
             const s01 = slopesPoint[(j + 1) * nx + i];
-            const s11 = slopesPoint[(j + 1) * nx + (i + 1)];
+            const s11 = slopesPoint[(j + 1) * nx + i + 1];
             const corners = [s00, s10, s01, s11];
             
             const validCorners = corners.filter(s => isFinite(s));
