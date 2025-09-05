@@ -27,7 +27,9 @@ export function AddressSearchBox({ onPlaceSelect }: AddressSearchBoxProps) {
         setAutoComplete(ac);
 
         return () => {
-            google.maps.event.clearInstanceListeners(ac);
+            if (ac) {
+                google.maps.event.clearInstanceListeners(ac);
+            }
         };
     }, [map]);
 
@@ -48,9 +50,9 @@ export function AddressSearchBox({ onPlaceSelect }: AddressSearchBoxProps) {
             {/* Collapsed Tab */}
             <div className={cn(
                 "flex items-center justify-center cursor-pointer",
-                "h-8 w-28 rounded-b-lg border-x border-b border-border bg-background shadow-sm",
-                "transition-opacity duration-300 ease-in-out",
-                "group-hover:opacity-0"
+                "h-8 w-28 rounded-b-lg border-x border-b bg-background shadow-sm",
+                "transition-opacity duration-200 ease-in-out",
+                "group-hover:opacity-0 group-hover:invisible"
             )}>
                 <span className="text-xs font-medium text-muted-foreground">Search Location</span>
             </div>
@@ -58,15 +60,15 @@ export function AddressSearchBox({ onPlaceSelect }: AddressSearchBoxProps) {
             {/* Expanded Input */}
             <div className={cn(
                 "absolute top-0 left-1/2 -translate-x-1/2",
-                "w-96",
-                "transition-opacity duration-300 ease-in-out",
-                "opacity-0 invisible group-hover:opacity-100 group-hover:visible"
+                "w-96 origin-top",
+                "transition-all duration-200 ease-in-out",
+                "opacity-0 invisible scale-95 group-hover:opacity-100 group-hover:visible group-hover:scale-100"
             )}>
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                     ref={inputRef}
                     placeholder="Search for a location..."
-                    className="w-full pl-10 pr-4 py-2 shadow-md"
+                    className="w-full pl-10 pr-4 py-2 shadow-md !rounded-t-none" // Remove top radius to meet header
                 />
             </div>
         </div>
