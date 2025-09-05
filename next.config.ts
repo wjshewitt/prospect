@@ -3,6 +3,9 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   /* config options here */
+  env: {
+    NEXT_PUBLIC_MAPBOX_TOKEN: 'pk.eyJ1Ijoid2pzaGV3aXR0IiwiYSI6ImNtZjczNGR4ajBkZjMybHM2MDFhazV0OTIifQ.EQrYlQl16I2Z9VKJHAArKw',
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
