@@ -146,6 +146,8 @@ export function ThreeDVisualizationModal({
 }: ThreeDVisualizationProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const selectableMeshesRef = useRef<THREE.Mesh[]>([]);
   const frameCountRef = useRef(0);
   const lastTimeRef = useRef(performance.now());
   
@@ -184,7 +186,10 @@ export function ThreeDVisualizationModal({
     
     const mountNode = mountRef.current;
     let animationFrameId: number;
-    const scene = new THREE.Scene();
+    
+    sceneRef.current = new THREE.Scene();
+    const scene = sceneRef.current;
+
     scene.background = new THREE.Color(0x87CEEB);
     scene.fog = new THREE.FogExp2(0x87CEEB, 0.0005);
     
@@ -231,7 +236,6 @@ export function ThreeDVisualizationModal({
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
-    let selectableMeshes: THREE.Mesh[] = [];
     let terrainMesh: THREE.Mesh | null = null;
     
     const onMouseMove = (event: MouseEvent) => {
@@ -254,7 +258,7 @@ export function ThreeDVisualizationModal({
         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(selectableMeshes);
+        const intersects = raycaster.intersectObjects(selectableMeshesRef.current);
         if (intersects.length > 0 && intersects[0].object instanceof THREE.Mesh) {
             const shape = (intersects[0].object.userData as {shape: Shape}).shape;
             setSelectedAsset({mesh: intersects[0].object, shape});
@@ -335,6 +339,7 @@ export function ThreeDVisualizationModal({
     terrainMesh = mesh;
 
     const buildingMaterial = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.7, metalness: 0.2 });
+    selectableMeshesRef.current = []; // Reset the meshes array
     assets.forEach(asset => {
         if (asset.assetMeta?.assetType !== 'building') return;
         const assetCenter = getPolygonCenter(asset.path);
@@ -355,7 +360,7 @@ export function ThreeDVisualizationModal({
         buildingMesh.receiveShadow = true;
         buildingMesh.userData = { shape: asset };
         geoGroup.add(buildingMesh);
-        selectableMeshes.push(buildingMesh);
+        selectableMeshesRef.current.push(buildingMesh);
     });
 
     zones.forEach(zone => {
@@ -419,12 +424,13 @@ export function ThreeDVisualizationModal({
         }
         geoGroup.clear();
         scene.clear();
+        sceneRef.current = null;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boundary, elevationGrid, assets, zones, settings]);
 
   useEffect(() => {
-    selectableMeshes.forEach(mesh => {
+    selectableMeshesRef.current.forEach(mesh => {
         if(mesh.id === selectedAsset?.mesh.id) {
              (mesh.material as THREE.MeshStandardMaterial).color.set(0xffa500); // Orange for selected
         } else {
@@ -441,16 +447,7 @@ export function ThreeDVisualizationModal({
 }, [selectedAsset]);
 
   const selectableMeshes = useMemo(() => {
-      const meshes: THREE.Mesh[] = [];
-      const scene = mountRef.current?.getElementsByTagName('canvas')[0]?.parentElement; // Not ideal, but works for this
-      if(scene) {
-          scene.traverse(obj => {
-              if(obj instanceof THREE.Mesh && obj.userData.shape) {
-                  meshes.push(obj);
-              }
-          })
-      }
-      return meshes;
+    return selectableMeshesRef.current;
   }, [assets]); // Re-evaluate when assets change
 
   return (
@@ -491,5 +488,3 @@ export function ThreeDVisualizationModal({
     </div>
   );
 }
-
-    
