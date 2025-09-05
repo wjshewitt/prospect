@@ -462,11 +462,13 @@ function VisionPageContent() {
           onTutorialStart={handleTutorialStart}
         />
         <main className="flex-1 relative bg-muted/20">
-            <AddressSearchBox onPlaceSelect={(place) => {
-                if (place.geometry?.location) {
-                    map?.moveCamera({center: place.geometry.location, zoom: 18});
-                }
-            }} />
+            {!is3DView && (
+              <AddressSearchBox onPlaceSelect={(place) => {
+                  if (place.geometry?.location) {
+                      map?.moveCamera({center: place.geometry.location, zoom: 18});
+                  }
+              }} />
+            )}
           {is3DView && projectBoundary && elevationGrid ? (
             <ThreeDVisualizationModal
               assets={assets}
@@ -565,5 +567,3 @@ export default function VisionPage() {
     </APIProvider>
     )
 }
-
-    

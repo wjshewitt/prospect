@@ -399,7 +399,12 @@ export function ThreeDVisualizationModal({
       bMaxY = Math.max(bMaxY, p.y);
     });
 
-    const areaSize = (bMaxX - bMinX) * (bMaxY - bMinY);
+    const boundaryWidth = bMaxX - bMinX;
+    const boundaryHeight = bMaxY - bMinY;
+    const boundaryRadius = Math.sqrt(boundaryWidth * boundaryWidth + boundaryHeight * boundaryHeight) / 2;
+    const renderRadius = boundaryRadius * 1.25;
+
+    const areaSize = Math.PI * renderRadius * renderRadius;
     let gridResolution: number;
     
     if (settings.terrainQuality === 'adaptive') {
@@ -411,23 +416,20 @@ export function ThreeDVisualizationModal({
       gridResolution = settings.terrainQuality === 'high' ? 150 : 
                       settings.terrainQuality === 'medium' ? 75 : 30;
     }
-
-    const gridWidth = Math.ceil((bMaxX - bMinX) / 2) * 2;
-    const gridHeight = Math.ceil((bMaxY - bMinY) / 2) * 2;
-    const segmentsX = Math.max(10, Math.min(gridResolution, gridWidth));
-    const segmentsY = Math.max(10, Math.min(gridResolution, gridHeight));
+    
+    const segments = Math.max(10, Math.min(gridResolution, Math.floor(renderRadius * 2)));
 
     const lod = new THREE.LOD();
     const lodLevels = [
-        { distance: 0, segments: { x: segmentsX, y: segmentsY } },
-        { distance: 500, segments: { x: Math.floor(segmentsX / 2), y: Math.floor(segmentsY / 2) } },
-        { distance: 1000, segments: { x: Math.floor(segmentsX / 4), y: Math.floor(segmentsY / 4) } },
-        { distance: 2000, segments: { x: Math.max(10, Math.floor(segmentsX / 8)), y: Math.max(10, Math.floor(segmentsY / 8)) } }
+        { distance: 0, segments: segments },
+        { distance: 500, segments: Math.floor(segments / 2) },
+        { distance: 1000, segments: Math.floor(segments / 4) },
+        { distance: 2000, segments: Math.max(10, Math.floor(segments / 8)) }
     ];
 
     lodLevels.forEach(level => {
-      if (level.segments.x < 1 || level.segments.y < 1) return;
-      const geom = new THREE.PlaneGeometry(gridWidth, gridHeight, level.segments.x, level.segments.y);
+      if (level.segments < 1) return;
+      const geom = new THREE.PlaneGeometry(renderRadius * 2, renderRadius * 2, level.segments, level.segments);
       
       const positions = geom.attributes.position;
       for (let i = 0; i < positions.count; i++) {
@@ -478,6 +480,25 @@ export function ThreeDVisualizationModal({
     geoGroup.add(lod);
     terrainMesh = lod.children[0] as THREE.Mesh;
 
+    // Draw boundary line
+    const boundaryLinePoints = boundary.path.map(p => {
+        const local = geoUtils.toLocal(p.lat, p.lng);
+        return new THREE.Vector3(local.x, local.y, getElevationAt(local.x, local.y) + 0.5);
+    });
+    // Close the loop
+    if (boundaryLinePoints.length > 0) {
+        boundaryLinePoints.push(boundaryLinePoints[0]);
+    }
+    const boundaryLineGeometry = new THREE.BufferGeometry().setFromPoints(boundaryLinePoints);
+    const boundaryLineMaterial = new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        linewidth: 2,
+        transparent: true,
+        opacity: 0.7
+    });
+    const boundaryLine = new THREE.Line(boundaryLineGeometry, boundaryLineMaterial);
+    geoGroup.add(boundaryLine);
+
 
     // Draw zones
     zones.forEach(zone => {
@@ -497,13 +518,13 @@ export function ThreeDVisualizationModal({
       for (let i = 0; i < positions.count; i++) {
         const x = positions.getX(i);
         const y = positions.getY(i);
-        positions.setZ(i, getElevationAt(x, y) + 0.1); // slight offset
+        positions.setZ(i, getElevationAt(x, y) + 0.25); // increased offset
       }
       
       const zoneMaterial = new THREE.MeshBasicMaterial({
         color: zone.zoneMeta?.kind === 'residential' ? 0x4ade80 : 0x60a5fa,
         transparent: true,
-        opacity: 0.2,
+        opacity: 0.3,
         side: THREE.DoubleSide,
       });
       const zoneMesh = new THREE.Mesh(zoneGeometry, zoneMaterial);
