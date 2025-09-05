@@ -64,8 +64,9 @@ export function ThreeDVisualization({
       minZoom: 0,
       maxZoom: 20,
       elevationData: grid,
+      texture: MAP_STYLE,
       bounds: [minX, minY, maxX, maxY],
-      color: TERRAIN_COLOR,
+      color: [255, 255, 255],
       wireframe: false,
       elevationDecoder: {
         rScaler: 1 / 256,
@@ -81,8 +82,8 @@ export function ThreeDVisualization({
         id: 'buildings',
         data: assets,
         getPolygon: d => d.path.map(p => [p.lng, p.lat]),
-        getFillColor: d => selectedAssetId === d.id ? [255, 193, 7, 255] : [51, 65, 85, 255],
-        getLineColor: d => selectedAssetId === d.id ? [255, 255, 255, 255] : [15, 23, 42, 255],
+        getFillColor: d => selectedAssetId === d.id ? [255, 193, 7, 255] : [228, 228, 231, 255], // Light gray, nearly white
+        getLineColor: d => selectedAssetId === d.id ? [255, 255, 255, 255] : [100, 116, 139, 255], // Slate-500 for outlines
         lineWidthMinPixels: d => selectedAssetId === d.id ? 2 : 1,
         extruded: true,
         getElevation: (d: any) => (d.assetMeta?.floors || 1) * 3, // 3 meters per floor
