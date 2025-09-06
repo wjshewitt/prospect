@@ -4,8 +4,8 @@
  * Replaces prompt-driven AI with geometry-safe, density-aware algorithm.
  */
 
-import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { defineFlow } from 'genkit/flow';
 
 // -----------------------------
 // Schemas (unchanged)
@@ -207,7 +207,7 @@ function scaleXY(a: XY, s: number): XY {
 // -----------------------------
 // Flow implementation
 // -----------------------------
-const generateSolarLayoutFlow = ai.defineFlow(
+const generateSolarLayoutFlow = defineFlow(
   {
     name: 'generateSolarLayoutFlow',
     inputSchema: GenerateSolarLayoutInputSchema,

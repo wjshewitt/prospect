@@ -8,7 +8,8 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'genkit/zod';
+import {defineFlow, definePrompt} from 'genkit/flow';
 
 const AISuggestBuildingPlacementInputSchema = z.object({
   propertyDetails: z
@@ -42,28 +43,41 @@ export async function suggestBuildingPlacement(
   return aiSuggestBuildingPlacementFlow(input);
 }
 
-const aiSuggestBuildingPlacementPrompt = ai.definePrompt({
-  name: 'aiSuggestBuildingPlacementPrompt',
-  input: {schema: AISuggestBuildingPlacementInputSchema},
-  output: {schema: AISuggestBuildingPlacementOutputSchema},
-  prompt: `You are an AI assistant specializing in suggesting optimal building placements on properties.
+const aiSuggestBuildingPlacementPrompt = definePrompt(
+  {
+    name: 'aiSuggestBuildingPlacementPrompt',
+    inputSchema: AISuggestBuildingPlacementInputSchema,
+    outputSchema: AISuggestBuildingPlacementOutputSchema,
+    model: 'googleai/gemini-1.5-flash',
+    config: {
+      temperature: 0.7,
+    },
+  },
+  async input => {
+    return {
+      prompt: `You are an AI assistant specializing in suggesting optimal building placements on properties.
 
   Consider the following property details and zoning regulations to provide the best placement suggestions.
 
-  Property Details: {{{propertyDetails}}}
-  Zoning Regulations: {{{zoningRegulations}}}
+  Property Details: ${input.propertyDetails}
+  Zoning Regulations: ${input.zoningRegulations}
 
   Provide a description of suggested building placements and explain why these placements are optimal, considering both the property details and zoning regulations.`,
-});
+      output: {
+        format: 'json',
+      },
+    };
+  }
+);
 
-const aiSuggestBuildingPlacementFlow = ai.defineFlow(
+const aiSuggestBuildingPlacementFlow = defineFlow(
   {
     name: 'aiSuggestBuildingPlacementFlow',
     inputSchema: AISuggestBuildingPlacementInputSchema,
     outputSchema: AISuggestBuildingPlacementOutputSchema,
   },
   async input => {
-    const {output} = await aiSuggestBuildingPlacementPrompt(input);
-    return output!;
+    const result = await aiSuggestBuildingPlacementPrompt(input);
+    return result;
   }
 );

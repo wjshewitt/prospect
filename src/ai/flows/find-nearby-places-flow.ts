@@ -5,6 +5,7 @@
  */
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { defineFlow, defineTool } from 'genkit/flow';
 import {
   Client,
   PlaceType2,
@@ -35,7 +36,7 @@ export type FindNearbyPlacesOutput = z.infer<
 >;
 
 
-const findPlaceTool = ai.defineTool(
+const findPlaceTool = defineTool(
   {
     name: 'findPlace',
     description: 'Finds the nearest place of a given type and returns its details.',
@@ -82,7 +83,7 @@ const findPlaceTool = ai.defineTool(
 );
 
 
-const findNearbyPlacesFlow = ai.defineFlow(
+const findNearbyPlacesFlow = defineFlow(
   {
     name: 'findNearbyPlacesFlow',
     inputSchema: FindNearbyPlacesInputSchema,
