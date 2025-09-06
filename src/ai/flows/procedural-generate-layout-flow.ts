@@ -17,6 +17,7 @@ import type {
   Feature,
   FeatureCollection,
   LineString,
+  MultiLineString,
   MultiPolygon,
   Point,
   Polygon,
@@ -454,6 +455,16 @@ function subdivideBlocksToParcels(
   rng: RNG
 ): FeatureCollection<Polygon> {
   const parcels: Feature<Polygon>[] = [];
+  if (!roads.features || roads.features.length === 0) {
+    // Handle case with no roads, otherwise turf.combine will fail.
+    // Here, we just return the blocks as-is, though a different subdivision
+    // strategy could be implemented.
+    for (const block of blocks.features) {
+      parcels.push(block);
+    }
+    return turf.featureCollection(parcels);
+  }
+
   const roadsCombined: Feature<any> =
     roads.features.length === 1 ? roads.features[0] : (turf.combine(roads).features[0] as any);
 
@@ -583,12 +594,30 @@ function allocateGreenSpaces(
 
 function placeBuildings(
   parcels: FeatureCollection<Polygon>,
-  roads: FeatureCollection<LineString>,
+  roads: FeatureCollection<LineString | MultiLineString>,
   cfg: NormalizedSettings,
   rng: RNG
 ): FeatureCollection<Polygon> {
   const buildings: Feature<Polygon>[] = [];
-  if (roads.features.length === 0) return turf.featureCollection([]);
+
+  // Create a flat list of simple LineString features. This handles any MultiLineStrings
+  // that might exist in the input 'roads' collection.
+  const allRoadSegments: Feature<LineString>[] = [];
+  if (roads && roads.features) {
+    for (const roadFeature of roads.features) {
+      if (roadFeature.geometry.type === 'LineString') {
+        allRoadSegments.push(roadFeature as Feature<LineString>);
+      } else if (roadFeature.geometry.type === 'MultiLineString') {
+        for (const coords of roadFeature.geometry.coordinates) {
+          allRoadSegments.push(turf.lineString(coords, roadFeature.properties));
+        }
+      }
+    }
+  }
+  
+  if (allRoadSegments.length === 0) {
+    return turf.featureCollection([]);
+  }
 
   for (const parcel of parcels.features) {
     let buildable: Feature<Polygon | MultiPolygon> | null = null;
@@ -632,29 +661,17 @@ function placeBuildings(
 
     const c = (turf.centroid(buildablePoly).geometry.coordinates as [number, number]) ?? [0, 0];
     
-    // Find the nearest point on ANY road segment
+    // Find the nearest point on ANY road segment from our flattened list
     let nearestPoint: turf.helpers.Feature<turf.helpers.Point> | null = null;
     let minDistance = Infinity;
 
-    for (const roadFeature of roads.features) {
-      if (roadFeature.geometry.type === 'LineString') {
-          const snapped = turf.nearestPointOnLine(roadFeature, c, { units: 'kilometers' });
-          const dist = snapped.properties.dist;
-          if (dist !== undefined && dist < minDistance) {
-              minDistance = dist;
-              nearestPoint = snapped;
-          }
-      } else if (roadFeature.geometry.type === 'MultiLineString') {
-          for (const lineCoords of roadFeature.geometry.coordinates) {
-              const line = turf.lineString(lineCoords);
-              const snapped = turf.nearestPointOnLine(line, c, { units: 'kilometers' });
-              const dist = snapped.properties.dist;
-              if (dist !== undefined && dist < minDistance) {
-                  minDistance = dist;
-                  nearestPoint = snapped;
-              }
-          }
-      }
+    for (const roadSegment of allRoadSegments) {
+        const snapped = turf.nearestPointOnLine(roadSegment, c, { units: 'kilometers' });
+        const dist = snapped.properties.dist;
+        if (dist !== undefined && dist < minDistance) {
+            minDistance = dist;
+            nearestPoint = snapped;
+        }
     }
 
     if (!nearestPoint) continue;
@@ -687,7 +704,6 @@ function placeBuildings(
 
   return turf.featureCollection(buildings);
 }
-
 
 /* -----------------------------------------------------------------------------
    Utilities
