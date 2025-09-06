@@ -12,7 +12,9 @@ import { Map } from 'react-map-gl';
 import { Move3d, MousePointer, ZoomIn, AppWindow, Move, Trash2, Palette, Satellite, Fence, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as turf from '@turf/turf';
-import { TerrainExtension } from '@deck.gl/extensions';
+import { cn } from '@/lib/utils';
+import { Switch } from '../ui/switch';
+
 
 const GRASS_TEXTURE_URL = 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/grass.png';
 
@@ -370,28 +372,16 @@ export function ThreeDVisualization({
         maxZoom: 20,
         elevationData: grid,
         bounds: [minX, minY, maxX, maxY],
+        texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : null,
+        color: groundStyle === 'color' ? groundColor : [255,255,255],
         material: {
-          diffuse: 0.9,
+            diffuse: 1.0,
+            ambient: 0.5,
+            shininess: 32,
+            specularColor: [255, 255, 255],
         },
         zScaler: 1.2,
       });
-
-    const getGroundCoverColor = () => {
-        if (groundStyle === 'satellite') return [0, 0, 0, 0]; // Transparent
-        if (groundStyle === 'color') return [...groundColor, 255];
-        return [255, 255, 255, 255]; // White for texture base
-    }
-
-    const groundCoverLayer = new PolygonLayer({
-        id: 'ground-cover',
-        data: [boundary],
-        getPolygon: d => d.path.map(p => [p.lng, p.lat]),
-        getFillColor: getGroundCoverColor(),
-        filled: true,
-        stroked: false,
-        texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : undefined,
-        extensions: [new TerrainExtension()]
-    });
     
     const buildingLayer = new PolygonLayer({
         id: 'buildings',
@@ -451,7 +441,7 @@ export function ThreeDVisualization({
     });
 
 
-    return [terrainLayer, groundCoverLayer, zoneLayer, buildingLayer, boundaryLayer, autofillDrawLayer];
+    return [terrainLayer, zoneLayer, buildingLayer, boundaryLayer, autofillDrawLayer];
   }, [elevationGrid, assets, zones, selectedAssetId, boundary, autofillPath, groundStyle, groundColor]);
 
   if (!viewState) {
@@ -508,5 +498,3 @@ export function ThreeDVisualization({
     </div>
   );
 }
-
-    
