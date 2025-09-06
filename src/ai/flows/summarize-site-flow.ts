@@ -37,15 +37,13 @@ export async function summarizeSite(input: SummarizeSiteInput): Promise<Summariz
 // Define the prompt for the AI model
 const summarizeSitePrompt = ai.definePrompt({
   name: 'summarizeSitePrompt',
-  inputSchema: SummarizeSiteInputSchema,
-  outputSchema: SummarizeSiteOutputSchema,
+  input: { schema: SummarizeSiteInputSchema },
+  output: { schema: SummarizeSiteOutputSchema },
   model: 'googleai/gemini-1.5-flash',
   config: {
       temperature: 0.3,
-  }
-}, async (input) => {
-    return {
-        prompt: `
+  },
+  prompt: `
         You are an expert site assessment analyst for land development.
         Your task is to create a concise, professional summary based on the provided data.
         The summary should be easy to understand for a developer or planner.
@@ -63,11 +61,11 @@ const summarizeSitePrompt = ai.definePrompt({
         - Always mention the elevation difference as context for the overall vertical relief.
 
         Input Data:
-        - Site Name: ${input.siteName}
-        - Site Area (acres): ${input.siteAreaAcres.toFixed(2)}
-        - Elevation Difference (meters): ${input.elevationDifference.toFixed(1)}
-        - Percentage of Site Considered Steep: ${input.steepPercent.toFixed(1)}%
-        - Average Slope: ${input.averageSlope.toFixed(1)}%
+        - Site Name: {{{siteName}}}
+        - Site Area (acres): {{{siteAreaAcres}}}
+        - Elevation Difference (meters): {{{elevationDifference}}}
+        - Percentage of Site Considered Steep: {{{steepPercent}}}%
+        - Average Slope: {{{averageSlope}}}%
 
         Example Output for a good site:
         "The site 'North Ridge Estates' covers 45.2 acres and appears well-suited for development. The terrain is generally gentle, with an average slope of just 5.1% and a total elevation difference of 15 meters. Only a small fraction of the land, about 8%, exceeds the typical steepness threshold, suggesting most of the area is straightforward to build on."
@@ -77,10 +75,6 @@ const summarizeSitePrompt = ai.definePrompt({
 
         Now, generate a summary for the provided input data.
       `,
-        output: {
-            format: 'json',
-        }
-    }
 });
 
 // Define the main Genkit flow
@@ -91,7 +85,7 @@ const summarizeSiteFlow = ai.defineFlow(
     outputSchema: SummarizeSiteOutputSchema,
   },
   async (input) => {
-    const result = await summarizeSitePrompt(input);
-    return result;
+    const {output} = await summarizeSitePrompt(input);
+    return output!;
   }
 );

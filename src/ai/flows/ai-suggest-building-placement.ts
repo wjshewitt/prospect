@@ -8,7 +8,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit/zod';
+import {z} from 'zod';
 
 const AISuggestBuildingPlacementInputSchema = z.object({
   propertyDetails: z
@@ -45,27 +45,20 @@ export async function suggestBuildingPlacement(
 const aiSuggestBuildingPlacementPrompt = ai.definePrompt(
   {
     name: 'aiSuggestBuildingPlacementPrompt',
-    inputSchema: AISuggestBuildingPlacementInputSchema,
-    outputSchema: AISuggestBuildingPlacementOutputSchema,
+    input: { schema: AISuggestBuildingPlacementInputSchema },
+    output: { schema: AISuggestBuildingPlacementOutputSchema },
     model: 'googleai/gemini-1.5-flash',
     config: {
       temperature: 0.7,
     },
-  },
-  async input => {
-    return {
-      prompt: `You are an AI assistant specializing in suggesting optimal building placements on properties.
+    prompt: `You are an AI assistant specializing in suggesting optimal building placements on properties.
 
   Consider the following property details and zoning regulations to provide the best placement suggestions.
 
-  Property Details: ${input.propertyDetails}
-  Zoning Regulations: ${input.zoningRegulations}
+  Property Details: {{{propertyDetails}}}
+  Zoning Regulations: {{{zoningRegulations}}}
 
   Provide a description of suggested building placements and explain why these placements are optimal, considering both the property details and zoning regulations.`,
-      output: {
-        format: 'json',
-      },
-    };
   }
 );
 
@@ -76,7 +69,7 @@ const aiSuggestBuildingPlacementFlow = ai.defineFlow(
     outputSchema: AISuggestBuildingPlacementOutputSchema,
   },
   async input => {
-    const result = await aiSuggestBuildingPlacementPrompt(input);
-    return result;
+    const {output} = await aiSuggestBuildingPlacementPrompt(input);
+    return output!;
   }
 );

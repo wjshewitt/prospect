@@ -11,6 +11,7 @@
  * If you still see "module has no exports", restart the dev server to clear Turbopack cache.
  */
 
+import { ai } from '@/ai/genkit';
 import * as turf from '@turf/turf';
 import type {
   Feature,
@@ -21,7 +22,6 @@ import type {
   Polygon,
   Position,
 } from 'geojson';
-import { ai } from '@/ai/genkit';
 
 import {
   ProceduralGenerateLayoutInputSchema,
