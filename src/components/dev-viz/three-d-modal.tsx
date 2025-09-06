@@ -1,11 +1,11 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
 import type { Shape, ElevationGrid } from '@/lib/types';
 import DeckGL from '@deck.gl/react';
 import { TerrainLayer } from '@deck.gl/geo-layers';
-import { PolygonLayer, PathStyleExtension } from '@deck.gl/layers';
+import { PolygonLayer } from '@deck.gl/layers';
+import { PathStyleExtension } from '@deck.gl/extensions';
 import { Map } from 'react-map-gl';
 import { Move3d, MousePointer, ZoomIn } from 'lucide-react';
 
