@@ -129,15 +129,25 @@ const getEnhancedShapeStyle = (
     strokeOpacity = 0.9;
   }
 
-  // ENHANCED ASSET STYLING
+  // --- NEW REALISTIC ASSET STYLING ---
   if (isAsset) {
-    fillColor = shape.assetMeta?.assetType === 'solar_panel' ? '#1E40AF' : '#475569';
-    strokeColor = '#1E293B';
-    strokeWeight = 2;
+    if (shape.assetMeta?.assetType === 'solar_panel') {
+      // Style for solar panels
+      fillColor = '#1E40AF';
+      strokeColor = '#1E293B';
+      fillOpacity = 0.9;
+      strokeWeight = 1.5;
+    } else {
+      // Style for buildings - Roof
+      fillColor = '#A9927D'; // Earthy brown/terracotta for roof
+      strokeColor = '#5E503F'; // Darker brown for roof edge/outline
+      fillOpacity = 1.0;
+      strokeWeight = 1;
+    }
     zIndex = isSelected ? 8 : 6;
-    fillOpacity = 0.9;
     strokeOpacity = 1.0;
   }
+
 
   // ENHANCED INTERACTION STATES
   if (isMoving) {
@@ -380,7 +390,7 @@ const DrawnShapes: React.FC<{
   setMovingShapeId: (id: string | null) => void;
 }> = ({ shapes, setShapes, onShapeRightClick, onShapeClick, selectedShapeIds, editingShapeId, setEditingShapeId, movingShapeId, setMovingShapeId }) => {
     const map = useMap();
-    const [polygons, setPolygons] = useState<{[id: string]: google.maps.Polygon}>({});
+    const [polygons, setPolygons] = useState<{[id: string]: google.maps.Polygon[]}>({});
     const { toast } = useToast();
     const [hasShownMovePrompt, setHasShownMovePrompt] = useState(false);
   
@@ -388,7 +398,7 @@ const DrawnShapes: React.FC<{
     useEffect(() => {
       if (!map) return;
   
-      const newPolygons: {[id: string]: google.maps.Polygon} = {};
+      const newPolygons: {[id: string]: google.maps.Polygon[]} = {};
       const bufferedParentIds = new Set(shapes.filter(s => s.bufferMeta).map(s => s.bufferMeta!.originalShapeId));
 
       shapes.forEach(shape => {
@@ -397,23 +407,35 @@ const DrawnShapes: React.FC<{
         const isEditing = shape.id === editingShapeId;
         const isMoving = shape.id === movingShapeId;
         const isSelected = selectedShapeIds.includes(shape.id);
-        const isBuffer = !!shape.bufferMeta;
         const isAsset = !!shape.assetMeta;
 
-        // Use enhanced styling
         const polyOptions = getEnhancedShapeStyle(
-          shape, 
-          isSelected, 
-          isEditing, 
-          isMoving, 
-          bufferedParentIds
+          shape, isSelected, isEditing, isMoving, bufferedParentIds
         );
+        
+        const shapePolys: google.maps.Polygon[] = [];
 
-        const poly = new google.maps.Polygon({
+        const mainPoly = new google.maps.Polygon({
           paths: path,
           map: map,
           ...polyOptions
         });
+        shapePolys.push(mainPoly);
+        
+        // --- NEW: Add wall effect for buildings ---
+        if (isAsset && shape.assetMeta?.assetType !== 'solar_panel' && polyOptions.strokeWeight) {
+          const wallPoly = new google.maps.Polygon({
+            paths: path,
+            map: map,
+            fillOpacity: 0,
+            strokeColor: '#CBAA89', // Lighter brown/beige for walls
+            strokeWeight: polyOptions.strokeWeight + 1, // Slightly thicker
+            strokeOpacity: 0.8,
+            zIndex: polyOptions.zIndex - 1, // Draw behind the roof
+            clickable: false,
+          });
+          shapePolys.push(wallPoly);
+        }
 
         // Create glow effect for selected shapes
         if (isSelected && !polyOptions.icons) {
@@ -427,27 +449,24 @@ const DrawnShapes: React.FC<{
             zIndex: (polyOptions.zIndex || 1) - 1,
             clickable: false
           });
-          
-          // Store glow polygon for cleanup
-          (poly as any).glowPoly = glowPoly;
+          shapePolys.push(glowPoly);
         }
 
-        poly.addListener('rightclick', (e: google.maps.MapMouseEvent) => onShapeRightClick(shape.id, e));
-        poly.addListener('click', (e: google.maps.MapMouseEvent) => {
+        mainPoly.addListener('rightclick', (e: google.maps.MapMouseEvent) => onShapeRightClick(shape.id, e));
+        mainPoly.addListener('click', (e: google.maps.MapMouseEvent) => {
             onShapeClick(shape.id, e.domEvent.ctrlKey || e.domEvent.metaKey);
             
             if (editingShapeId && editingShapeId !== shape.id) {
-                // If another shape is being edited, clicking this one stops the other edit
                 setEditingShapeId(null);
             }
         });
         
-        poly.addListener('dblclick', () => {
-            if (isBuffer || isAsset) {
+        mainPoly.addListener('dblclick', () => {
+            if (!!shape.bufferMeta || isAsset) {
                 toast({ title: 'This shape cannot be moved or edited directly.' });
                 return;
             }
-            setEditingShapeId(null); // Stop editing if we start moving
+            setEditingShapeId(null);
             setMovingShapeId(shape.id);
             if (!hasShownMovePrompt) {
                 toast({
@@ -459,46 +478,38 @@ const DrawnShapes: React.FC<{
         });
 
         if (isEditing) {
-            const path = poly.getPath();
-            google.maps.event.addListener(path, 'set_at', () => updateShape(shape.id, poly));
-            google.maps.event.addListener(path, 'insert_at', () => updateShape(shape.id, poly));
+            const path = mainPoly.getPath();
+            google.maps.event.addListener(path, 'set_at', () => updateShape(shape.id, mainPoly));
+            google.maps.event.addListener(path, 'insert_at', () => updateShape(shape.id, mainPoly));
         }
 
         if (isMoving) {
-            poly.addListener('dragend', () => {
-                updateShape(shape.id, poly);
+            mainPoly.addListener('dragend', () => {
+                updateShape(shape.id, mainPoly);
             });
         }
         
-        newPolygons[shape.id] = poly;
+        newPolygons[shape.id] = shapePolys;
       });
   
       // Clean up polygons that are no longer in the shapes array
       Object.keys(polygons).forEach(id => {
         if (!newPolygons[id]) {
-          const poly = polygons[id];
-          
-          // Clean up glow effect if it exists
-          if ((poly as any).glowPoly) {
-            (poly as any).glowPoly.setMap(null);
-          }
-          
-          poly.setMap(null);
-          google.maps.event.clearInstanceListeners(poly);
+          polygons[id].forEach(p => {
+              google.maps.event.clearInstanceListeners(p);
+              p.setMap(null);
+          });
         }
       });
       
       setPolygons(newPolygons);
   
       return () => {
-        Object.values(newPolygons).forEach(poly => {
-            // Clean up glow effect
-            if ((poly as any).glowPoly) {
-              (poly as any).glowPoly.setMap(null);
-            }
-            
-            google.maps.event.clearInstanceListeners(poly);
-            poly.setMap(null);
+        Object.values(newPolygons).forEach(polyArray => {
+            polyArray.forEach(p => {
+                google.maps.event.clearInstanceListeners(p);
+                p.setMap(null);
+            });
         });
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -506,7 +517,10 @@ const DrawnShapes: React.FC<{
 
     // Effect to update the editable/draggable properties of polygons when editing/moving state changes
     useEffect(() => {
-        Object.entries(polygons).forEach(([id, poly]) => {
+        Object.entries(polygons).forEach(([id, polyArray]) => {
+            const mainPoly = polyArray[0];
+            if (!mainPoly) return;
+
             const isEditing = id === editingShapeId;
             const isMoving = id === movingShapeId;
             const shape = shapes.find(s => s.id === id);
@@ -514,11 +528,11 @@ const DrawnShapes: React.FC<{
             const shouldBeEditable = isEditing && !shape?.bufferMeta && !shape?.assetMeta;
             const shouldBeDraggable = isMoving && !shape?.bufferMeta && !shape?.assetMeta;
 
-            if (poly.getEditable() !== shouldBeEditable) {
-                poly.setEditable(shouldBeEditable);
+            if (mainPoly.getEditable() !== shouldBeEditable) {
+                mainPoly.setEditable(shouldBeEditable);
             }
-            if (poly.getDraggable() !== shouldBeDraggable) {
-                poly.setDraggable(shouldBeDraggable);
+            if (mainPoly.getDraggable() !== shouldBeDraggable) {
+                mainPoly.setDraggable(shouldBeDraggable);
             }
         });
     }, [editingShapeId, movingShapeId, polygons, shapes]);
