@@ -546,6 +546,7 @@ function VisionPageContent() {
                             autofillTemplate={autofillTemplate}
                             groundStyle={groundStyle}
                             groundColor={groundColor}
+                            setSelectedShapeIds={setSelectedShapeIds}
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full">

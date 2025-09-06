@@ -9,12 +9,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { Building, Trash2, Bot, Layers, Plus, Minus, Grid3x3, Palette, Satellite, Fence } from 'lucide-react';
+import { Building, Trash2, Bot, Layers, Plus, Minus, Grid3x3, Palette, Satellite, Fence, Eye, EyeOff, Move } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uuid } from '@/components/map/map-canvas';
 import * as turf from '@turf/turf';
 import { cn } from '@/lib/utils';
-import { TerrainExtension } from '@deck.gl/extensions';
+import { Switch } from '../ui/switch';
 
 
 interface ThreeDEditorPanelProps {
@@ -29,6 +29,7 @@ interface ThreeDEditorPanelProps {
     setGroundStyle: (style: 'satellite' | 'color' | 'texture') => void;
     groundColor: [number, number, number];
     setGroundColor: (color: [number, number, number]) => void;
+    selectedShapeIds: string[];
 }
 
 const groundColors = {
@@ -49,12 +50,14 @@ export function ThreeDEditorPanel({
     groundStyle,
     setGroundStyle,
     groundColor,
-    setGroundColor
+    setGroundColor,
+    selectedShapeIds
 }: ThreeDEditorPanelProps) {
     
     const { toast } = useToast();
     const selectedAsset = shapes.find(s => s.id === selectedAssetId);
     const buildings = shapes.filter(s => s.assetMeta?.assetType === 'building');
+    const [areBoundariesVisible, setAreBoundariesVisible] = useState(true);
 
     const updateAsset = (id: string, updates: Partial<Shape['assetMeta']>) => {
         setShapes(prev => prev.map(s => {
@@ -155,6 +158,21 @@ export function ThreeDEditorPanel({
         });
     };
     
+    const handleDeleteSelection = () => {
+        setShapes(prev => prev.filter(s => !selectedShapeIds.includes(s.id)));
+        setSelectedAssetId(null);
+    }
+
+    const handleToggleBoundaries = (visible: boolean) => {
+        setAreBoundariesVisible(visible);
+        setShapes(prev => prev.map(s => {
+            if (s.zoneMeta || s.bufferMeta || !s.assetMeta) {
+                return { ...s, visible };
+            }
+            return s;
+        }));
+    }
+
     return (
         <ScrollArea className="h-full">
             <div className="p-4 space-y-4">
@@ -184,7 +202,7 @@ export function ThreeDEditorPanel({
                            <Palette className="h-5 w-5 text-muted-foreground" />
                         </CardTitle>
                         <CardDescription>
-                           Customize the terrain to focus on your design.
+                           Customize the terrain and visibility to focus on your design.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -215,30 +233,48 @@ export function ThreeDEditorPanel({
                                 ))}
                             </div>
                         )}
+                        <div className="flex items-center justify-between pt-2">
+                            <Label htmlFor="boundaries-visibility" className="flex items-center gap-2">
+                                {areBoundariesVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                Show Boundaries
+                            </Label>
+                            <Switch
+                                id="boundaries-visibility"
+                                checked={areBoundariesVisible}
+                                onCheckedChange={handleToggleBoundaries}
+                            />
+                        </div>
                     </CardContent>
                 </Card>
                 
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="text-base flex items-center justify-between">
-                           <span>Autofill Area</span>
-                           <Grid3x3 className="h-5 w-5 text-muted-foreground" />
-                        </CardTitle>
-                        <CardDescription>
-                            Select a building, then draw an area to fill it with copies.
-                         </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Button 
-                            className="w-full"
-                            onClick={handleStartAutofill}
-                            disabled={!selectedAsset}
-                        >
-                            <Layers className="mr-2 h-4 w-4" />
-                            Start Autofill Area
-                        </Button>
-                    </CardContent>
-                </Card>
+                 {selectedShapeIds.length > 1 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-sm">Group Selection</CardTitle>
+                            <CardDescription>
+                                {selectedShapeIds.length} buildings selected.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                             <Button 
+                                className="w-full"
+                                onClick={() => setSelectedTool('move-selection')}
+                            >
+                                <Move className="mr-2 h-4 w-4" />
+                                Move Selection
+                            </Button>
+                             <Button 
+                                variant="destructive"
+                                className="w-full"
+                                onClick={handleDeleteSelection}
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Selection
+                            </Button>
+                        </CardContent>
+                    </Card>
+                )}
+
 
                 {selectedAsset && selectedAsset.assetMeta && (
                      <Card>

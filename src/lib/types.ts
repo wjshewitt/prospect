@@ -14,6 +14,7 @@ export type Shape = {
   type: 'rectangle' | 'polygon' | 'freehand' | 'buffer' | 'union' | 'difference' | 'zone';
   path: LatLng[];
   area?: number;
+  visible?: boolean;
   // Optional metadata for buffer shapes
   bufferMeta?: {
     originalShapeId: string;
@@ -35,7 +36,7 @@ export type Shape = {
   }
 };
 
-export type Tool = 'pan' | 'rectangle' | 'polygon' | 'freehand' | 'zone' | 'asset' | 'autofill';
+export type Tool = 'pan' | 'rectangle' | 'polygon' | 'freehand' | 'zone' | 'asset' | 'multi-select' | 'move-selection';
 
 export type ElevationPoint = {
     location: LatLng;

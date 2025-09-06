@@ -12,6 +12,7 @@ import { Map } from 'react-map-gl';
 import { Move3d, MousePointer, ZoomIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as turf from '@turf/turf';
+import { TerrainExtension } from '@deck.gl/extensions';
 
 const GRASS_TEXTURE_URL = 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/grass.png';
 
@@ -31,6 +32,7 @@ interface ThreeDVisualizationProps {
   autofillTemplate: Shape | null;
   groundStyle: 'satellite' | 'color' | 'texture';
   groundColor: [number, number, number];
+  setSelectedShapeIds: (ids: string[]) => void;
 }
 
 function NavigationGuide() {
@@ -61,6 +63,7 @@ export function ThreeDVisualization({
   autofillTemplate,
   groundStyle,
   groundColor,
+  setSelectedShapeIds,
 }: ThreeDVisualizationProps) {
 
   const { toast } = useToast();
@@ -68,7 +71,8 @@ export function ThreeDVisualization({
   const [isDrawingAutofill, setIsDrawingAutofill] = useState(false);
   const [autofillPath, setAutofillPath] = useState<LatLng[] | null>(null);
   const clickTimeout = useRef<NodeJS.Timeout | null>(null);
-  const [dragInfo, setDragInfo] = useState<{ id: string; dx: number; dy: number } | null>(null);
+  const [dragInfo, setDragInfo] = useState<{ id: string; dx: number; dy: number; initialPositions: Map<string, LatLng[]> } | null>(null);
+  const [selectionBox, setSelectionBox] = useState<[number, number, number, number] | null>(null);
 
 
   // Update internal view state if the initial state prop changes (e.g., when re-entering 3D mode)
@@ -232,6 +236,7 @@ export function ThreeDVisualization({
         // If an asset is clicked, select it
         if (info.object) {
             setSelectedAssetId(info.object.id);
+            setSelectedShapeIds([info.object.id]);
             return;
         }
         
@@ -243,6 +248,7 @@ export function ThreeDVisualization({
 
         // Otherwise, deselect
         setSelectedAssetId(null);
+        setSelectedShapeIds([]);
     }
     
     const handleDeckClick = (info: PickingInfo) => {
@@ -261,36 +267,92 @@ export function ThreeDVisualization({
     };
     
     const onDragStart = (info: PickingInfo) => {
+        if (selectedTool === 'multi-select') {
+            setSelectionBox([info.startPickingPointer[0], info.startPickingPointer[1], info.startPickingPointer[0], info.startPickingPointer[1]]);
+            return;
+        }
+        
+        if (selectedTool === 'move-selection') {
+             setDragInfo({
+                id: 'selection',
+                dx: info.coordinate[0],
+                dy: info.coordinate[1],
+                initialPositions: new Map(shapes.map(s => [s.id, s.path]))
+            });
+            return;
+        }
+
         if (info.object && info.object.id === selectedAssetId) {
             setDragInfo({
                 id: info.object.id,
                 dx: info.coordinate[0] - info.object.path[0].lng,
                 dy: info.coordinate[1] - info.object.path[0].lat,
+                initialPositions: new Map()
             });
         }
     };
 
     const onDrag = (info: PickingInfo) => {
-        if (!dragInfo || !info.coordinate) return;
+        if (!info.coordinate) return;
+        
+        if (selectedTool === 'multi-select' && selectionBox) {
+            setSelectionBox([selectionBox[0], selectionBox[1], info.pointer[0], info.pointer[1]]);
+            return;
+        }
 
-        const newLng = info.coordinate[0] - dragInfo.dx;
-        const newLat = info.coordinate[1] - dragInfo.dy;
+        if (!dragInfo) return;
         
-        const originalShape = shapes.find(s => s.id === dragInfo.id);
-        if (!originalShape) return;
-        
-        const lngDiff = newLng - originalShape.path[0].lng;
-        const latDiff = newLat - originalShape.path[0].lat;
-        
-        const newPath = originalShape.path.map(p => ({
-            lng: p.lng + lngDiff,
-            lat: p.lat + latDiff,
-        }));
-        
-        setShapes(prev => prev.map(s => s.id === dragInfo.id ? {...s, path: newPath} : s));
+        if (dragInfo.id === 'selection') {
+            const lngDiff = info.coordinate[0] - dragInfo.dx;
+            const latDiff = info.coordinate[1] - dragInfo.dy;
+            
+            setShapes(prev => prev.map(s => {
+                const initialPath = dragInfo.initialPositions.get(s.id);
+                if (initialPath && selectedShapeIds.includes(s.id)) {
+                    const newPath = initialPath.map(p => ({
+                        lng: p.lng + lngDiff,
+                        lat: p.lat + latDiff,
+                    }));
+                    return {...s, path: newPath};
+                }
+                return s;
+            }));
+
+        } else {
+            const newLng = info.coordinate[0] - dragInfo.dx;
+            const newLat = info.coordinate[1] - dragInfo.dy;
+            
+            const originalShape = shapes.find(s => s.id === dragInfo.id);
+            if (!originalShape) return;
+            
+            const lngDiff = newLng - originalShape.path[0].lng;
+            const latDiff = newLat - originalShape.path[0].lat;
+            
+            const newPath = originalShape.path.map(p => ({
+                lng: p.lng + lngDiff,
+                lat: p.lat + latDiff,
+            }));
+            
+            setShapes(prev => prev.map(s => s.id === dragInfo.id ? {...s, path: newPath} : s));
+        }
     };
 
-    const onDragEnd = () => {
+    const onDragEnd = (info: PickingInfo) => {
+        if (selectedTool === 'multi-select' && selectionBox) {
+            const [x1, y1, x2, y2] = selectionBox;
+            const selectionBounds = {
+                x: Math.min(x1, x2),
+                y: Math.min(y1, y2),
+                width: Math.abs(x1 - x2),
+                height: Math.abs(y1 - y2)
+            };
+            const picked = info.deck.pickObjects(selectionBounds);
+            const selectedIds = picked.filter(p => p.object?.assetMeta).map(p => p.object.id);
+            setSelectedShapeIds(selectedIds);
+            setSelectionBox(null);
+            setSelectedTool('pan');
+        }
+
         setDragInfo(null);
     };
 
@@ -328,6 +390,7 @@ export function ThreeDVisualization({
         filled: true,
         stroked: false,
         texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : undefined,
+        extensions: [new TerrainExtension()]
     });
     
     const buildingLayer = new PolygonLayer({
@@ -355,20 +418,21 @@ export function ThreeDVisualization({
 
     const zoneLayer = new PolygonLayer({
         id: 'zones',
-        data: zones,
+        data: zones.filter(z => z.visible !== false),
         getPolygon: d => d.path.map(p => [p.lng, p.lat]),
         getFillColor: (d: any) => getZoneColor(d.zoneMeta.kind),
         getLineColor: (d: any) => {
             const color = getZoneColor(d.zoneMeta.kind);
             return [...color.slice(0,3), 200];
         },
+        getLineDashArray: [5, 5],
         lineWidthMinPixels: 2,
         extruded: false,
     });
 
     const boundaryLayer = new PolygonLayer({
         id: 'boundary-3d',
-        data: [boundary],
+        data: [boundary].filter(b => b.visible !== false),
         getPolygon: d => d.path.map(p => [p.lng, p.lat]),
         getFillColor: [0,0,0,0], // transparent fill
         getLineColor: [252, 165, 3, 255], // bright orange
@@ -409,6 +473,7 @@ export function ThreeDVisualization({
     onDrag,
     onDragEnd,
     getCursor: ({ isDragging }: { isDragging: boolean }) => {
+        if (selectedTool === 'multi-select') return 'crosshair';
         if (isDrawingAutofill) return 'crosshair';
         if (isDragging) return 'grabbing';
         if (selectedTool === 'asset') return 'copy';
@@ -428,9 +493,18 @@ export function ThreeDVisualization({
           />
         )}
       </DeckGL>
+       {selectionBox && (
+          <div
+              className="absolute border-2 border-dashed border-blue-500 bg-blue-500/20 pointer-events-none"
+              style={{
+                  left: Math.min(selectionBox[0], selectionBox[2]),
+                  top: Math.min(selectionBox[1], selectionBox[3]),
+                  width: Math.abs(selectionBox[2] - selectionBox[0]),
+                  height: Math.abs(selectionBox[3] - selectionBox[1]),
+              }}
+          />
+      )}
       <NavigationGuide />
     </div>
   );
 }
-
-    

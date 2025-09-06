@@ -98,7 +98,7 @@ export default function StatisticsSidebar({
     <aside 
       id="stats-sidebar" 
       className={cn(
-        "border-l bg-background/80 backdrop-blur-sm flex-col transition-all duration-300 ease-in-out",
+        "border-l bg-background/80 backdrop-blur-sm flex-col transition-all duration-300 ease-in-out shrink-0",
         isOpen ? "w-80 flex" : "w-0 hidden"
       )}
       style={{'--stats-sidebar-width': '20rem'} as React.CSSProperties}
@@ -116,6 +116,7 @@ export default function StatisticsSidebar({
             setGroundStyle={setGroundStyle}
             groundColor={groundColor}
             setGroundColor={setGroundColor}
+            selectedShapeIds={selectedShapeIds}
         />
       ) : (
         <Tabs defaultValue="stats" className="flex flex-col h-full">
