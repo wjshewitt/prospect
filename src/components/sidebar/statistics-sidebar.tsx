@@ -42,6 +42,10 @@ type StatisticsSidebarProps = {
   onDeleteAsset: (assetId: string) => void;
   setSelectedTool: (tool: Tool) => void;
   setAutofillTemplate: (asset: Shape | null) => void;
+  groundStyle: 'satellite' | 'color' | 'texture';
+  setGroundStyle: (style: 'satellite' | 'color' | 'texture') => void;
+  groundColor: [number, number, number];
+  setGroundColor: (color: [number, number, number]) => void;
 };
 
 const SQ_METERS_TO_ACRES = 0.000247105;
@@ -70,7 +74,11 @@ export default function StatisticsSidebar({
     setSelectedAssetId,
     onDeleteAsset,
     setSelectedTool,
-    setAutofillTemplate
+    setAutofillTemplate,
+    groundStyle,
+    setGroundStyle,
+    groundColor,
+    setGroundColor
 }: StatisticsSidebarProps) {
 
   const projectBoundary = shapes.find(s => !s.bufferMeta && !s.zoneMeta && !s.assetMeta);
@@ -104,6 +112,10 @@ export default function StatisticsSidebar({
             onDeleteAsset={onDeleteAsset}
             setSelectedTool={setSelectedTool}
             setAutofillTemplate={setAutofillTemplate}
+            groundStyle={groundStyle}
+            setGroundStyle={setGroundStyle}
+            groundColor={groundColor}
+            setGroundColor={setGroundColor}
         />
       ) : (
         <Tabs defaultValue="stats" className="flex flex-col h-full">

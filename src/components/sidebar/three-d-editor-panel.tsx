@@ -9,12 +9,12 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { Building, Trash2, RotateCcw, Bot, Layers, Plus, Minus, Grid3x3 } from 'lucide-react';
+import { Building, Trash2, Bot, Layers, Plus, Minus, Grid3x3, Palette, Satellite, Fence } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uuid } from '@/components/map/map-canvas';
 import * as turf from '@turf/turf';
+import { cn } from '@/lib/utils';
 
-const SQ_METERS_TO_SQ_FEET = 10.7639;
 
 interface ThreeDEditorPanelProps {
     shapes: Shape[];
@@ -24,7 +24,18 @@ interface ThreeDEditorPanelProps {
     onDeleteAsset: (assetId: string) => void;
     setSelectedTool: (tool: Tool) => void;
     setAutofillTemplate: (asset: Shape | null) => void;
+    groundStyle: 'satellite' | 'color' | 'texture';
+    setGroundStyle: (style: 'satellite' | 'color' | 'texture') => void;
+    groundColor: [number, number, number];
+    setGroundColor: (color: [number, number, number]) => void;
 }
+
+const groundColors = {
+    'Sand': [228, 215, 189] as [number, number, number],
+    'Grass': [134, 172, 126] as [number, number, number],
+    'Earth': [147, 122, 102] as [number, number, number],
+    'Concrete': [189, 189, 189] as [number, number, number],
+};
 
 export function ThreeDEditorPanel({ 
     shapes, 
@@ -33,7 +44,11 @@ export function ThreeDEditorPanel({
     setSelectedAssetId, 
     onDeleteAsset,
     setSelectedTool,
-    setAutofillTemplate
+    setAutofillTemplate,
+    groundStyle,
+    setGroundStyle,
+    groundColor,
+    setGroundColor
 }: ThreeDEditorPanelProps) {
     
     const { toast } = useToast();
@@ -45,14 +60,11 @@ export function ThreeDEditorPanel({
             if (s.id === id && s.assetMeta) {
                 const newMeta = { ...s.assetMeta, ...updates };
 
-                // If size or rotation changed, recalculate the path
                 if (updates.width || updates.depth || updates.rotation !== undefined) {
                     const center = turf.center(turf.polygon([s.path.map(p => [p.lng, p.lat])])).geometry.coordinates;
                     const width = (newMeta.width || s.assetMeta.width || 10);
                     const depth = (newMeta.depth || s.assetMeta.depth || 8);
                     const rotation = newMeta.rotation === undefined ? s.assetMeta.rotation : newMeta.rotation;
-                    
-                    const unrotatedPoly = turf.bboxPolygon(turf.bbox(turf.buffer(turf.point(center), Math.max(width, depth) / 2000, { units: 'kilometers' })));
                     
                     const horizontalDistance = width / (111.32 * Math.cos(center[1] * (Math.PI / 180)));
                     const verticalDistance = depth / 111.32;
@@ -66,11 +78,7 @@ export function ThreeDEditorPanel({
 
                     const newPath = newPoly.geometry.coordinates[0].map((c: number[]) => ({lat: c[1], lng: c[0]}));
                     
-                    return {
-                        ...s,
-                        path: newPath,
-                        assetMeta: newMeta,
-                    };
+                    return { ...s, path: newPath, assetMeta: newMeta };
                 }
                 
                 return { ...s, assetMeta: newMeta };
@@ -85,7 +93,7 @@ export function ThreeDEditorPanel({
         setSelectedTool('autofill');
         toast({
             title: 'Start Drawing Autofill Area',
-            description: 'Draw a polygon on the map to fill it with copies of the selected building.',
+            description: 'Click points on the map to define an area. Double-click to finish.',
         });
     };
 
@@ -109,30 +117,14 @@ export function ThreeDEditorPanel({
         if (!selectedAsset || !selectedAsset.assetMeta) return;
 
         const { rotation = 0, width = 10, depth = 10, floors } = selectedAsset.assetMeta;
-        const originalPoly = turf.polygon([selectedAsset.path.map(p => [p.lng, p.lat])]);
         
-        // Find the "front" edge (assuming longest side)
-        let longestEdge: [turf.Position, turf.Position] | null = null;
-        let maxDist = 0;
-        turf.coordEach(originalPoly, (current, i) => {
-          if (i < originalPoly.geometry.coordinates[0].length - 1) {
-            const nextCoord = originalPoly.geometry.coordinates[0][i + 1];
-            if (!nextCoord) return;
-            const dist = turf.distance(current, nextCoord);
-            if (dist > maxDist) {
-              maxDist = dist;
-              longestEdge = [current, nextCoord];
-            }
-          }
-        });
+        const edgeMidpoint = turf.midpoint(
+            turf.point(selectedAsset.path[1].lng, selectedAsset.path[1].lat),
+            turf.point(selectedAsset.path[2].lng, selectedAsset.path[2].lat)
+        );
 
-        if (!longestEdge) return;
-        
-        const edgeMidpoint = turf.midpoint(longestEdge[0], longestEdge[1]);
-
-        // Place new building next to the original one
-        const distance = Math.max(width, depth) + 5; // Place it one "building length" away + 5m spacing
-        const newCenter = turf.destination(edgeMidpoint, distance / 1000, rotation + 90); // 90 deg from center of edge
+        const distance = Math.max(width, depth) + 5;
+        const newCenter = turf.destination(edgeMidpoint, distance / 1000, rotation + 90);
        
         const centerCoords = newCenter.geometry.coordinates;
 
@@ -183,6 +175,47 @@ export function ThreeDEditorPanel({
                         </CardContent>
                     )}
                 </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center justify-between">
+                           <span>Ground Style</span>
+                           <Palette className="h-5 w-5 text-muted-foreground" />
+                        </CardTitle>
+                        <CardDescription>
+                           Customize the appearance of the terrain.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center gap-2">
+                             <Button variant={groundStyle === 'satellite' ? 'default' : 'outline'} size="sm" className="flex-1" onClick={() => setGroundStyle('satellite')}>
+                                <Satellite className="mr-2 h-4 w-4" />
+                                Satellite
+                             </Button>
+                             <Button variant={groundStyle === 'color' ? 'default' : 'outline'} size="sm" className="flex-1" onClick={() => setGroundStyle('color')}>
+                                <Palette className="mr-2 h-4 w-4" />
+                                Color
+                             </Button>
+                             <Button variant={groundStyle === 'texture' ? 'default' : 'outline'} size="sm" className="flex-1" onClick={() => setGroundStyle('texture')}>
+                                <Fence className="mr-2 h-4 w-4" />
+                                Texture
+                             </Button>
+                        </div>
+                        {groundStyle === 'color' && (
+                            <div className="grid grid-cols-2 gap-2 pt-2">
+                                {Object.entries(groundColors).map(([name, color]) => (
+                                    <Button key={name} variant="outline" size="sm" onClick={() => setGroundColor(color)} className={cn(
+                                        "justify-start",
+                                        groundColor[0] === color[0] && groundColor[1] === color[1] && "border-primary ring-2 ring-primary"
+                                    )}>
+                                        <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: `rgb(${color.join(',')})` }} />
+                                        {name}
+                                    </Button>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
                 
                 <Card>
                     <CardHeader>
@@ -213,8 +246,7 @@ export function ThreeDEditorPanel({
                             <CardDescription className="text-xs break-all">ID: {selectedAsset.id}</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {/* Dimensions */}
-                             <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1.5">
                                     <Label htmlFor="width">Width (m)</Label>
                                     <Input 
@@ -237,7 +269,6 @@ export function ThreeDEditorPanel({
                                 </div>
                             </div>
                             
-                            {/* Rotation */}
                              <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="rotation">Rotation</Label>
@@ -251,7 +282,6 @@ export function ThreeDEditorPanel({
                                 />
                             </div>
 
-                            {/* Floors */}
                             <div className="space-y-2">
                                 <Label htmlFor="floors">Floors</Label>
                                 <div className="flex items-center gap-2">
@@ -272,13 +302,11 @@ export function ThreeDEditorPanel({
                                 </div>
                             </div>
 
-                            {/* AI Assist */}
                             <Button variant="outline" className="w-full" onClick={handleAiAssist}>
                                 <Bot className="h-4 w-4 mr-2" />
                                 AI Assist: Place Adjacent
                             </Button>
                            
-                            {/* Delete Action */}
                             <Button 
                                 variant="destructive"
                                 className="w-full"
@@ -295,3 +323,4 @@ export function ThreeDEditorPanel({
         </ScrollArea>
     );
 }
+

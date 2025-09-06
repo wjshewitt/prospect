@@ -85,6 +85,9 @@ function VisionPageContent() {
   
   const [viewState, setViewState] = useState<any>(INITIAL_VIEW_STATE);
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  const [groundStyle, setGroundStyle] = useState<'satellite' | 'color' | 'texture'>('satellite');
+  const [groundColor, setGroundColor] = useState<[number, number, number]>([228, 215, 189]);
 
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
@@ -541,6 +544,8 @@ function VisionPageContent() {
                             setSelectedTool={setSelectedTool}
                             setShapes={setShapes}
                             autofillTemplate={autofillTemplate}
+                            groundStyle={groundStyle}
+                            groundColor={groundColor}
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full">
@@ -600,6 +605,10 @@ function VisionPageContent() {
           onDeleteAsset={handleDeleteAsset}
           setSelectedTool={setSelectedTool}
           setAutofillTemplate={setAutofillTemplate}
+          groundStyle={groundStyle}
+          setGroundStyle={setGroundStyle}
+          groundColor={groundColor}
+          setGroundColor={setGroundColor}
         />
       </div>
       <NameSiteDialog 

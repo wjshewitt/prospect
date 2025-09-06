@@ -14,6 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import * as turf from '@turf/turf';
 
 const MAP_STYLE = 'mapbox://styles/mapbox/satellite-v9';
+const GRASS_TEXTURE_URL = 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/grass.png';
+
 
 interface ThreeDVisualizationProps {
   assets: Shape[];
@@ -28,6 +30,8 @@ interface ThreeDVisualizationProps {
   setSelectedTool: (tool: Tool) => void;
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
   autofillTemplate: Shape | null;
+  groundStyle: 'satellite' | 'color' | 'texture';
+  groundColor: [number, number, number];
 }
 
 function NavigationGuide() {
@@ -35,7 +39,7 @@ function NavigationGuide() {
         <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-md p-3 rounded-lg shadow-lg border text-xs text-foreground w-60 z-10">
             <h4 className="font-bold mb-2 flex items-center gap-2"><Move3d className="h-4 w-4" /> 3D Navigation</h4>
             <ul className="space-y-1.5">
-                <li className="flex items-center gap-2"><MousePointer className="h-4 w-4 text-muted-foreground" /> <strong>Pan/Select:</strong> Left-click + Drag</li>
+                <li className="flex items-center gap-2"><MousePointer className="h-4 w-4 text-muted-foreground" /> <strong>Select/Drag:</strong> Left-click + Drag</li>
                 <li className="flex items-center gap-2"><Move3d className="h-4 w-4 text-muted-foreground" /> <strong>Rotate/Pitch:</strong> Right-click + Drag</li>
                 <li className="flex items-center gap-2"><ZoomIn className="h-4 w-4 text-muted-foreground" /> <strong>Zoom:</strong> Scroll wheel</li>
             </ul>
@@ -56,6 +60,8 @@ export function ThreeDVisualization({
   setSelectedTool,
   setShapes,
   autofillTemplate,
+  groundStyle,
+  groundColor,
 }: ThreeDVisualizationProps) {
 
   const { toast } = useToast();
@@ -64,6 +70,7 @@ export function ThreeDVisualization({
   const [isDrawingAutofill, setIsDrawingAutofill] = useState(false);
   const [autofillPath, setAutofillPath] = useState<LatLng[] | null>(null);
   const clickTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [dragInfo, setDragInfo] = useState<{ id: string; dx: number; dy: number } | null>(null);
 
 
   // Update internal view state if the initial state prop changes (e.g., when re-entering 3D mode)
@@ -149,7 +156,7 @@ export function ThreeDVisualization({
     const handleAutofill = (fillAreaPath: LatLng[]) => {
         if (!autofillTemplate || !autofillTemplate.assetMeta) return;
 
-        const fillPolygon = turf.polygon([fillAreaPath.map(p => [p.lng, p.lat])]);
+        const fillPolygon = turf.polygon([[...fillAreaPath.map(p => [p.lng, p.lat]), [fillAreaPath[0].lng, fillAreaPath[0].lat]]]);
         const { width = 10, depth = 10, rotation = 0, floors } = autofillTemplate.assetMeta;
         
         const spacingX = width + 5; // 5m spacing
@@ -244,7 +251,7 @@ export function ThreeDVisualization({
     }
     
     const handleDeckClick = (info: PickingInfo, event: any) => {
-        if (event.srcEvent.type === 'dblclick') return;
+        if (event.srcEvent.type === 'dblclick' || dragInfo) return;
 
         if (clickTimeout.current) {
             clearTimeout(clickTimeout.current);
@@ -257,6 +264,40 @@ export function ThreeDVisualization({
             }, 250);
         }
     };
+    
+    const onDragStart = (info: PickingInfo) => {
+        if (info.object && info.object.id === selectedAssetId) {
+            setDragInfo({
+                id: info.object.id,
+                dx: info.coordinate[0] - info.object.path[0].lng,
+                dy: info.coordinate[1] - info.object.path[0].lat,
+            });
+        }
+    };
+
+    const onDrag = (info: PickingInfo) => {
+        if (!dragInfo || !info.coordinate) return;
+
+        const newLng = info.coordinate[0] - dragInfo.dx;
+        const newLat = info.coordinate[1] - dragInfo.dy;
+        
+        const originalShape = shapes.find(s => s.id === dragInfo.id);
+        if (!originalShape) return;
+        
+        const lngDiff = newLng - originalShape.path[0].lng;
+        const latDiff = newLat - originalShape.path[0].lat;
+        
+        const newPath = originalShape.path.map(p => ({
+            lng: p.lng + lngDiff,
+            lat: p.lat + latDiff,
+        }));
+        
+        setShapes(prev => prev.map(s => s.id === dragInfo.id ? {...s, path: newPath} : s));
+    };
+
+    const onDragEnd = () => {
+        setDragInfo(null);
+    };
 
 
   // Memoize layer creation for performance.
@@ -266,7 +307,6 @@ export function ThreeDVisualization({
     const { grid } = elevationGrid.pointGrid;
     const { minX, maxX, minY, maxY } = elevationGrid.xyBounds;
 
-    // Terrain Layer for elevation visualization.
     const terrainLayer = new TerrainLayer({
       id: 'terrain',
       minZoom: 0,
@@ -277,9 +317,10 @@ export function ThreeDVisualization({
         diffuse: 0.9,
       },
       zScaler: 1.2,
+      texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : null,
+      color: groundColor,
     });
     
-    // Polygon layer for building assets.
     const buildingLayer = new PolygonLayer({
         id: 'buildings',
         data: assets,
@@ -303,7 +344,6 @@ export function ThreeDVisualization({
         }
     }
 
-    // Polygon layer for zones
     const zoneLayer = new PolygonLayer({
         id: 'zones',
         data: zones,
@@ -342,7 +382,7 @@ export function ThreeDVisualization({
 
 
     return [terrainLayer, boundaryLayer, zoneLayer, buildingLayer, autofillDrawLayer];
-  }, [elevationGrid, assets, zones, selectedAssetId, boundary, autofillPath]);
+  }, [elevationGrid, assets, zones, selectedAssetId, boundary, autofillPath, groundStyle, groundColor]);
 
   if (!viewState) {
     return (
@@ -359,6 +399,9 @@ export function ThreeDVisualization({
     controller: {doubleClickZoom: false}, // Disable double click zoom to use it for finishing drawing
     style: { position: 'relative', width: '100%', height: '100%' },
     onClick: handleDeckClick,
+    onDragStart,
+    onDrag,
+    onDragEnd,
     getCursor: ({ isDragging }: { isDragging: boolean }) => {
         if (isDrawingAutofill) return 'crosshair';
         if (isDragging) return 'grabbing';
@@ -370,14 +413,17 @@ export function ThreeDVisualization({
   return (
     <div className="w-full h-full relative">
       <DeckGL {...deckProps}>
-        <Map 
-          mapStyle={MAP_STYLE} 
-          mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-          preventStyleDiffing
-          interactive={false}
-        />
+        {groundStyle === 'satellite' && (
+             <Map 
+                mapStyle={MAP_STYLE} 
+                mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+                preventStyleDiffing
+                interactive={false}
+             />
+        )}
       </DeckGL>
       <NavigationGuide />
     </div>
   );
 }
+
