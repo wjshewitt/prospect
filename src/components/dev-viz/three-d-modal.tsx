@@ -213,7 +213,7 @@ export function ThreeDVisualization({
         // If drawing, add a point to the path
         if (isDrawingAutofill && info.coordinate) {
             setAutofillPath(prev => {
-                const newPath = prev ? [...prev, { lng: info.coordinate[0], lat: info.coordinate[1] }] : null;
+                const newPath = prev ? [...prev, { lng: info.coordinate[0], lat: info.coordinate[1] }] : [];
                 if (newPath?.length === 1) {
                     toast({
                         title: 'Drawing Area',
