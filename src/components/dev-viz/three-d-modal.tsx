@@ -73,6 +73,19 @@ export function ThreeDVisualization({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialViewState]);
 
+  useEffect(() => {
+    // Start drawing when the tool is selected
+    if (selectedTool === 'autofill' && !isDrawingAutofill) {
+        setIsDrawingAutofill(true);
+        setAutofillPath([]);
+    }
+    // Cancel drawing if the tool changes
+    if (selectedTool !== 'autofill' && isDrawingAutofill) {
+        setIsDrawingAutofill(false);
+        setAutofillPath(null);
+    }
+  }, [selectedTool, isDrawingAutofill]);
+
   const handlePlaceBuilding = useCallback((info: PickingInfo) => {
     if (!info.coordinate) return;
     
@@ -179,50 +192,46 @@ export function ThreeDVisualization({
         setAutofillPath(null);
     };
 
-  const onDragStart = (info: PickingInfo) => {
-    if (selectedTool !== 'autofill' || !info.coordinate) return;
-    setIsDrawingAutofill(true);
-    setAutofillPath([{ lng: info.coordinate[0], lat: info.coordinate[1] }]);
-  };
+    const handleFinishDrawing = () => {
+        if (!isDrawingAutofill || !autofillPath) return;
 
-  const onDrag = (info: PickingInfo) => {
-    if (!isDrawingAutofill || !info.coordinate) return;
-    setAutofillPath(prev => prev ? [...prev, { lng: info.coordinate[0], lat: info.coordinate[1] }] : null);
-  };
-  
-  const onDragEnd = (info: PickingInfo) => {
-    if (!isDrawingAutofill) return;
-    
-    setIsDrawingAutofill(false);
-    if (autofillPath && autofillPath.length > 2) {
-        handleAutofill([...autofillPath, autofillPath[0]]);
-    } else {
-        toast({
-            variant: 'destructive',
-            title: 'Area Too Small',
-            description: 'Please draw a larger area to fill.',
-        });
-    }
-    setAutofillPath(null);
-    setSelectedTool('pan');
-  };
+        if (autofillPath.length > 2) {
+            handleAutofill([...autofillPath, autofillPath[0]]);
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Area Too Small',
+                description: 'Please click at least 3 points to define an area.',
+            });
+        }
+        setIsDrawingAutofill(false);
+        setAutofillPath(null);
+        setSelectedTool('pan');
+    };
 
-  const handleClick = (info: PickingInfo) => {
-    // If an asset is clicked, select it
-    if (info.object) {
-        setSelectedAssetId(info.object.id);
-        return;
-    }
-    
-    // If in placement mode, place an asset
-    if (selectedTool === 'asset') {
-        handlePlaceBuilding(info);
-        return;
+    const handleClick = (info: PickingInfo) => {
+        // If drawing, add a point to the path
+        if (isDrawingAutofill && info.coordinate) {
+            setAutofillPath(prev => prev ? [...prev, { lng: info.coordinate[0], lat: info.coordinate[1] }] : null);
+            return;
+        }
+
+        // If an asset is clicked, select it
+        if (info.object) {
+            setSelectedAssetId(info.object.id);
+            return;
+        }
+        
+        // If in placement mode, place an asset
+        if (selectedTool === 'asset') {
+            handlePlaceBuilding(info);
+            return;
+        }
+
+        // Otherwise, deselect
+        setSelectedAssetId(null);
     }
 
-    // Otherwise, deselect
-    setSelectedAssetId(null);
-  }
 
   // Memoize layer creation for performance.
   const layers = useMemo(() => {
@@ -298,8 +307,7 @@ export function ThreeDVisualization({
     
     const autofillDrawLayer = new PolygonLayer({
         id: 'autofill-draw-layer',
-        data: autofillPath ? [autofillPath] : [],
-        getPolygon: d => d.map(p => [p.lng, p.lat]),
+        data: autofillPath ? [{polygon: autofillPath.map(p => [p.lng, p.lat])}] : [],
         getFillColor: [255, 193, 7, 50],
         getLineColor: [255, 193, 7, 200],
         getLineWidth: 2,
@@ -322,19 +330,16 @@ export function ThreeDVisualization({
     layers: layers,
     viewState: viewState,
     onViewStateChange: ({viewState}: {viewState: any}) => setViewState(viewState),
-    controller: true,
+    controller: {doubleClickZoom: false}, // Disable double click zoom to use it for finishing drawing
     style: { position: 'relative', width: '100%', height: '100%' },
     onClick: handleClick,
+    onDoubleClick: handleFinishDrawing,
     getCursor: ({ isDragging }: { isDragging: boolean }) => {
         if (isDrawingAutofill) return 'crosshair';
         if (isDragging) return 'grabbing';
         if (selectedTool === 'asset') return 'copy';
-        if (selectedTool === 'autofill') return 'crosshair';
         return 'grab';
     },
-    onDragStart: selectedTool === 'autofill' ? onDragStart : undefined,
-    onDrag: selectedTool === 'autofill' ? onDrag : undefined,
-    onDragEnd: selectedTool === 'autofill' ? onDragEnd : undefined,
   };
 
   return (
