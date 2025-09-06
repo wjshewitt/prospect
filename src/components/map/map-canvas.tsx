@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
@@ -86,19 +87,8 @@ const getEnhancedShapeStyle = (
     fillOpacity = isSelected ? 0.2 : 0.1;
     zIndex = 5;
     
-    // Professional dashed border
-    icons = [{
-      icon: {
-        path: 'M 0,-2 0,2',
-        strokeOpacity: 1,
-        strokeWeight: strokeWeight,
-        strokeColor: strokeColor,
-        scale: 4
-      },
-      offset: '0',
-      repeat: '16px'
-    }];
-    strokeOpacity = 0; // Hide solid line, use icon pattern
+    // Solid line for boundary
+    strokeOpacity = 0.8;
   }
 
   // ENHANCED BUFFER STYLING
@@ -788,6 +778,37 @@ const FreehandDrawingTool: React.FC<{
   return null;
 };
 
+const OpenStreetMapLayer = () => {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    const osmMapType = new google.maps.ImageMapType({
+      getTileUrl: function (coord, zoom) {
+        return `https://a.tile.openstreetmap.org/${zoom}/${coord.x}/${coord.y}.png`;
+      },
+      tileSize: new google.maps.Size(256, 256),
+      name: 'OpenStreetMap',
+      maxZoom: 18,
+    });
+
+    map.overlayMapTypes.insertAt(0, osmMapType);
+    return () => {
+      // This is a bit tricky, but we try to remove it.
+      // A more robust solution might involve managing the overlay types array more carefully.
+      if (map && map.overlayMapTypes) {
+        for (let i = 0; i < map.overlayMapTypes.getLength(); i++) {
+            const mt = map.overlayMapTypes.getAt(i);
+            if (mt && mt.name === 'OpenStreetMap') {
+                map.overlayMapTypes.removeAt(i);
+                break;
+            }
+        }
+      }
+    };
+  }, [map]);
+  return null;
+};
+
 export const MapCanvas: React.FC<MapCanvasProps> = ({
   selectedTool,
   shapes,
@@ -1056,6 +1077,7 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
         fullscreenControl={false}
         className="w-full h-full"
       >
+        {isLoaded && <OpenStreetMapLayer />}
         {isLoaded && <DrawingManagerComponent selectedTool={selectedTool} shapes={shapes} setSelectedTool={setSelectedTool} onZoneDrawn={handleZoneDrawn} onBoundaryDrawn={onBoundaryDrawn} />}
         {isLoaded && selectedTool === 'freehand' && <FreehandDrawingTool shapes={shapes} onDrawEnd={handleFreehandDrawEnd} setSelectedTool={setSelectedTool} />}
         {isLoaded && <DrawnShapes shapes={shapes} setShapes={setShapes} onShapeRightClick={handleShapeRightClick} onShapeClick={handleShapeClick} selectedShapeIds={selectedShapeIds} editingShapeId={editingShapeId} setEditingShapeId={setEditingShapeId} movingShapeId={movingShapeId} setMovingShapeId={setMovingShapeId} />}
