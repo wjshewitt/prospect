@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for generating procedural site layouts.
@@ -7,6 +8,7 @@
 
 import { ai } from '@/ai/genkit';
 import * as turf from '@turf/turf';
+import * as turfRandom from '@turf/random';
 import type {
   Feature,
   FeatureCollection,
@@ -177,7 +179,7 @@ class UrbanPlanner {
           let pt;
           let tries = 0;
           do {
-            pt = turf.randomPoint(1, { bbox: bboxFeat }).features[0];
+            pt = turfRandom.randomPoint(1, { bbox: bboxFeat }).features[0];
             tries++;
           } while (
             !turf.booleanPointInPolygon(pt, buildableArea) &&
@@ -255,7 +257,7 @@ class UrbanPlanner {
       const maxAttempts = target * 30;
       let attempts = 0;
       while (accepted.length < target && attempts < maxAttempts) {
-        const rp = turf.randomPoint(1, { bbox: bboxFeat }).features[0];
+        const rp = turfRandom.randomPoint(1, { bbox: bboxFeat }).features[0];
         attempts++;
         if (!inside(rp)) continue;
         let ok = true;
@@ -487,5 +489,3 @@ function boundaryToPolygon(boundary: {lat: number, lng: number}[]): Feature<Poly
 function positionsEqual(a: Position, b: Position, eps = 1e-9): boolean {
   return Math.abs(a[0] - b[0]) < eps && Math.abs(a[1] - b[1]) < eps;
 }
-
-    
