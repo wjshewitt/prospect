@@ -321,9 +321,8 @@ class UrbanPlanner {
       for (const parcel of parcels.features) {
           try {
               const areaSqm = turf.area(parcel);
-              // Enforce smaller building sizes
-              const targetSizeMin = Math.min(60, this.settings.minBuildingSize);
-              const targetSizeMax = Math.min(80, this.settings.maxBuildingSize);
+              const targetSizeMin = this.settings.minBuildingSize;
+              const targetSizeMax = this.settings.maxBuildingSize;
               const targetArea = targetSizeMin + this.rand() * (targetSizeMax - targetSizeMin);
               
               if (areaSqm < targetArea * 0.8) continue; // Skip if parcel is too small
