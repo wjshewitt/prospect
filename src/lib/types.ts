@@ -30,6 +30,8 @@ export type Shape = {
     key: string;
     floors: number;
     rotation: number;
+    width?: number;
+    depth?: number;
   }
 };
 

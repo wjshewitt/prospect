@@ -9,8 +9,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { Building, Trash2, Pencil, Bot, Layers, Plus, Minus } from 'lucide-react';
+import { Building, Trash2, RotateCcw, Bot, Layers, Plus, Minus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { uuid } from '@/components/map/map-canvas';
+import * as turf from '@turf/turf';
 
 const SQ_METERS_TO_SQ_FEET = 10.7639;
 
@@ -34,17 +36,99 @@ export function ThreeDEditorPanel({
     const selectedAsset = shapes.find(s => s.id === selectedAssetId);
     const buildings = shapes.filter(s => s.assetMeta?.assetType === 'building');
 
-    const handleFloorsChange = (newFloors: number) => {
-        if (!selectedAssetId || newFloors < 1) return;
+    const updateAsset = (id: string, updates: Partial<Shape['assetMeta']>) => {
         setShapes(prev => prev.map(s => {
-            if (s.id === selectedAssetId && s.assetMeta) {
-                return {
-                    ...s,
-                    assetMeta: { ...s.assetMeta, floors: newFloors }
-                };
+            if (s.id === id && s.assetMeta) {
+                const newMeta = { ...s.assetMeta, ...updates };
+
+                // If size or rotation changed, recalculate the path
+                if (updates.width || updates.depth || updates.rotation !== undefined) {
+                    const center = turf.center(turf.polygon(s.path.map(p => [p.lng, p.lat]))).geometry.coordinates;
+                    const width = newMeta.width || s.assetMeta.width || 10;
+                    const depth = newMeta.depth || s.assetMeta.depth || 8;
+                    const rotation = newMeta.rotation || 0;
+                    
+                    const newPoly = turf.polygon(
+                        [turf.rectangle(center, width, depth, { units: 'meters', angle: rotation }).geometry.coordinates[0]]
+                    );
+                    const newPath = newPoly.geometry.coordinates[0].map((c: number[]) => ({lat: c[1], lng: c[0]}));
+                    
+                    return {
+                        ...s,
+                        path: newPath,
+                        assetMeta: newMeta,
+                    };
+                }
+                
+                return { ...s, assetMeta: newMeta };
             }
             return s;
         }));
+    };
+
+    const handleFloorsChange = (newFloors: number) => {
+        if (!selectedAssetId || newFloors < 1) return;
+        updateAsset(selectedAssetId, { floors: newFloors });
+    };
+
+    const handleRotationChange = (newRotation: number[]) => {
+        if (!selectedAssetId) return;
+        updateAsset(selectedAssetId, { rotation: newRotation[0] });
+    };
+    
+    const handleDimensionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!selectedAssetId) return;
+        const { id, value } = e.target;
+        updateAsset(selectedAssetId, { [id]: parseFloat(value) || 0 });
+    };
+    
+    const handleAiAssist = () => {
+        if (!selectedAsset || !selectedAsset.assetMeta) return;
+
+        const { rotation, width = 10, depth = 10, floors } = selectedAsset.assetMeta;
+        const originalPoly = turf.polygon([selectedAsset.path.map(p => [p.lng, p.lat])]);
+        
+        // Find the "front" edge (assuming longest side)
+        let longestEdge: [turf.Position, turf.Position] | null = null;
+        let maxDist = 0;
+        turf.coordEach(originalPoly, (current, i, features, multi, ring) => {
+          if (ring !== undefined && ring < originalPoly.geometry.coordinates.length) {
+            const nextCoord = originalPoly.geometry.coordinates[ring][i + 1];
+            if (!nextCoord) return;
+            const dist = turf.distance(current, nextCoord);
+            if (dist > maxDist) {
+              maxDist = dist;
+              longestEdge = [current, nextCoord];
+            }
+          }
+        });
+
+        if (!longestEdge) return;
+        
+        const edgeMidpoint = turf.midpoint(longestEdge[0], longestEdge[1]);
+
+        // Place new building next to the original one
+        const distance = Math.max(width, depth) + 5; // Place it one "building length" away + 5m spacing
+        const newCenter = turf.destination(edgeMidpoint, distance / 1000, rotation + 90); // 90 deg from center of edge
+       
+        const newPoly = turf.polygon(
+          [turf.rectangle(newCenter.geometry.coordinates, width, depth, { units: 'meters', angle: rotation }).geometry.coordinates[0]]
+        );
+        const newPath = newPoly.geometry.coordinates[0].map((c: number[]) => ({lat: c[1], lng: c[0]}));
+        
+        const newBuilding: Shape = {
+          id: uuid(),
+          type: 'rectangle',
+          path: newPath,
+          area: width * depth,
+          assetMeta: { assetType: 'building', key: 'default_building', floors, rotation, width, depth },
+        };
+
+        setShapes(prev => [...prev, newBuilding]);
+        toast({
+          title: 'AI Assist',
+          description: 'Placed an adjacent building.',
+        });
     };
     
     return (
@@ -76,10 +160,42 @@ export function ThreeDEditorPanel({
                             <CardDescription className="text-xs break-all">ID: {selectedAsset.id}</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {/* Area */}
-                            <div className="flex items-center justify-between text-sm">
-                                <Label>Footprint</Label>
-                                <span className="font-mono">{(selectedAsset.area || 0).toFixed(1)} m²</span>
+                            {/* Dimensions */}
+                             <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="width">Width (m)</Label>
+                                    <Input 
+                                        id="width" 
+                                        type="number" 
+                                        value={selectedAsset.assetMeta.width || ''} 
+                                        onChange={handleDimensionChange} 
+                                        className="h-8"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="depth">Depth (m)</Label>
+                                    <Input 
+                                        id="depth" 
+                                        type="number" 
+                                        value={selectedAsset.assetMeta.depth || ''} 
+                                        onChange={handleDimensionChange} 
+                                        className="h-8"
+                                    />
+                                </div>
+                            </div>
+                            
+                            {/* Rotation */}
+                             <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="rotation">Rotation</Label>
+                                    <span className="text-xs font-mono">{selectedAsset.assetMeta.rotation}°</span>
+                                </div>
+                                <Slider 
+                                    id="rotation"
+                                    min={0} max={360} step={1} 
+                                    value={[selectedAsset.assetMeta.rotation]}
+                                    onValueChange={handleRotationChange}
+                                />
                             </div>
 
                             {/* Floors */}
@@ -102,6 +218,12 @@ export function ThreeDEditorPanel({
                                     </Button>
                                 </div>
                             </div>
+
+                            {/* AI Assist */}
+                            <Button variant="outline" className="w-full" onClick={handleAiAssist}>
+                                <Bot className="h-4 w-4 mr-2" />
+                                AI Assist: Place Adjacent
+                            </Button>
                            
                             {/* Delete Action */}
                             <Button 

@@ -10,7 +10,8 @@ import { PolygonLayer } from '@deck.gl/layers';
 import { PathStyleExtension } from '@deck.gl/extensions';
 import { Map } from 'react-map-gl';
 import { Move3d, MousePointer, ZoomIn } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import * as turf from '@turf/turf';
 
 const MAP_STYLE = 'mapbox://styles/mapbox/satellite-v9';
 
@@ -54,20 +55,25 @@ export function ThreeDVisualization({
 }: ThreeDVisualizationProps) {
 
   const [viewState, setViewState] = useState(initialViewState);
+  const isFirstLoad = React.useRef(true);
 
   // Update internal view state if the initial state prop changes (e.g., when re-entering 3D mode)
   useEffect(() => {
-    setViewState(initialViewState);
+    if (isFirstLoad.current) {
+        setViewState(initialViewState);
+        isFirstLoad.current = false;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialViewState]);
 
   const handlePlaceBuilding = useCallback((info: PickingInfo) => {
     if (!info.coordinate) return;
     
     // Check if click is inside the main boundary
-    const boundaryPoly = new google.maps.Polygon({ paths: boundary.path });
-    const clickLatLng = new google.maps.LatLng(info.coordinate[1], info.coordinate[0]);
+    const boundaryPoly = turf.polygon(boundary.path.map(p => [p.lng, p.lat]));
+    const clickPoint = turf.point(info.coordinate);
 
-    if (!google.maps.geometry.poly.containsLocation(clickLatLng, boundaryPoly)) {
+    if (!turf.booleanPointInPolygon(clickPoint, boundaryPoly)) {
         toast({
             variant: 'destructive',
             title: 'Out of Bounds',
@@ -76,27 +82,39 @@ export function ThreeDVisualization({
         return;
     }
 
-    const buildingSizeMeters = 10; // 10x10 meter building
+    const buildingWidth = 8;
+    const buildingDepth = 10;
     const center = { lat: info.coordinate[1], lng: info.coordinate[0] };
-    const halfSizeDeg = (buildingSizeMeters / 111320) / 2;
+    const centerPoint = turf.point([center.lng, center.lat]);
     
-    const path = [
-        { lat: center.lat - halfSizeDeg, lng: center.lng - halfSizeDeg },
-        { lat: center.lat + halfSizeDeg, lng: center.lng - halfSizeDeg },
-        { lat: center.lat + halfSizeDeg, lng: center.lng + halfSizeDeg },
-        { lat: center.lat - halfSizeDeg, lng: center.lng + halfSizeDeg },
+    // Create a rectangle and rotate it
+    const halfW = buildingWidth / 2;
+    const halfD = buildingDepth / 2;
+    const bbox: turf.BBox = [
+      centerPoint.geometry.coordinates[0] - halfW, 
+      centerPoint.geometry.coordinates[1] - halfD, 
+      centerPoint.geometry.coordinates[0] + halfW, 
+      centerPoint.geometry.coordinates[1] + halfD
     ];
-
+    
+    const unrotatedPoly = turf.bboxPolygon(bbox);
+    
+    // Convert meters to degrees for turf
+    const turfPoly = turf.toMercator(unrotatedPoly);
+    const path = turf.getCoords(turf.toWgs84(turfPoly))[0].map((c: any) => ({ lat: c[1], lng: c[0] }));
+    
     const newBuilding: Shape = {
         id: uuid(),
         type: 'rectangle',
         path,
-        area: buildingSizeMeters * buildingSizeMeters,
+        area: buildingWidth * buildingDepth,
         assetMeta: {
             assetType: 'building',
             key: 'default_building',
             floors: 2,
             rotation: 0,
+            width: buildingWidth,
+            depth: buildingDepth
         },
     };
     
@@ -106,7 +124,7 @@ export function ThreeDVisualization({
         description: 'A new building has been added to the site.',
     });
 
-  }, [boundary.path, setShapes]);
+  }, [boundary.path, setShapes, toast]);
 
   const handleClick = (info: PickingInfo) => {
     // If an asset is clicked, select it
