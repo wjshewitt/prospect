@@ -28,9 +28,9 @@ export function ProceduralPlannerPanel({ onGenerate, isGenerating, isReady }: Pr
     seed: '',
     roadSetback: 6,
     siteSetback: 5,
-    minBuildingSize: 100,
-    maxBuildingSize: 500,
-    spacing: 10,
+    minBuildingSize: 60,
+    maxBuildingSize: 80,
+    spacing: 15,
     buildingShape: 'mixed',
   });
 
