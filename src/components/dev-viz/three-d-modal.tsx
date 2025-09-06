@@ -328,7 +328,7 @@ export function ThreeDVisualization({
         filled: true,
         stroked: false,
         texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : undefined,
-        extensions: [new (DrapingExtension as any)()],
+        extensions: [new (class DrapingExtension {})()],
         drapingSource: 'terrain',
     });
     
@@ -424,14 +424,18 @@ export function ThreeDVisualization({
   return (
     <div className="w-full h-full relative">
       <DeckGL {...deckProps}>
-        <Map 
-            mapStyle={'mapbox://styles/mapbox/satellite-v9'} 
-            mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-            preventStyleDiffing
-            interactive={false}
-        />
+        {groundStyle === 'satellite' && (
+          <Map 
+              mapStyle={'mapbox://styles/mapbox/satellite-v9'} 
+              mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+              preventStyleDiffing
+              interactive={false}
+          />
+        )}
       </DeckGL>
       <NavigationGuide />
     </div>
   );
 }
+
+    
