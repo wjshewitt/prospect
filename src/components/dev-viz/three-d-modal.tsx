@@ -4,10 +4,10 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import type { Shape, ElevationGrid, Tool, LatLng } from '@/lib/types';
 import { uuid } from '@/components/map/map-canvas';
-import DeckGL, { PickingInfo } from '@deck.gl/react';
+import DeckGL from '@deck.gl/react';
+import type {PickingInfo} from '@deck.gl/core';
 import { TerrainLayer } from '@deck.gl/geo-layers';
 import { PolygonLayer } from '@deck.gl/layers';
-import { PathStyleExtension } from '@deck.gl/extensions';
 import { Map } from 'react-map-gl';
 import { Move3d, MousePointer, ZoomIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -328,8 +328,6 @@ export function ThreeDVisualization({
         filled: true,
         stroked: false,
         texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : undefined,
-        extensions: [new (class DrapingExtension {})()],
-        drapingSource: 'terrain',
     });
     
     const buildingLayer = new PolygonLayer({
@@ -376,9 +374,6 @@ export function ThreeDVisualization({
         getLineColor: [252, 165, 3, 255], // bright orange
         getLineWidth: 4,
         lineWidthMinPixels: 4,
-        getDashArray: [8, 4],
-        dashJustified: true,
-        extensions: [new PathStyleExtension({dash: true})],
         extruded: false,
     });
     
