@@ -489,3 +489,5 @@ function boundaryToPolygon(boundary: {lat: number, lng: number}[]): Feature<Poly
 function positionsEqual(a: Position, b: Position, eps = 1e-9): boolean {
   return Math.abs(a[0] - b[0]) < eps && Math.abs(a[1] - b[1]) < eps;
 }
+
+    
