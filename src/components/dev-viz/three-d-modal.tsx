@@ -43,50 +43,6 @@ function NavigationGuide() {
     )
 }
 
-const AutofillDrawingTool: React.FC<{
-    onDrawEnd: (path: LatLng[]) => void;
-    setSelectedTool: (tool: Tool) => void;
-}> = ({ onDrawEnd, setSelectedTool }) => {
-    const [isDrawing, setIsDrawing] = useState(false);
-    const pathRef = useRef<LatLng[]>([]);
-    const [polyline, setPolyline] = useState<any>(null);
-    const { toast } = useToast();
-
-    const onDragStart = (info: any) => {
-        if (!info.coordinate) return;
-        setIsDrawing(true);
-        pathRef.current = [ { lng: info.coordinate[0], lat: info.coordinate[1] } ];
-    };
-
-    const onDrag = (info: any) => {
-        if (!isDrawing || !info.coordinate) return;
-        pathRef.current.push({ lng: info.coordinate[0], lat: info.coordinate[1] });
-        // This is a simplified representation. In a real scenario, you'd update a layer.
-        // For now, we just collect points.
-    };
-
-    const onDragEnd = (info: any) => {
-        if (!isDrawing) return;
-        
-        setIsDrawing(false);
-        if (pathRef.current.length > 2) {
-            onDrawEnd([...pathRef.current, pathRef.current[0]]); // Close the polygon
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Area Too Small',
-                description: 'Please draw a larger area to fill.',
-            });
-        }
-        pathRef.current = [];
-        setSelectedTool('pan');
-    };
-    
-    // We need to add these as props to DeckGL
-    return <DeckGL onDragStart={onDragStart} onDrag={onDrag} onDragEnd={onDragEnd} getCursor={() => 'crosshair'} />;
-};
-
-
 export function ThreeDVisualization({
   assets,
   zones,
@@ -281,7 +237,6 @@ export function ThreeDVisualization({
       minZoom: 0,
       maxZoom: 20,
       elevationData: grid,
-      texture: MAP_STYLE,
       bounds: [minX, minY, maxX, maxY],
       material: {
         diffuse: 0.9,
@@ -396,3 +351,5 @@ export function ThreeDVisualization({
     </div>
   );
 }
+
+    
