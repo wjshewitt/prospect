@@ -1,8 +1,9 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow for generating building layouts within a specified zone.
- * This flow uses an AI model to act as an urban planner, placing buildings in a realistic
- * and aesthetically pleasing manner.
+ * This flow is a placeholder and is not currently used by the application, which
+ * now uses a more advanced procedural generator.
  */
 
 import { ai } from '@/ai/genkit';
@@ -25,6 +26,7 @@ const BuildingSchema = z.object({
 // Define the input schema for the flow
 const GenerateBuildingLayoutInputSchema = z.object({
   zonePolygon: z.array(PointSchema).describe('An array of points defining the boundary of the zone to place buildings in.'),
+  density: z.enum(['low', 'medium', 'high']).describe('The desired density of the layout.'),
 });
 export type GenerateBuildingLayoutInput = z.infer<typeof GenerateBuildingLayoutInputSchema>;
 
@@ -37,7 +39,7 @@ export type GenerateBuildingLayoutOutput = z.infer<typeof GenerateBuildingLayout
 
 /**
  * An exported wrapper function that calls the Genkit flow.
- * @param input - The input object containing the zone polygon.
+ * @param input - The input object containing the zone polygon and density.
  * @returns A promise that resolves to the generated building layout.
  */
 export async function generateBuildingLayout(input: GenerateBuildingLayoutInput): Promise<GenerateBuildingLayoutOutput> {
@@ -51,7 +53,7 @@ const generateLayoutPrompt = ai.definePrompt({
   input: { schema: GenerateBuildingLayoutInputSchema },
   output: { schema: GenerateBuildingLayoutOutputSchema },
   prompt: `
-    You are an expert urban planner AI. Your task is to design a realistic and aesthetically pleasing residential building layout within a given polygonal zone.
+    You are an expert urban planner AI. Your task is to design a realistic and aesthetically pleasing residential building layout within a given polygonal zone, based on a specified density.
 
     Rules and Constraints:
     1.  All generated buildings must be strictly inside the provided 'zonePolygon'.
@@ -60,9 +62,11 @@ const generateLayoutPrompt = ai.definePrompt({
     4.  Arrange the buildings in natural-looking clusters. Avoid placing them in a simple, rigid grid.
     5.  Introduce slight variations in rotation for each building to make the layout look more organic.
     6.  Ensure a reasonable distance between buildings for privacy and access.
+    7.  The number of buildings should reflect the 'density' parameter: 'low' should have few buildings with large spacing, 'medium' should have moderate spacing, and 'high' should be tightly packed but not overlapping.
 
     Input:
     - Zone Polygon: {{{json zonePolygon}}}
+    - Density: {{{density}}}
 
     Output the result as a JSON object matching the prescribed output schema.
   `,

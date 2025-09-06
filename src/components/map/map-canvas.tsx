@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
@@ -11,7 +10,6 @@ import { ZoneDialog, type ZoneDialogState } from './zone-dialog';
 import { applyBuffer } from '@/services/buffer';
 import { SiteMarker } from './site-marker';
 import * as turf from '@turf/turf';
-
 
 interface MapCanvasProps {
   shapes: Shape[];
@@ -38,6 +36,189 @@ export function uuid() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+// Enhanced zone colors with better contrast and visibility
+const getEnhancedZoneColor = (kind: Shape['zoneMeta']['kind']) => {
+  switch(kind) {
+    case 'residential': 
+      return { fill: '#10B981', stroke: '#059669' }; // Emerald
+    case 'commercial': 
+      return { fill: '#3B82F6', stroke: '#2563EB' }; // Blue
+    case 'amenity': 
+      return { fill: '#F59E0B', stroke: '#D97706' }; // Amber
+    case 'green_space': 
+      return { fill: '#22C55E', stroke: '#16A34A' }; // Green
+    case 'solar': 
+      return { fill: '#F97316', stroke: '#EA580C' }; // Orange
+    default: 
+      return { fill: '#6B7280', stroke: '#4B5563' }; // Gray
+  }
+};
+
+// Enhanced styling function for drawn shapes
+const getEnhancedShapeStyle = (
+  shape: Shape, 
+  isSelected: boolean, 
+  isEditing: boolean, 
+  isMoving: boolean, 
+  bufferedParentIds: Set<string>
+) => {
+  const isBuffer = !!shape.bufferMeta;
+  const isZone = !!shape.zoneMeta;
+  const isAsset = !!shape.assetMeta;
+  const isBoundary = !isBuffer && !isZone && !isAsset;
+  const isBufferedParent = bufferedParentIds.has(shape.id);
+  
+  // Enhanced base styling
+  let fillColor = '#3B82F6'; // Default blue
+  let fillOpacity = 0.3;
+  let strokeColor = '#3B82F6';
+  let strokeOpacity = 0.9;
+  let strokeWeight = isSelected ? 5 : 3.5; // Much thicker lines
+  let strokePosition: google.maps.StrokePosition = google.maps.StrokePosition.OUTSIDE;
+  let zIndex = 1;
+  let icons: google.maps.IconSequence[] | undefined;
+
+  // ENHANCED BOUNDARY STYLING
+  if (isBoundary) {
+    strokeColor = '#FF6B35'; // Vibrant orange
+    fillColor = '#FF6B35';
+    strokeWeight = isSelected ? 6 : 4;
+    fillOpacity = isSelected ? 0.2 : 0.1;
+    zIndex = 5;
+    
+    // Professional dashed border
+    icons = [{
+      icon: {
+        path: 'M 0,-2 0,2',
+        strokeOpacity: 1,
+        strokeWeight: strokeWeight,
+        strokeColor: strokeColor,
+        scale: 4
+      },
+      offset: '0',
+      repeat: '16px'
+    }];
+    strokeOpacity = 0; // Hide solid line, use icon pattern
+  }
+
+  // ENHANCED BUFFER STYLING
+  if (isBuffer) {
+    fillColor = '#8B5CF6'; // Purple
+    strokeColor = '#8B5CF6';
+    fillOpacity = 0.25;
+    strokeWeight = isSelected ? 4 : 3;
+    zIndex = isSelected ? 6 : 3;
+    
+    // Dotted pattern for buffers
+    icons = [{
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        strokeOpacity: 1,
+        strokeWeight: 2,
+        strokeColor: strokeColor,
+        fillColor: strokeColor,
+        fillOpacity: 1,
+        scale: 3
+      },
+      offset: '0',
+      repeat: '20px'
+    }];
+    strokeOpacity = 0.3;
+  } else if (isBufferedParent) {
+    strokeOpacity = 0.3;
+  }
+
+  // ENHANCED ZONE STYLING
+  if (isZone) {
+    const zoneColors = getEnhancedZoneColor(shape.zoneMeta!.kind);
+    fillColor = zoneColors.fill;
+    strokeColor = zoneColors.stroke;
+    fillOpacity = 0.35;
+    strokeWeight = isSelected ? 4 : 3;
+    zIndex = isSelected ? 7 : 4;
+    strokeOpacity = 0.9;
+  }
+
+  // ENHANCED ASSET STYLING
+  if (isAsset) {
+    fillColor = shape.assetMeta?.assetType === 'solar_panel' ? '#1E40AF' : '#475569';
+    strokeColor = '#1E293B';
+    strokeWeight = 2;
+    zIndex = isSelected ? 8 : 6;
+    fillOpacity = 0.9;
+    strokeOpacity = 1.0;
+  }
+
+  // ENHANCED INTERACTION STATES
+  if (isMoving) {
+    fillOpacity = 0.6;
+    strokeOpacity = 1.0;
+    strokeWeight += 1;
+    
+    // Add movement indicator
+    if (!icons) {
+      icons = [{
+        icon: {
+          path: google.maps.SymbolPath.FORWARD_OPEN_ARROW,
+          strokeOpacity: 0.6,
+          strokeWeight: 2,
+          strokeColor: '#FFFFFF',
+          scale: 4
+        },
+        offset: '0',
+        repeat: '30px'
+      }];
+    }
+  }
+
+  if (isSelected) {
+    zIndex += 10;
+    strokeWeight += 1;
+  }
+
+  return {
+    fillColor,
+    fillOpacity,
+    strokeColor,
+    strokeOpacity,
+    strokeWeight,
+    strokePosition,
+    zIndex,
+    icons,
+    clickable: true,
+    editable: isEditing,
+    draggable: isMoving,
+  };
+};
+
+// Helper function to smooth the freehand path
+const smoothPath = (path: LatLng[]): LatLng[] => {
+  if (path.length < 3) return path;
+  
+  const smoothed: LatLng[] = [path[0]]; // Keep first point
+  
+  for (let i = 1; i < path.length - 1; i++) {
+    const prev = path[i - 1];
+    const curr = path[i];
+    const next = path[i + 1];
+    
+    // Simple smoothing: average with neighbors
+    const smoothedLat = (prev.lat + curr.lat + next.lat) / 3;
+    const smoothedLng = (prev.lng + curr.lng + next.lng) / 3;
+    
+    // Only add point if it's significantly different from the last
+    const lastPoint = smoothed[smoothed.length - 1];
+    const distance = Math.abs(smoothedLat - lastPoint.lat) + Math.abs(smoothedLng - lastPoint.lng);
+    
+    if (distance > 0.0001) { // Threshold to reduce point density
+      smoothed.push({ lat: smoothedLat, lng: smoothedLng });
+    }
+  }
+  
+  smoothed.push(path[path.length - 1]); // Keep last point
+  return smoothed;
+};
+
 const DrawingManagerComponent: React.FC<{
   selectedTool: Tool,
   setSelectedTool: (tool: Tool) => void;
@@ -52,27 +233,37 @@ const DrawingManagerComponent: React.FC<{
   useEffect(() => {
     if (!map) return;
 
+    const isZoneDrawingTool = selectedTool === 'zone';
+    
     const dm = new google.maps.drawing.DrawingManager({
       map,
       drawingControl: false,
       drawingMode: null,
+      
+      // ENHANCED RECTANGLE OPTIONS
       rectangleOptions: {
-        fillColor: 'hsl(var(--primary))',
-        fillOpacity: 0.1,
-        strokeWeight: 2,
-        strokeColor: 'hsl(var(--primary))',
+        fillColor: isZoneDrawingTool ? '#8B5CF6' : '#FF6B35',
+        fillOpacity: 0.25,
+        strokeWeight: 4,
+        strokeColor: isZoneDrawingTool ? '#8B5CF6' : '#FF6B35',
+        strokeOpacity: 0.9,
         clickable: false,
         editable: false,
-        zIndex: 1,
+        zIndex: 10,
+        strokePosition: google.maps.StrokePosition.OUTSIDE,
       },
+      
+      // ENHANCED POLYGON OPTIONS
       polygonOptions: {
-        fillColor: 'hsl(var(--primary))',
-        fillOpacity: 0.1,
-        strokeWeight: 2,
-        strokeColor: 'hsl(var(--primary))',
+        fillColor: isZoneDrawingTool ? '#8B5CF6' : '#FF6B35',
+        fillOpacity: 0.25,
+        strokeWeight: 4,
+        strokeColor: isZoneDrawingTool ? '#8B5CF6' : '#FF6B35',
+        strokeOpacity: 0.9,
         clickable: false,
         editable: false,
-        zIndex: 1,
+        zIndex: 10,
+        strokePosition: google.maps.StrokePosition.OUTSIDE,
       },
     });
 
@@ -98,13 +289,33 @@ const DrawingManagerComponent: React.FC<{
         drawingMode = google.maps.drawing.OverlayType.POLYGON;
     }
 
+    // Update colors dynamically based on tool
+    const primaryColor = isZoneDrawingTool ? '#8B5CF6' : '#FF6B35';
+    
     drawingManager.setOptions({
         polygonOptions: {
-            ...drawingManager.get('polygonOptions'),
-            fillColor: isZoneDrawingTool ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
-            strokeColor: isZoneDrawingTool ? 'hsl(var(--accent))' : 'hsl(var(--primary))',
+            fillColor: primaryColor,
+            strokeColor: primaryColor,
+            fillOpacity: 0.25,
+            strokeWeight: 4,
+            strokeOpacity: 0.9,
+            clickable: false,
+            editable: false,
+            zIndex: 10,
+            strokePosition: google.maps.StrokePosition.OUTSIDE,
+        },
+        rectangleOptions: {
+            fillColor: primaryColor,
+            strokeColor: primaryColor,
+            fillOpacity: 0.25,
+            strokeWeight: 4,
+            strokeOpacity: 0.9,
+            clickable: false,
+            editable: false,
+            zIndex: 10,
+            strokePosition: google.maps.StrokePosition.OUTSIDE,
         }
-    })
+    });
 
     drawingManager.setDrawingMode(drawingMode);
 
@@ -190,96 +401,46 @@ const DrawnShapes: React.FC<{
       const newPolygons: {[id: string]: google.maps.Polygon} = {};
       const bufferedParentIds = new Set(shapes.filter(s => s.bufferMeta).map(s => s.bufferMeta!.originalShapeId));
 
-      const getZoneColor = (kind: Shape['zoneMeta']['kind']) => {
-        switch(kind) {
-            case 'residential': return { fill: 'rgba(134, 239, 172, 0.4)', stroke: 'rgb(34, 197, 94)' }; // green
-            case 'commercial': return { fill: 'rgba(147, 197, 253, 0.4)', stroke: 'rgb(59, 130, 246)'}; // blue
-            case 'amenity': return { fill: 'rgba(252, 211, 77, 0.4)', stroke: 'rgb(234, 179, 8)'}; // amber
-            case 'green_space': return { fill: 'rgba(34, 197, 94, 0.3)', stroke: 'rgb(22, 163, 74)'}; // darker green
-            case 'solar': return { fill: 'rgba(251, 146, 60, 0.4)', stroke: 'rgb(249, 115, 22)'}; // orange
-            default: return { fill: 'hsl(var(--primary))', stroke: 'hsl(var(--primary))'};
-        }
-      }
-
       shapes.forEach(shape => {
         const path = shape.path;
-  
+
         const isEditing = shape.id === editingShapeId;
         const isMoving = shape.id === movingShapeId;
         const isSelected = selectedShapeIds.includes(shape.id);
         const isBuffer = !!shape.bufferMeta;
-        const isZone = !!shape.zoneMeta;
         const isAsset = !!shape.assetMeta;
-        const isBoundary = !isBuffer && !isZone && !isAsset;
-        const isBufferedParent = bufferedParentIds.has(shape.id);
-        
-        let fillColor = 'hsl(var(--primary))';
-        let fillOpacity = 0.2;
-        let strokeColor = 'hsl(var(--primary))';
-        let strokeOpacity = 0.8;
-        let strokeWeight = isSelected ? 3.5 : 2;
-        let strokePosition: google.maps.StrokePosition | undefined = undefined;
-        let zIndex = 1; 
-        
-        if (isBoundary) {
-            strokeColor = 'hsl(var(--accent))'; // Bright orange
-            strokeWeight = isSelected ? 4 : 3;
-            fillOpacity = isSelected ? 0.15 : 0.05;
-            zIndex = 5;
-            strokePosition = google.maps.StrokePosition.OUTSIDE;
-            strokeOpacity = 0.9;
-        }
 
-        if (isBuffer) {
-            fillColor = 'hsl(var(--accent))';
-            fillOpacity = 0.15;
-            strokeColor = 'hsl(var(--accent))';
-            strokeWeight = 2.5;
-            zIndex = isSelected ? 6 : 3;
-        } else if(isBufferedParent) {
-            strokeOpacity = 0; // Hide the solid line for the parent of a buffer
-        }
+        // Use enhanced styling
+        const polyOptions = getEnhancedShapeStyle(
+          shape, 
+          isSelected, 
+          isEditing, 
+          isMoving, 
+          bufferedParentIds
+        );
 
-        if (isZone) {
-            const zoneColors = getZoneColor(shape.zoneMeta!.kind);
-            fillColor = zoneColors.fill;
-            strokeColor = zoneColors.stroke;
-            zIndex = isSelected ? 7 : 4;
-        }
-
-        if (isAsset) {
-            fillColor = shape.assetMeta?.assetType === 'solar_panel' ? '#0A2A48' : '#334155'; // Dark blue for panels, slate for buildings
-            strokeColor = '#0f172a'; // slate-900
-            strokeWeight = 1;
-            zIndex = isSelected ? 8 : 6; // Assets on top
-            fillOpacity = 1.0;
-        }
-
-        if(isMoving) {
-            fillOpacity = 0.5;
-            strokeOpacity = 1.0;
-        }
-
-        if (isSelected) {
-            zIndex += 5; // Bump selected shapes up
-        }
-
-        const polyOptions: google.maps.PolygonOptions = {
+        const poly = new google.maps.Polygon({
           paths: path,
-          strokeColor,
-          strokeOpacity,
-          strokeWeight,
-          strokePosition,
-          fillColor,
-          fillOpacity,
           map: map,
-          clickable: true,
-          editable: isEditing,
-          draggable: isMoving,
-          zIndex,
-        };
+          ...polyOptions
+        });
 
-        const poly = new google.maps.Polygon(polyOptions);
+        // Create glow effect for selected shapes
+        if (isSelected && !polyOptions.icons) {
+          const glowPoly = new google.maps.Polygon({
+            paths: path,
+            map: map,
+            strokeColor: '#FFFFFF',
+            strokeWeight: (polyOptions.strokeWeight || 3) + 4,
+            strokeOpacity: 0.3,
+            fillOpacity: 0,
+            zIndex: (polyOptions.zIndex || 1) - 1,
+            clickable: false
+          });
+          
+          // Store glow polygon for cleanup
+          (poly as any).glowPoly = glowPoly;
+        }
 
         poly.addListener('rightclick', (e: google.maps.MapMouseEvent) => onShapeRightClick(shape.id, e));
         poly.addListener('click', (e: google.maps.MapMouseEvent) => {
@@ -325,8 +486,15 @@ const DrawnShapes: React.FC<{
       // Clean up polygons that are no longer in the shapes array
       Object.keys(polygons).forEach(id => {
         if (!newPolygons[id]) {
-          polygons[id].setMap(null);
-          google.maps.event.clearInstanceListeners(polygons[id]);
+          const poly = polygons[id];
+          
+          // Clean up glow effect if it exists
+          if ((poly as any).glowPoly) {
+            (poly as any).glowPoly.setMap(null);
+          }
+          
+          poly.setMap(null);
+          google.maps.event.clearInstanceListeners(poly);
         }
       });
       
@@ -334,13 +502,17 @@ const DrawnShapes: React.FC<{
   
       return () => {
         Object.values(newPolygons).forEach(poly => {
+            // Clean up glow effect
+            if ((poly as any).glowPoly) {
+              (poly as any).glowPoly.setMap(null);
+            }
+            
             google.maps.event.clearInstanceListeners(poly);
-            poly.setMap(null)
+            poly.setMap(null);
         });
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [shapes, map, editingShapeId, movingShapeId, selectedShapeIds]);
-
 
     // Effect to update the editable/draggable properties of polygons when editing/moving state changes
     useEffect(() => {
@@ -360,7 +532,6 @@ const DrawnShapes: React.FC<{
             }
         });
     }, [editingShapeId, movingShapeId, polygons, shapes]);
-
 
     const updateShape = (id: string, poly: google.maps.Polygon) => {
         const newPath = poly.getPath().getArray().map(p => ({ lat: p.lat(), lng: p.lng() }));
@@ -515,54 +686,107 @@ const FreehandDrawingTool: React.FC<{
         pathRef.current.push(e.latLng.toJSON());
       }
       
-      // Create a temporary polyline for visual feedback
+      // ENHANCED VISUAL FEEDBACK - Much more visible drawing line
       polylineRef.current = new google.maps.Polyline({
         map,
         path: pathRef.current,
-        strokeColor: 'hsl(var(--accent))',
-        strokeWeight: 3,
-        strokeOpacity: 0.7,
+        strokeColor: '#FF6B35', // Vibrant orange
+        strokeWeight: 4, // Thick line
+        strokeOpacity: 0.9,
+        zIndex: 1000, // On top of everything
+        icons: [{
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            strokeOpacity: 1,
+            strokeWeight: 1,
+            strokeColor: '#FF6B35',
+            fillColor: '#FF6B35',
+            fillOpacity: 1,
+            scale: 2
+          },
+          offset: '0',
+          repeat: '12px'
+        }]
       });
     };
 
     const onMouseMove = (e: google.maps.MapMouseEvent) => {
       if (!isDrawing || !e.latLng) return;
+      
       pathRef.current.push(e.latLng.toJSON());
-      // Create a new array to force a re-render of the polyline
-      polylineRef.current?.setPath([...pathRef.current]);
+      
+      // Update the polyline with enhanced styling
+      if (polylineRef.current) {
+        const newPath = [...pathRef.current];
+        polylineRef.current.setPath(newPath);
+        
+        // Add visual feedback for drawing progress
+        polylineRef.current.setOptions({
+          strokeWeight: 4 + Math.min(pathRef.current.length / 50, 2), // Gets slightly thicker as you draw
+          strokeOpacity: 0.8 + Math.min(pathRef.current.length / 200, 0.2) // Gets more opaque
+        });
+      }
     };
 
     const onMouseUp = () => {
       if (!isDrawing || pathRef.current.length < 3) {
         setIsDrawing(false);
-        polylineRef.current?.setMap(null); // Clean up temp line
+        polylineRef.current?.setMap(null);
+        
+        if (pathRef.current.length > 0 && pathRef.current.length < 3) {
+          toast({
+            title: 'Draw a larger area',
+            description: 'Click and drag to draw a boundary with at least 3 points.',
+          });
+        }
         return;
       }
 
-      const finalPath = [...pathRef.current];
-      onDrawEnd(finalPath);
+      // Smooth the path for better visual results
+      const smoothedPath = smoothPath(pathRef.current);
+      onDrawEnd(smoothedPath);
       
       setIsDrawing(false);
       pathRef.current = [];
-      polylineRef.current?.setMap(null); // Clean up temp line
+      polylineRef.current?.setMap(null);
       setSelectedTool('pan');
+      
+      toast({
+        title: 'Boundary drawn',
+        description: 'Your site boundary has been created successfully.',
+      });
     };
 
+    // Enhanced event handling with better UX
     const downListener = map.addListener('mousedown', onMouseDown);
     const moveListener = map.addListener('mousemove', onMouseMove);
     const upListener = map.addListener('mouseup', onMouseUp);
+    
+    // Add escape key to cancel drawing
+    const keyListener = google.maps.event.addDomListener(window, 'keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isDrawing) {
+        setIsDrawing(false);
+        pathRef.current = [];
+        polylineRef.current?.setMap(null);
+        setSelectedTool('pan');
+        toast({
+          title: 'Drawing cancelled',
+          description: 'Press and hold to draw your boundary.',
+        });
+      }
+    });
 
     return () => {
       downListener.remove();
       moveListener.remove();
       upListener.remove();
-      polylineRef.current?.setMap(null); // Cleanup on unmount
+      google.maps.event.removeListener(keyListener);
+      polylineRef.current?.setMap(null);
     };
   }, [map, isDrawing, onDrawEnd, setSelectedTool, shapes, toast]);
 
   return null;
 };
-
 
 export const MapCanvas: React.FC<MapCanvasProps> = ({
   selectedTool,
@@ -754,7 +978,6 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
       const area = google.maps.geometry.spherical.computeArea(path);
       onBoundaryDrawn({ type: 'freehand', path, area });
   };
-
 
   useEffect(() => {
     const handleClickOutside = (e: google.maps.MapMouseEvent) => {

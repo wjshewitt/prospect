@@ -14,6 +14,8 @@ import { DevelopmentDetails } from './development-details';
 import { SolarAnalysis } from './solar-analysis';
 import { useState } from 'react';
 import { AiSummaryPanel } from './ai-summary-panel';
+import { ProceduralPlannerPanel, type PlannerSettings } from './procedural-planner-panel';
+import { AiPlacementPanel } from './ai-placement-panel';
 
 type StatisticsSidebarProps = {
   shapes: Shape[];
@@ -28,14 +30,15 @@ type StatisticsSidebarProps = {
   isAnalysisVisible: boolean;
   setIsAnalysisVisible: (visible: boolean) => void;
   selectedShapeIds: string[];
-  onGenerateLayout: (zoneId: string, density: 'low' | 'medium' | 'high') => void;
+  onGenerateProceduralLayout: (settings: PlannerSettings) => void;
   onGenerateSolarLayout: (zoneId: string, density: 'low' | 'medium' | 'high') => void;
+  isGenerating: boolean;
   is3DView: boolean;
   selectedAssetId: string | null;
   onDeleteAsset: (assetId: string) => void;
 };
 
-type SidebarView = 'stats' | 'summary';
+type SidebarView = 'stats' | 'summary' | 'planner';
 
 const SQ_METERS_TO_ACRES = 0.000247105;
 
@@ -96,8 +99,9 @@ export default function StatisticsSidebar({
     isAnalysisVisible,
     setIsAnalysisVisible,
     selectedShapeIds,
-    onGenerateLayout,
+    onGenerateProceduralLayout,
     onGenerateSolarLayout,
+    isGenerating,
     is3DView,
     selectedAssetId,
     onDeleteAsset,
@@ -105,7 +109,7 @@ export default function StatisticsSidebar({
 
   const [view, setView] = useState<SidebarView>('stats');
 
-  const projectBoundary = shapes.find(s => s.type !== 'buffer' && !s.zoneMeta && !s.assetMeta);
+  const projectBoundary = shapes.find(s => !s.bufferMeta && !s.zoneMeta && !s.assetMeta);
   const zones = shapes.filter(s => !!s.zoneMeta);
   const developedAreaMeters = zones.reduce((acc, z) => acc + (z.area || 0), 0);
   const developedAreaAcres = developedAreaMeters * SQ_METERS_TO_ACRES;
@@ -116,10 +120,14 @@ export default function StatisticsSidebar({
   const developedPercentage = totalAreaMeters > 0 ? (developedAreaMeters / totalAreaMeters) * 100 : 0;
 
   const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
-  const selectedAreaMeters = selectedShapes.reduce((acc, shape) => acc + (shape.area || 0), 0);
-  const selectedAreaAcres = selectedAreaMeters * SQ_METERS_TO_ACRES;
+  const selectedAreaAcres = selectedShapes.reduce((acc, shape) => acc + (shape.area || 0), 0) * SQ_METERS_TO_ACRES;
 
-  const canGenerateBuildingLayout = selectedShapes.length === 1 && selectedShapes[0].zoneMeta?.kind && selectedShapes[0].zoneMeta?.kind !== 'solar';
+  const VIEWS: {id: SidebarView, title: string}[] = [
+      {id: 'planner', title: 'Planner'},
+      {id: 'stats', title: 'Statistics'},
+      {id: 'summary', title: 'Summary'},
+  ];
+  const currentViewIndex = VIEWS.findIndex(v => v.id === view);
 
   const ViewSwitcher = () => (
     <div className="flex items-center justify-center p-2">
@@ -127,23 +135,21 @@ export default function StatisticsSidebar({
           <Button 
             size="icon" 
             variant="ghost" 
-            className={cn("h-8 w-8 rounded-sm", view === 'stats' ? 'text-muted-foreground/50 cursor-default' : 'hover:bg-primary/20')}
-            onClick={() => setView('stats')}
-            disabled={view === 'stats'}
-            title="Show Statistics"
+            className="h-8 w-8 rounded-sm hover:bg-primary/20"
+            onClick={() => setView(VIEWS[(currentViewIndex + VIEWS.length - 1) % VIEWS.length].id)}
+            title="Previous View"
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div className="w-24 text-center">
-            <h3 className="font-semibold">{view === 'stats' ? 'Statistics' : 'Summary'}</h3>
+            <h3 className="font-semibold">{VIEWS[currentViewIndex].title}</h3>
           </div>
            <Button 
             size="icon" 
             variant="ghost" 
-            className={cn("h-8 w-8 rounded-sm", view === 'summary' ? 'text-muted-foreground/50 cursor-default' : 'hover:bg-primary/20')}
-            onClick={() => setView('summary')}
-            disabled={view === 'summary'}
-            title="Show Summary"
+            className="h-8 w-8 rounded-sm hover:bg-primary/20"
+            onClick={() => setView(VIEWS[(currentViewIndex + 1) % VIEWS.length].id)}
+            title="Next View"
           >
             <ChevronRight className="h-5 w-5" />
           </Button>
@@ -232,35 +238,6 @@ export default function StatisticsSidebar({
                         selectedShapeIds={selectedShapeIds}
                         />
                     </div>
-
-                    {canGenerateBuildingLayout && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="text-base flex items-center justify-between">
-                                    <span>Zone Actions</span>
-                                    <LayoutGrid className="h-5 w-5 text-muted-foreground" />
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button className="w-full">
-                                            Generate Building Layout
-                                            <ChevronDown className="ml-2 h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                                        <DropdownMenuItem onSelect={() => onGenerateLayout(selectedShapeIds[0], 'low')}>Low Density</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => onGenerateLayout(selectedShapeIds[0], 'medium')}>Medium Density</DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => onGenerateLayout(selectedShapeIds[0], 'high')}>High Density</DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                                <CardDescription className="text-xs mt-2 text-center">
-                                    Automatically place buildings in the selected zone. This will replace any existing buildings in this zone.
-                                </CardDescription>
-                            </CardContent>
-                        </Card>
-                    )}
                     </div>
                 )}
                 {view === 'summary' && (
@@ -270,9 +247,21 @@ export default function StatisticsSidebar({
                     elevationGrid={elevationGrid}
                    />
                 )}
+                {view === 'planner' && (
+                    <div className="p-4 space-y-6">
+                        <ProceduralPlannerPanel 
+                            onGenerate={onGenerateProceduralLayout}
+                            isGenerating={isGenerating}
+                            isReady={!!projectBoundary}
+                        />
+                        <AiPlacementPanel />
+                    </div>
+                )}
             </ScrollArea>
         </>
       )}
     </aside>
   );
 }
+
+    

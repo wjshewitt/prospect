@@ -18,12 +18,15 @@ import { useLocalStorage } from '@/hooks/use-local-storage';
 import { TutorialGuide } from '@/components/tutorial/tutorial-guide';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeElevation } from '@/services/elevation';
-import { generateBuildingLayout } from '@/ai/flows/generate-building-layout-flow';
 import { generateSolarLayout } from '@/ai/flows/generate-solar-layout-flow';
+import { proceduralGenerateLayout } from '@/ai/flows/procedural-generate-layout-flow';
+import type { PlannerSettings } from '@/components/sidebar/procedural-planner-panel';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, collection, addDoc } from 'firebase/firestore';
 import { AddressSearchBox } from '@/components/map/address-search-box';
+import * as turf from '@turf/turf';
+
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -80,6 +83,7 @@ function VisionPageContent() {
   const [tutorialStep, setTutorialStep] = useState(0);
   
   const [viewState, setViewState] = useState<any>(INITIAL_VIEW_STATE);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
@@ -241,65 +245,66 @@ function VisionPageContent() {
     }
   };
 
-  const handleGenerateLayout = async (zoneId: string, density: 'low' | 'medium' | 'high') => {
-    const zone = shapes.find(s => s.id === zoneId && !!s.zoneMeta);
-    if (!zone) return;
+  const handleGenerateProceduralLayout = async (settings: PlannerSettings) => {
+    if (!projectBoundary) return;
 
+    setIsGenerating(true);
     toast({
-      title: 'Generating AI Layout...',
-      description: `The AI is designing a ${density}-density layout. This may take a moment.`,
+        title: 'Generating Procedural Layout...',
+        description: 'This may take a moment.',
     });
-
+    
     try {
-      const result = await generateBuildingLayout({ 
-          zonePolygon: zone.path,
-          density,
+      const result = await proceduralGenerateLayout({
+        ...settings,
+        boundary: projectBoundary.path,
       });
-      
-      const newAssets: Shape[] = result.buildings.map(b => {
-        const path = b.footprint.map(p => ({ lat: p.lat, lng: p.lng }));
-        const area = google.maps.geometry.spherical.computeArea(path);
-        return {
-          id: uuid(),
-          type: 'rectangle', // The asset is a rectangular shape
-          path,
-          area,
-          assetMeta: {
-            assetType: 'building',
-            key: b.type,
-            floors: b.floors,
-            rotation: b.rotation,
-          },
-        }
-      });
-      
-      // Remove existing assets within that zone first
-      const assetsInZone = assets.filter(asset => {
-          const assetCenter = new google.maps.LatLng(asset.path[0].lat, asset.path[0].lng);
-          const zonePolygon = new google.maps.Polygon({ paths: zone.path });
-          return google.maps.geometry.poly.containsLocation(assetCenter, zonePolygon);
-      });
-      const assetIdsInZone = new Set(assetsInZone.map(a => a.id));
 
-      setShapes(prev => {
-          const shapesWithoutOldAssets = prev.filter(s => !assetIdsInZone.has(s.id));
-          return [...shapesWithoutOldAssets, ...newAssets];
-      });
+      const turfToShape = (fc: turf.FeatureCollection, type: 'asset' | 'zone' | 'road'): Shape[] => {
+        return fc.features.map((feature: any) => {
+          const path = (turf.getCoords(feature)[0] as number[][]).map(c => ({ lat: c[1], lng: c[0] }));
+          const shape: Shape = {
+            id: uuid(),
+            type: 'polygon',
+            path,
+            area: turf.area(feature),
+          };
+          if (type === 'asset') {
+            shape.assetMeta = { assetType: 'building', key: 'procedural_building', floors: 2, rotation: 0 };
+          }
+          // could add road/parcel meta here too
+          return shape;
+        });
+      };
+      
+      const newBuildings = turfToShape(result.buildings, 'asset');
+      const newRoads = turfToShape(result.roads, 'road'); // TODO: handle roads, parcels, greenspace
+      const newGreenSpaces = turfToShape(result.greenSpaces, 'zone');
+
+
+      // Clear existing procedural items before adding new ones
+      setShapes(prev => [
+        ...prev.filter(s => s.assetMeta?.key !== 'procedural_building'), 
+        ...newBuildings
+      ]);
 
       toast({
-        title: 'AI Layout Generated',
-        description: `${newAssets.length} buildings have been placed in the zone.`,
+        title: 'Procedural Layout Generated',
+        description: `${newBuildings.length} buildings have been placed.`,
       });
 
-    } catch (error) {
-      console.error("AI Layout generation failed:", error);
-      toast({
-        variant: 'destructive',
-        title: 'AI Layout Failed',
-        description: 'The AI could not generate a layout. Please try again.',
-      });
+    } catch (error: any) {
+        console.error("Procedural layout generation failed:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Generation Failed',
+            description: error.message || 'The procedural planner could not generate a layout. Please try again.',
+        });
+    } finally {
+        setIsGenerating(false);
     }
-  }
+  };
+
 
     const handleGenerateSolarLayout = async (zoneId: string, density: 'low' | 'medium' | 'high') => {
     const zone = shapes.find(s => s.id === zoneId && s.zoneMeta?.kind === 'solar');
@@ -576,8 +581,9 @@ function VisionPageContent() {
           isAnalysisVisible={isAnalysisVisible}
           setIsAnalysisVisible={setIsAnalysisVisible}
           selectedShapeIds={selectedShapeIds}
-          onGenerateLayout={handleGenerateLayout}
+          onGenerateProceduralLayout={handleGenerateProceduralLayout}
           onGenerateSolarLayout={handleGenerateSolarLayout}
+          isGenerating={isGenerating}
           is3DView={is3DMode}
           selectedAssetId={selectedAssetId}
           onDeleteAsset={handleDeleteAsset}

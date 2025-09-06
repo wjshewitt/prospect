@@ -11,7 +11,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
-import { BuildingPlacementDialog } from '@/components/ai/building-placement-dialog';
 import { MousePointer2, Square, Pen, PenTool, Shapes, Combine, Diff, WholeWord, Building, HelpCircle, Bot, Settings, Eye, View } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -288,16 +287,6 @@ export default function ToolPalette({
               <PopoverContent side="right" align="center" className="w-auto p-1">
                   <div className="flex flex-col gap-1">
                       <Tooltip>
-                          <TooltipTrigger asChild>
-                              <div className="w-full">
-                                  <BuildingPlacementDialog />
-                              </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="md:block hidden">
-                              <p>AI Building Placement</p>
-                          </TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
                            <TooltipTrigger asChild>
                                 <Button
                                     variant="ghost"
@@ -322,3 +311,5 @@ export default function ToolPalette({
     </aside>
   );
 }
+
+    
