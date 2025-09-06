@@ -390,7 +390,7 @@ export function ThreeDVisualization({
         filled: true,
         stroked: false,
         texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : undefined,
-        extensions: [new (class extends TerrainExtension {})()]
+        extensions: [new TerrainExtension()]
     });
     
     const buildingLayer = new PolygonLayer({
