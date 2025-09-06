@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { uuid } from '@/components/map/map-canvas';
 import * as turf from '@turf/turf';
 import { cn } from '@/lib/utils';
+import { TerrainExtension } from '@deck.gl/extensions';
 
 
 interface ThreeDEditorPanelProps {
@@ -179,11 +180,11 @@ export function ThreeDEditorPanel({
                 <Card>
                     <CardHeader>
                         <CardTitle className="text-base flex items-center justify-between">
-                           <span>Ground Style</span>
+                           <span>Focus/Build Mode</span>
                            <Palette className="h-5 w-5 text-muted-foreground" />
                         </CardTitle>
                         <CardDescription>
-                           Customize the appearance of the terrain.
+                           Customize the terrain to focus on your design.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
@@ -323,4 +324,3 @@ export function ThreeDEditorPanel({
         </ScrollArea>
     );
 }
-
