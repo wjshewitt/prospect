@@ -9,7 +9,10 @@ const nextConfig: NextConfig = {
   },
   // This allows the Next.js dev server to accept requests from any origin.
   // This is needed for the cloud-based development environment.
-  allowedDevOrigins: ['*'],
+  allowedDevOrigins: [
+    '6000-firebase-studio-1756933074294.cluster-lu4mup47g5gm4rtyvhzpwbfadi.cloudworkstations.dev',
+    '*'
+  ],
   env: {
     NEXT_PUBLIC_MAPBOX_TOKEN: 'pk.eyJ1Ijoid2pzaGV3aXR0IiwiYSI6ImNtZjczNGR4ajBkZjMybHM2MDFhazV0OTIifQ.EQrYlQl16I2Z9VKJHAArKw',
   },
