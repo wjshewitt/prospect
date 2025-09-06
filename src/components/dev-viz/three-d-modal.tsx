@@ -7,7 +7,7 @@ import { uuid } from '@/components/map/map-canvas';
 import DeckGL, { PickingInfo } from '@deck.gl/react';
 import { TerrainLayer, MjolnirEvent } from '@deck.gl/geo-layers';
 import { PolygonLayer } from '@deck.gl/layers';
-import { PathStyleExtension } from '@deck.gl/extensions';
+import { PathStyleExtension, DrapingExtension } from '@deck.gl/extensions';
 import { Map } from 'react-map-gl';
 import { Move3d, MousePointer, ZoomIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -65,7 +65,6 @@ export function ThreeDVisualization({
 
   const { toast } = useToast();
   const [viewState, setViewState] = useState(initialViewState);
-  const isFirstLoad = React.useRef(true);
   const [isDrawingAutofill, setIsDrawingAutofill] = useState(false);
   const [autofillPath, setAutofillPath] = useState<LatLng[] | null>(null);
   const clickTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -217,14 +216,14 @@ export function ThreeDVisualization({
     const handleSingleClick = (info: PickingInfo) => {
         // If drawing, add a point to the path
         if (isDrawingAutofill && info.coordinate) {
+            if (!autofillPath?.length) {
+                toast({
+                    title: 'Drawing Area',
+                    description: 'Click to add points. Double-click to finish.',
+                });
+            }
             setAutofillPath(prev => {
                 const newPath = prev ? [...prev, { lng: info.coordinate[0], lat: info.coordinate[1] }] : [];
-                if (newPath?.length === 1) {
-                    toast({
-                        title: 'Drawing Area',
-                        description: 'Click to add more points. Double-click to finish.',
-                    });
-                }
                 return newPath;
             });
             return;
@@ -303,21 +302,36 @@ export function ThreeDVisualization({
     const { grid } = elevationGrid.pointGrid;
     const { minX, maxX, minY, maxY } = elevationGrid.xyBounds;
     
-    const terrainLayerProps = {
+    const terrainLayer = new TerrainLayer({
         id: 'terrain',
         minZoom: 0,
         maxZoom: 20,
         elevationData: grid,
         bounds: [minX, minY, maxX, maxY],
-        texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : null,
-        color: groundColor,
         material: {
           diffuse: 0.9,
         },
         zScaler: 1.2,
-      };
-    
-    const terrainLayer = new TerrainLayer(terrainLayerProps);
+      });
+
+    const getGroundCoverColor = () => {
+        if (groundStyle === 'satellite') return [0, 0, 0, 0]; // Transparent
+        if (groundStyle === 'color') return [...groundColor, 255];
+        return [255, 255, 255, 255]; // White for texture base
+    }
+
+    const groundCoverLayer = new PolygonLayer({
+        id: 'ground-cover',
+        data: [boundary],
+        getPolygon: d => d.path.map(p => [p.lng, p.lat]),
+        getFillColor: getGroundCoverColor(),
+        filled: true,
+        stroked: false,
+        texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : undefined,
+        extensions: [new DrapingExtension()],
+        drapingSource: 'terrain',
+        drapingTarget: 'terrain',
+    });
     
     const buildingLayer = new PolygonLayer({
         id: 'buildings',
@@ -367,7 +381,6 @@ export function ThreeDVisualization({
         dashJustified: true,
         extensions: [new PathStyleExtension({dash: true})],
         extruded: false,
-        mask: true,
     });
     
     const autofillDrawLayer = new PolygonLayer({
@@ -380,7 +393,7 @@ export function ThreeDVisualization({
     });
 
 
-    return [terrainLayer, boundaryLayer, zoneLayer, buildingLayer, autofillDrawLayer];
+    return [terrainLayer, groundCoverLayer, zoneLayer, buildingLayer, boundaryLayer, autofillDrawLayer];
   }, [elevationGrid, assets, zones, selectedAssetId, boundary, autofillPath, groundStyle, groundColor]);
 
   if (!viewState) {
@@ -395,7 +408,7 @@ export function ThreeDVisualization({
     layers: layers,
     viewState: viewState,
     onViewStateChange: ({viewState}: {viewState: any}) => setViewState(viewState),
-    controller: {doubleClickZoom: false}, // Disable double click zoom to use it for finishing drawing
+    controller: {doubleClickZoom: false},
     style: { position: 'relative', width: '100%', height: '100%' },
     onClick: handleDeckClick,
     onDragStart,
@@ -412,18 +425,14 @@ export function ThreeDVisualization({
   return (
     <div className="w-full h-full relative">
       <DeckGL {...deckProps}>
-        {groundStyle === 'satellite' && (
-             <Map 
-                mapStyle={'mapbox://styles/mapbox/satellite-v9'} 
-                mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
-                preventStyleDiffing
-                interactive={false}
-             />
-        )}
+        <Map 
+            mapStyle={'mapbox://styles/mapbox/satellite-v9'} 
+            mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+            preventStyleDiffing
+            interactive={false}
+        />
       </DeckGL>
       <NavigationGuide />
     </div>
   );
 }
-
-    
