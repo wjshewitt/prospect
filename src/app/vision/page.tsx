@@ -572,7 +572,7 @@ function VisionPageContent() {
           shapes={shapes}
           siteName={siteName}
           isOpen={isSidebarOpen}
-          setIsOpen={setIsOpen}
+          setIsOpen={setIsSidebarOpen}
           gridResolution={gridResolution} // Use immediate value for slider UI
           setGridResolution={setGridResolution}
           steepnessThreshold={steepnessThreshold}
@@ -586,7 +586,7 @@ function VisionPageContent() {
           isGenerating={isGenerating}
           is3DView={is3DMode}
           selectedAssetId={selectedAssetId}
-          onDeleteAsset={onDeleteAsset}
+          onDeleteAsset={handleDeleteAsset}
         />
       </div>
       <NameSiteDialog 
