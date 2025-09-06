@@ -16,9 +16,11 @@ import { useState } from 'react';
 import { AiSummaryPanel } from './ai-summary-panel';
 import { ProceduralPlannerPanel, type PlannerSettings } from './procedural-planner-panel';
 import { AiPlacementPanel } from './ai-placement-panel';
+import { ThreeDEditorPanel } from './three-d-editor-panel';
 
 type StatisticsSidebarProps = {
   shapes: Shape[];
+  setShapes: (shapes: Shape[] | ((prev: Shape[]) => Shape[])) => void;
   siteName: string;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
@@ -30,62 +32,22 @@ type StatisticsSidebarProps = {
   isAnalysisVisible: boolean;
   setIsAnalysisVisible: (visible: boolean) => void;
   selectedShapeIds: string[];
+  setSelectedShapeIds: (ids: string[]) => void;
   onGenerateProceduralLayout: (settings: PlannerSettings) => void;
   onGenerateSolarLayout: (zoneId: string, density: 'low' | 'medium' | 'high') => void;
   isGenerating: boolean;
   is3DView: boolean;
   selectedAssetId: string | null;
+  setSelectedAssetId: (id: string | null) => void;
   onDeleteAsset: (assetId: string) => void;
 };
 
 const SQ_METERS_TO_ACRES = 0.000247105;
 
-const ThreeDAssetPanel = ({ shapes, selectedAssetId, onDeleteAsset }: { shapes: Shape[], selectedAssetId: string | null, onDeleteAsset: (id: string) => void }) => {
-    
-    const selectedAsset = shapes.find(s => s.id === selectedAssetId);
-
-    return (
-        <div className="p-4">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base flex items-center justify-between">
-                        <span>3D Mode</span>
-                        <Building className="h-5 w-5 text-muted-foreground" />
-                    </CardTitle>
-                    {!selectedAssetId && <CardDescription>Select a building in the 3D view to see its details and actions.</CardDescription>}
-                </CardHeader>
-                {selectedAssetId && selectedAsset && (
-                  <CardContent className="space-y-4">
-                      <div>
-                          <p className="text-sm font-medium capitalize">{selectedAsset.assetMeta?.key.replace(/_/g, ' ')}</p>
-                          <p className="text-xs text-muted-foreground break-all">ID: {selectedAssetId}</p>
-                      </div>
-
-                       <Button 
-                          variant="outline"
-                          className="w-full"
-                          disabled // Future functionality
-                      >
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Edit Properties
-                      </Button>
-                      <Button 
-                          variant="destructive"
-                          className="w-full"
-                          onClick={() => onDeleteAsset(selectedAssetId)}
-                      >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Building
-                      </Button>
-                  </CardContent>
-                )}
-            </Card>
-        </div>
-    );
-}
 
 export default function StatisticsSidebar({ 
     shapes, 
+    setShapes,
     siteName,
     isOpen,
     setIsOpen,
@@ -97,11 +59,13 @@ export default function StatisticsSidebar({
     isAnalysisVisible,
     setIsAnalysisVisible,
     selectedShapeIds,
+    setSelectedShapeIds,
     onGenerateProceduralLayout,
     onGenerateSolarLayout,
     isGenerating,
     is3DView,
     selectedAssetId,
+    setSelectedAssetId,
     onDeleteAsset,
 }: StatisticsSidebarProps) {
 
@@ -128,7 +92,13 @@ export default function StatisticsSidebar({
       style={{'--stats-sidebar-width': '20rem'} as React.CSSProperties}
     >
       {is3DView ? (
-        <ThreeDAssetPanel shapes={shapes} selectedAssetId={selectedAssetId} onDeleteAsset={onDeleteAsset} />
+        <ThreeDEditorPanel 
+            shapes={shapes} 
+            setShapes={setShapes}
+            selectedAssetId={selectedAssetId}
+            setSelectedAssetId={setSelectedAssetId} 
+            onDeleteAsset={onDeleteAsset} 
+        />
       ) : (
         <Tabs defaultValue="stats" className="flex flex-col h-full">
             <div className="p-2">

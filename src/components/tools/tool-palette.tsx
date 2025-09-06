@@ -48,6 +48,7 @@ const designTools: { id: Tool; label: string; icon: React.ReactNode }[] = [
 
 const threeDTools: { id: Tool; label: string; icon: React.ReactNode }[] = [
     { id: 'pan', label: 'Select & Navigate', icon: <MousePointer2 /> },
+    { id: 'asset', label: 'Place Building', icon: <Building /> },
 ];
 
 
@@ -232,24 +233,29 @@ export default function ToolPalette({
     </>
   );
 
-  const ThreeDTools = () => (
+  const ThreeDToolsComponent = () => (
     <div className="flex flex-col items-center gap-1">
-        <Tooltip>
-            <TooltipTrigger asChild>
-                <div className="w-full px-2 group/button">
-                    <Button
-                        variant="ghost"
-                        className='w-full h-14 justify-center bg-accent text-accent-foreground'
-                        onClick={() => setSelectedTool('pan')}
-                    >
-                        <MousePointer2 />
-                    </Button>
-                </div>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-                <p>Select & Navigate</p>
-            </TooltipContent>
-        </Tooltip>
+        {threeDTools.map(tool => (
+            <Tooltip key={tool.id}>
+                <TooltipTrigger asChild>
+                    <div className="w-full px-2 group/button">
+                        <Button
+                            variant="ghost"
+                            className={cn(
+                                'w-full h-14 justify-center',
+                                selectedTool === tool.id && 'bg-accent text-accent-foreground'
+                            )}
+                            onClick={() => setSelectedTool(tool.id)}
+                        >
+                            {tool.icon}
+                        </Button>
+                    </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                    <p>{tool.label}</p>
+                </TooltipContent>
+            </Tooltip>
+        ))}
     </div>
 );
 
@@ -262,7 +268,7 @@ export default function ToolPalette({
       style={{'--tool-palette-width': '4rem'} as React.CSSProperties}
     >
       <TooltipProvider>
-        {is3DView ? <ThreeDTools /> : <TwoDTools />}
+        {is3DView ? <ThreeDToolsComponent /> : <TwoDTools />}
         
         <div className="flex-grow" />
 
@@ -311,5 +317,3 @@ export default function ToolPalette({
     </aside>
   );
 }
-
-    

@@ -426,7 +426,7 @@ function VisionPageContent() {
             return;
         }
         
-        setIsSidebarOpen(false); // Collapse sidebar when entering 3D mode
+        setIsSidebarOpen(true); // Always ensure sidebar is open when entering 3D mode
         toast({ title: 'Generating 3D View...', description: 'Please wait, this may take a moment.' });
         
         let grid = elevationGrid;
@@ -450,6 +450,7 @@ function VisionPageContent() {
       // Switching back from 3D view
       setSelectedAssetId(null); // Clear 3D selection
       setIsSidebarOpen(true); // Re-open sidebar when leaving 3D mode
+      setSelectedTool('pan'); // Reset to pan tool
     }
     setIs3DMode(!is3DMode);
   }
@@ -497,25 +498,27 @@ function VisionPageContent() {
           is3DView={is3DMode}
         />
         <main className="flex-1 relative bg-muted/20 flex">
-            <div
-                className="absolute top-2 z-10 flex justify-center"
-                style={{
-                    left: 'var(--tool-palette-width, 4rem)',
-                    right: isSidebarOpen ? 'var(--stats-sidebar-width, 20rem)' : '0',
-                    transition: 'right 0.3s ease-in-out',
-                }}
-            >
-                <AddressSearchBox onPlaceSelect={(place) => {
-                    if (place.geometry?.location) {
-                        setViewState({
-                            ...viewState,
-                            latitude: place.geometry.location.lat(),
-                            longitude: place.geometry.location.lng(),
-                            zoom: 18,
-                        });
-                    }
-                }} />
-            </div>
+            {!is3DMode && (
+                <div
+                    className="absolute top-2 z-10 flex justify-center"
+                    style={{
+                        left: 'var(--tool-palette-width, 4rem)',
+                        right: isSidebarOpen ? 'var(--stats-sidebar-width, 20rem)' : '0',
+                        transition: 'right 0.3s ease-in-out',
+                    }}
+                >
+                    <AddressSearchBox onPlaceSelect={(place) => {
+                        if (place.geometry?.location) {
+                            setViewState({
+                                ...viewState,
+                                latitude: place.geometry.location.lat(),
+                                longitude: place.geometry.location.lng(),
+                                zoom: 18,
+                            });
+                        }
+                    }} />
+                </div>
+            )}
           
             {is3DMode ? (
                  <div className='relative w-full h-full'>
@@ -533,6 +536,8 @@ function VisionPageContent() {
                                 pitch: 45,
                                 bearing: 0
                             }}
+                            selectedTool={selectedTool}
+                            setShapes={setShapes}
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full">
@@ -570,10 +575,11 @@ function VisionPageContent() {
         </main>
         <StatisticsSidebar 
           shapes={shapes}
+          setShapes={setShapes}
           siteName={siteName}
           isOpen={isSidebarOpen}
           setIsOpen={setIsSidebarOpen}
-          gridResolution={gridResolution} // Use immediate value for slider UI
+          gridResolution={gridResolution}
           setGridResolution={setGridResolution}
           steepnessThreshold={steepnessThreshold}
           setSteepnessThreshold={setSteepnessThreshold}
@@ -581,11 +587,13 @@ function VisionPageContent() {
           isAnalysisVisible={isAnalysisVisible}
           setIsAnalysisVisible={setIsAnalysisVisible}
           selectedShapeIds={selectedShapeIds}
+          setSelectedShapeIds={setSelectedShapeIds}
           onGenerateProceduralLayout={handleGenerateProceduralLayout}
           onGenerateSolarLayout={handleGenerateSolarLayout}
           isGenerating={isGenerating}
           is3DView={is3DMode}
           selectedAssetId={selectedAssetId}
+          setSelectedAssetId={setSelectedAssetId}
           onDeleteAsset={handleDeleteAsset}
         />
       </div>

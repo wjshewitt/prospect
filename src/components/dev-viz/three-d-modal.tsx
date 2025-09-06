@@ -1,14 +1,16 @@
 
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
-import type { Shape, ElevationGrid } from '@/lib/types';
-import DeckGL from '@deck.gl/react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import type { Shape, ElevationGrid, Tool } from '@/lib/types';
+import { uuid } from '@/components/map/map-canvas';
+import DeckGL, { PickingInfo } from '@deck.gl/react';
 import { TerrainLayer } from '@deck.gl/geo-layers';
 import { PolygonLayer } from '@deck.gl/layers';
 import { PathStyleExtension } from '@deck.gl/extensions';
 import { Map } from 'react-map-gl';
 import { Move3d, MousePointer, ZoomIn } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 const MAP_STYLE = 'mapbox://styles/mapbox/satellite-v9';
 
@@ -21,6 +23,8 @@ interface ThreeDVisualizationProps {
   selectedAssetId: string | null;
   setSelectedAssetId: (id: string | null) => void;
   initialViewState: any;
+  selectedTool: Tool;
+  setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
 }
 
 function NavigationGuide() {
@@ -45,6 +49,8 @@ export function ThreeDVisualization({
   selectedAssetId,
   setSelectedAssetId,
   initialViewState,
+  selectedTool,
+  setShapes,
 }: ThreeDVisualizationProps) {
 
   const [viewState, setViewState] = useState(initialViewState);
@@ -53,6 +59,71 @@ export function ThreeDVisualization({
   useEffect(() => {
     setViewState(initialViewState);
   }, [initialViewState]);
+
+  const handlePlaceBuilding = useCallback((info: PickingInfo) => {
+    if (!info.coordinate) return;
+    
+    // Check if click is inside the main boundary
+    const boundaryPoly = new google.maps.Polygon({ paths: boundary.path });
+    const clickLatLng = new google.maps.LatLng(info.coordinate[1], info.coordinate[0]);
+
+    if (!google.maps.geometry.poly.containsLocation(clickLatLng, boundaryPoly)) {
+        toast({
+            variant: 'destructive',
+            title: 'Out of Bounds',
+            description: 'Buildings can only be placed inside the main site boundary.',
+        });
+        return;
+    }
+
+    const buildingSizeMeters = 10; // 10x10 meter building
+    const center = { lat: info.coordinate[1], lng: info.coordinate[0] };
+    const halfSizeDeg = (buildingSizeMeters / 111320) / 2;
+    
+    const path = [
+        { lat: center.lat - halfSizeDeg, lng: center.lng - halfSizeDeg },
+        { lat: center.lat + halfSizeDeg, lng: center.lng - halfSizeDeg },
+        { lat: center.lat + halfSizeDeg, lng: center.lng + halfSizeDeg },
+        { lat: center.lat - halfSizeDeg, lng: center.lng + halfSizeDeg },
+    ];
+
+    const newBuilding: Shape = {
+        id: uuid(),
+        type: 'rectangle',
+        path,
+        area: buildingSizeMeters * buildingSizeMeters,
+        assetMeta: {
+            assetType: 'building',
+            key: 'default_building',
+            floors: 2,
+            rotation: 0,
+        },
+    };
+    
+    setShapes(prev => [...prev, newBuilding]);
+    toast({
+        title: 'Building Placed',
+        description: 'A new building has been added to the site.',
+    });
+
+  }, [boundary.path, setShapes]);
+
+  const handleClick = (info: PickingInfo) => {
+    // If an asset is clicked, select it
+    if (info.object) {
+        setSelectedAssetId(info.object.id);
+        return;
+    }
+    
+    // If in placement mode, place an asset
+    if (selectedTool === 'asset') {
+        handlePlaceBuilding(info);
+        return;
+    }
+
+    // Otherwise, deselect
+    setSelectedAssetId(null);
+  }
 
   // Memoize layer creation for performance.
   const layers = useMemo(() => {
@@ -86,9 +157,6 @@ export function ThreeDVisualization({
         extruded: true,
         getElevation: (d: any) => (d.assetMeta?.floors || 1) * 3, // 3 meters per floor
         pickable: true,
-        onClick: ({ object }) => {
-            setSelectedAssetId(object.id);
-        }
     });
 
     const getZoneColor = (kind: Shape['zoneMeta']['kind']) => {
@@ -150,12 +218,8 @@ export function ThreeDVisualization({
         onViewStateChange={({viewState}) => setViewState(viewState)}
         controller={true}
         style={{ position: 'relative', width: '100%', height: '100%' }}
-        onClick={(info, event) => {
-            // Deselect asset if clicking on something other than a building (info.object will be null)
-             if (!info.object) {
-                setSelectedAssetId(null);
-             }
-        }}
+        onClick={handleClick}
+        getCursor={({ isDragging }) => (isDragging ? 'grabbing' : (selectedTool === 'asset' ? 'crosshair' : 'grab'))}
       >
         <Map 
           mapStyle={MAP_STYLE} 
