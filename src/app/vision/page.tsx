@@ -73,6 +73,7 @@ function VisionPageContent() {
   
   const [is3DMode, setIs3DMode] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [autofillTemplate, setAutofillTemplate] = useState<Shape | null>(null);
 
   const [siteName, setSiteName] = useState<string>('My Project');
   const [isNameSiteDialogOpen, setIsNameSiteDialogOpen] = useState(false);
@@ -537,7 +538,9 @@ function VisionPageContent() {
                                 bearing: 0
                             }}
                             selectedTool={selectedTool}
+                            setSelectedTool={setSelectedTool}
                             setShapes={setShapes}
+                            autofillTemplate={autofillTemplate}
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full">
@@ -595,6 +598,8 @@ function VisionPageContent() {
           selectedAssetId={selectedAssetId}
           setSelectedAssetId={setSelectedAssetId}
           onDeleteAsset={handleDeleteAsset}
+          setSelectedTool={setSelectedTool}
+          setAutofillTemplate={setAutofillTemplate}
         />
       </div>
       <NameSiteDialog 

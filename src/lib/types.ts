@@ -35,7 +35,7 @@ export type Shape = {
   }
 };
 
-export type Tool = 'pan' | 'rectangle' | 'polygon' | 'freehand' | 'zone' | 'asset';
+export type Tool = 'pan' | 'rectangle' | 'polygon' | 'freehand' | 'zone' | 'asset' | 'autofill';
 
 export type ElevationPoint = {
     location: LatLng;

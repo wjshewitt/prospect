@@ -1,15 +1,15 @@
 
 'use client';
 
-import React from 'react';
-import type { Shape } from '@/lib/types';
+import React, { useState } from 'react';
+import type { Shape, Tool } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
-import { Building, Trash2, RotateCcw, Bot, Layers, Plus, Minus } from 'lucide-react';
+import { Building, Trash2, RotateCcw, Bot, Layers, Plus, Minus, Grid3x3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uuid } from '@/components/map/map-canvas';
 import * as turf from '@turf/turf';
@@ -22,6 +22,8 @@ interface ThreeDEditorPanelProps {
     selectedAssetId: string | null;
     setSelectedAssetId: (id: string | null) => void;
     onDeleteAsset: (assetId: string) => void;
+    setSelectedTool: (tool: Tool) => void;
+    setAutofillTemplate: (asset: Shape | null) => void;
 }
 
 export function ThreeDEditorPanel({ 
@@ -29,7 +31,9 @@ export function ThreeDEditorPanel({
     setShapes,
     selectedAssetId, 
     setSelectedAssetId, 
-    onDeleteAsset 
+    onDeleteAsset,
+    setSelectedTool,
+    setAutofillTemplate
 }: ThreeDEditorPanelProps) {
     
     const { toast } = useToast();
@@ -48,19 +52,18 @@ export function ThreeDEditorPanel({
                     const depth = (newMeta.depth || s.assetMeta.depth || 8);
                     const rotation = newMeta.rotation === undefined ? s.assetMeta.rotation : newMeta.rotation;
                     
-                    // Convert width/depth from meters to degrees for bbox
-                    const halfWidthDegrees = width / 2 / 111320 / Math.cos(center[1] * Math.PI / 180);
-                    const halfDepthDegrees = depth / 2 / 111320;
-
-                    const bbox: turf.BBox = [
-                        center[0] - halfWidthDegrees,
-                        center[1] - halfDepthDegrees,
-                        center[0] + halfWidthDegrees,
-                        center[1] + halfDepthDegrees,
-                    ];
+                    const unrotatedPoly = turf.bboxPolygon(turf.bbox(turf.buffer(turf.point(center), Math.max(width, depth) / 2000, { units: 'kilometers' })));
                     
-                    const unrotatedPoly = turf.bboxPolygon(bbox);
-                    const newPoly = turf.transformRotate(unrotatedPoly, rotation, { pivot: center });
+                    const horizontalDistance = width / (111.32 * Math.cos(center[1] * (Math.PI / 180)));
+                    const verticalDistance = depth / 111.32;
+                    
+                    const xmin = center[0] - horizontalDistance/2000;
+                    const xmax = center[0] + horizontalDistance/2000;
+                    const ymin = center[1] - verticalDistance/2000;
+                    const ymax = center[1] + verticalDistance/2000;
+
+                    const newPoly = turf.transformRotate(turf.bboxPolygon([xmin, ymin, xmax, ymax]), rotation, { pivot: center });
+
                     const newPath = newPoly.geometry.coordinates[0].map((c: number[]) => ({lat: c[1], lng: c[0]}));
                     
                     return {
@@ -74,6 +77,16 @@ export function ThreeDEditorPanel({
             }
             return s;
         }));
+    };
+    
+    const handleStartAutofill = () => {
+        if (!selectedAsset) return;
+        setAutofillTemplate(selectedAsset);
+        setSelectedTool('autofill');
+        toast({
+            title: 'Start Drawing Autofill Area',
+            description: 'Draw a polygon on the map to fill it with copies of the selected building.',
+        });
     };
 
     const handleFloorsChange = (newFloors: number) => {
@@ -121,19 +134,17 @@ export function ThreeDEditorPanel({
         const distance = Math.max(width, depth) + 5; // Place it one "building length" away + 5m spacing
         const newCenter = turf.destination(edgeMidpoint, distance / 1000, rotation + 90); // 90 deg from center of edge
        
-        // Convert width/depth from meters to degrees for bbox
         const centerCoords = newCenter.geometry.coordinates;
-        const halfWidthDegrees = width / 2 / 111320 / Math.cos(centerCoords[1] * Math.PI / 180);
-        const halfDepthDegrees = depth / 2 / 111320;
-        const bbox: turf.BBox = [
-            centerCoords[0] - halfWidthDegrees,
-            centerCoords[1] - halfDepthDegrees,
-            centerCoords[0] + halfWidthDegrees,
-            centerCoords[1] + halfDepthDegrees,
-        ];
 
-        const unrotatedPoly = turf.bboxPolygon(bbox);
-        const newPoly = turf.transformRotate(unrotatedPoly, rotation, { pivot: centerCoords });
+        const horizontalDistance = width / (111.32 * Math.cos(centerCoords[1] * (Math.PI / 180)));
+        const verticalDistance = depth / 111.32;
+        
+        const xmin = centerCoords[0] - horizontalDistance/2000;
+        const xmax = centerCoords[0] + horizontalDistance/2000;
+        const ymin = centerCoords[1] - verticalDistance/2000;
+        const ymax = centerCoords[1] + verticalDistance/2000;
+
+        const newPoly = turf.transformRotate(turf.bboxPolygon([xmin, ymin, xmax, ymax]), rotation, { pivot: centerCoords });
         const newPath = newPoly.geometry.coordinates[0].map((c: number[]) => ({lat: c[1], lng: c[0]}));
         
         const newBuilding: Shape = {
@@ -171,6 +182,28 @@ export function ThreeDEditorPanel({
                             </p>
                         </CardContent>
                     )}
+                </Card>
+                
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base flex items-center justify-between">
+                           <span>Autofill Area</span>
+                           <Grid3x3 className="h-5 w-5 text-muted-foreground" />
+                        </CardTitle>
+                        <CardDescription>
+                            Select a building, then draw an area to fill it with copies.
+                         </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button 
+                            className="w-full"
+                            onClick={handleStartAutofill}
+                            disabled={!selectedAsset}
+                        >
+                            <Layers className="mr-2 h-4 w-4" />
+                            Start Autofill Area
+                        </Button>
+                    </CardContent>
                 </Card>
 
                 {selectedAsset && selectedAsset.assetMeta && (

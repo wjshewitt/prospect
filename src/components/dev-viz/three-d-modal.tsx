@@ -1,8 +1,8 @@
 
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import type { Shape, ElevationGrid, Tool } from '@/lib/types';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import type { Shape, ElevationGrid, Tool, LatLng } from '@/lib/types';
 import { uuid } from '@/components/map/map-canvas';
 import DeckGL, { PickingInfo } from '@deck.gl/react';
 import { TerrainLayer } from '@deck.gl/geo-layers';
@@ -25,7 +25,9 @@ interface ThreeDVisualizationProps {
   setSelectedAssetId: (id: string | null) => void;
   initialViewState: any;
   selectedTool: Tool;
+  setSelectedTool: (tool: Tool) => void;
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
+  autofillTemplate: Shape | null;
 }
 
 function NavigationGuide() {
@@ -41,6 +43,50 @@ function NavigationGuide() {
     )
 }
 
+const AutofillDrawingTool: React.FC<{
+    onDrawEnd: (path: LatLng[]) => void;
+    setSelectedTool: (tool: Tool) => void;
+}> = ({ onDrawEnd, setSelectedTool }) => {
+    const [isDrawing, setIsDrawing] = useState(false);
+    const pathRef = useRef<LatLng[]>([]);
+    const [polyline, setPolyline] = useState<any>(null);
+    const { toast } = useToast();
+
+    const onDragStart = (info: any) => {
+        if (!info.coordinate) return;
+        setIsDrawing(true);
+        pathRef.current = [ { lng: info.coordinate[0], lat: info.coordinate[1] } ];
+    };
+
+    const onDrag = (info: any) => {
+        if (!isDrawing || !info.coordinate) return;
+        pathRef.current.push({ lng: info.coordinate[0], lat: info.coordinate[1] });
+        // This is a simplified representation. In a real scenario, you'd update a layer.
+        // For now, we just collect points.
+    };
+
+    const onDragEnd = (info: any) => {
+        if (!isDrawing) return;
+        
+        setIsDrawing(false);
+        if (pathRef.current.length > 2) {
+            onDrawEnd([...pathRef.current, pathRef.current[0]]); // Close the polygon
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Area Too Small',
+                description: 'Please draw a larger area to fill.',
+            });
+        }
+        pathRef.current = [];
+        setSelectedTool('pan');
+    };
+    
+    // We need to add these as props to DeckGL
+    return <DeckGL onDragStart={onDragStart} onDrag={onDrag} onDragEnd={onDragEnd} getCursor={() => 'crosshair'} />;
+};
+
+
 export function ThreeDVisualization({
   assets,
   zones,
@@ -51,12 +97,16 @@ export function ThreeDVisualization({
   setSelectedAssetId,
   initialViewState,
   selectedTool,
+  setSelectedTool,
   setShapes,
+  autofillTemplate,
 }: ThreeDVisualizationProps) {
 
   const { toast } = useToast();
   const [viewState, setViewState] = useState(initialViewState);
   const isFirstLoad = React.useRef(true);
+  const [isDrawingAutofill, setIsDrawingAutofill] = useState(false);
+  const [autofillPath, setAutofillPath] = useState<LatLng[] | null>(null);
 
   // Update internal view state if the initial state prop changes (e.g., when re-entering 3D mode)
   useEffect(() => {
@@ -70,7 +120,6 @@ export function ThreeDVisualization({
   const handlePlaceBuilding = useCallback((info: PickingInfo) => {
     if (!info.coordinate) return;
     
-    // Check if click is inside the main boundary
     const boundaryCoords = boundary.path.map(p => [p.lng, p.lat]);
     if (boundaryCoords.length > 0 && (boundaryCoords[0][0] !== boundaryCoords[boundaryCoords.length - 1][0] || boundaryCoords[0][1] !== boundaryCoords[boundaryCoords.length - 1][1])) {
         boundaryCoords.push(boundaryCoords[0]);
@@ -90,20 +139,16 @@ export function ThreeDVisualization({
     const buildingWidth = 8;
     const buildingDepth = 10;
     const center = { lat: info.coordinate[1], lng: info.coordinate[0] };
-    const centerPoint = turf.point([center.lng, center.lat]);
     
-    // Convert width/depth from meters to degrees for bbox
-    const halfWidthDegrees = buildingWidth / 2 / 111320 / Math.cos(center.lat * Math.PI / 180);
-    const halfDepthDegrees = buildingDepth / 2 / 111320;
+    const horizontalDistance = buildingWidth / (111.32 * Math.cos(center.lat * (Math.PI / 180)));
+    const verticalDistance = buildingDepth / 111.32;
     
-    const bbox: turf.BBox = [
-      centerPoint.geometry.coordinates[0] - halfWidthDegrees, 
-      centerPoint.geometry.coordinates[1] - halfDepthDegrees, 
-      centerPoint.geometry.coordinates[0] + halfWidthDegrees, 
-      centerPoint.geometry.coordinates[1] + halfDepthDegrees
-    ];
-    
-    const unrotatedPoly = turf.bboxPolygon(bbox);
+    const xmin = center.lng - horizontalDistance/2000;
+    const xmax = center.lng + horizontalDistance/2000;
+    const ymin = center.lat - verticalDistance/2000;
+    const ymax = center.lat + verticalDistance/2000;
+
+    const unrotatedPoly = turf.bboxPolygon([xmin, ymin, xmax, ymax]);
     
     const path = unrotatedPoly.geometry.coordinates[0].map((c: any) => ({ lat: c[1], lng: c[0] }));
     
@@ -129,6 +174,82 @@ export function ThreeDVisualization({
     });
 
   }, [boundary.path, setShapes, toast]);
+
+    const handleAutofill = (fillAreaPath: LatLng[]) => {
+        if (!autofillTemplate || !autofillTemplate.assetMeta) return;
+
+        const fillPolygon = turf.polygon([fillAreaPath.map(p => [p.lng, p.lat])]);
+        const { width = 10, depth = 10, rotation = 0, floors } = autofillTemplate.assetMeta;
+        
+        const spacingX = width + 5; // 5m spacing
+        const spacingY = depth + 8;
+        const fillBbox = turf.bbox(fillPolygon);
+
+        const newBuildings: Shape[] = [];
+
+        for (let x = fillBbox[0]; x < fillBbox[2]; x += spacingX / (111.32 * Math.cos(fillBbox[1] * (Math.PI/180))) / 1000) {
+            for (let y = fillBbox[1]; y < fillBbox[3]; y += spacingY / 111.32 / 1000) {
+                const center = [x, y];
+                const pt = turf.point(center);
+
+                if (turf.booleanPointInPolygon(pt, fillPolygon)) {
+                     const horizontalDistance = width / (111.32 * Math.cos(center[1] * (Math.PI / 180)));
+                     const verticalDistance = depth / 111.32;
+        
+                     const xmin = center[0] - horizontalDistance/2000;
+                     const xmax = center[0] + horizontalDistance/2000;
+                     const ymin = center[1] - verticalDistance/2000;
+                     const ymax = center[1] + verticalDistance/2000;
+
+                     const newPoly = turf.transformRotate(turf.bboxPolygon([xmin, ymin, xmax, ymax]), rotation, { pivot: center });
+                     const newPath = newPoly.geometry.coordinates[0].map((c: number[]) => ({lat: c[1], lng: c[0]}));
+
+                     newBuildings.push({
+                        id: uuid(),
+                        type: 'rectangle',
+                        path: newPath,
+                        area: width * depth,
+                        assetMeta: { assetType: 'building', key: 'default_building', floors, rotation, width, depth },
+                     });
+                }
+            }
+        }
+        
+        setShapes(prev => [...prev, ...newBuildings]);
+        toast({
+            title: 'Area Autofilled',
+            description: `${newBuildings.length} new buildings were placed.`,
+        });
+        setAutofillPath(null);
+    };
+
+  const onDragStart = (info: PickingInfo) => {
+    if (selectedTool !== 'autofill' || !info.coordinate) return;
+    setIsDrawingAutofill(true);
+    setAutofillPath([{ lng: info.coordinate[0], lat: info.coordinate[1] }]);
+  };
+
+  const onDrag = (info: PickingInfo) => {
+    if (!isDrawingAutofill || !info.coordinate) return;
+    setAutofillPath(prev => prev ? [...prev, { lng: info.coordinate[0], lat: info.coordinate[1] }] : null);
+  };
+  
+  const onDragEnd = (info: PickingInfo) => {
+    if (!isDrawingAutofill) return;
+    
+    setIsDrawingAutofill(false);
+    if (autofillPath && autofillPath.length > 2) {
+        handleAutofill([...autofillPath, autofillPath[0]]);
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Area Too Small',
+            description: 'Please draw a larger area to fill.',
+        });
+    }
+    setAutofillPath(null);
+    setSelectedTool('pan');
+  };
 
   const handleClick = (info: PickingInfo) => {
     // If an asset is clicked, select it
@@ -219,10 +340,20 @@ export function ThreeDVisualization({
         extensions: [new PathStyleExtension({dash: true})],
         extruded: false,
     });
+    
+    const autofillDrawLayer = new PolygonLayer({
+        id: 'autofill-draw-layer',
+        data: autofillPath ? [autofillPath] : [],
+        getPolygon: d => d.map(p => [p.lng, p.lat]),
+        getFillColor: [255, 193, 7, 50],
+        getLineColor: [255, 193, 7, 200],
+        getLineWidth: 2,
+        lineWidthMinPixels: 2,
+    });
 
 
-    return [terrainLayer, boundaryLayer, zoneLayer, buildingLayer];
-  }, [elevationGrid, assets, zones, selectedAssetId, boundary]);
+    return [terrainLayer, boundaryLayer, zoneLayer, buildingLayer, autofillDrawLayer];
+  }, [elevationGrid, assets, zones, selectedAssetId, boundary, autofillPath]);
 
   if (!viewState) {
     return (
@@ -231,18 +362,29 @@ export function ThreeDVisualization({
       </div>
     );
   }
+  
+  const deckProps = {
+    layers: layers,
+    viewState: viewState,
+    onViewStateChange: ({viewState}: {viewState: any}) => setViewState(viewState),
+    controller: true,
+    style: { position: 'relative', width: '100%', height: '100%' },
+    onClick: handleClick,
+    getCursor: ({ isDragging }: { isDragging: boolean }) => {
+        if (isDrawingAutofill) return 'crosshair';
+        if (isDragging) return 'grabbing';
+        if (selectedTool === 'asset') return 'copy';
+        if (selectedTool === 'autofill') return 'crosshair';
+        return 'grab';
+    },
+    onDragStart: selectedTool === 'autofill' ? onDragStart : undefined,
+    onDrag: selectedTool === 'autofill' ? onDrag : undefined,
+    onDragEnd: selectedTool === 'autofill' ? onDragEnd : undefined,
+  };
 
   return (
     <div className="w-full h-full relative">
-      <DeckGL
-        layers={layers}
-        viewState={viewState}
-        onViewStateChange={({viewState}) => setViewState(viewState)}
-        controller={true}
-        style={{ position: 'relative', width: '100%', height: '100%' }}
-        onClick={handleClick}
-        getCursor={({ isDragging }) => (isDragging ? 'grabbing' : (selectedTool === 'asset' ? 'crosshair' : 'grab'))}
-      >
+      <DeckGL {...deckProps}>
         <Map 
           mapStyle={MAP_STYLE} 
           mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}

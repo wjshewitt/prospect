@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Shape, ElevationGrid } from '@/lib/types';
+import type { Shape, ElevationGrid, Tool } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -40,6 +40,8 @@ type StatisticsSidebarProps = {
   selectedAssetId: string | null;
   setSelectedAssetId: (id: string | null) => void;
   onDeleteAsset: (assetId: string) => void;
+  setSelectedTool: (tool: Tool) => void;
+  setAutofillTemplate: (asset: Shape | null) => void;
 };
 
 const SQ_METERS_TO_ACRES = 0.000247105;
@@ -67,6 +69,8 @@ export default function StatisticsSidebar({
     selectedAssetId,
     setSelectedAssetId,
     onDeleteAsset,
+    setSelectedTool,
+    setAutofillTemplate
 }: StatisticsSidebarProps) {
 
   const projectBoundary = shapes.find(s => !s.bufferMeta && !s.zoneMeta && !s.assetMeta);
@@ -97,7 +101,9 @@ export default function StatisticsSidebar({
             setShapes={setShapes}
             selectedAssetId={selectedAssetId}
             setSelectedAssetId={setSelectedAssetId} 
-            onDeleteAsset={onDeleteAsset} 
+            onDeleteAsset={onDeleteAsset}
+            setSelectedTool={setSelectedTool}
+            setAutofillTemplate={setAutofillTemplate}
         />
       ) : (
         <Tabs defaultValue="stats" className="flex flex-col h-full">

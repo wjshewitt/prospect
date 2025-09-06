@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
-import { MousePointer2, Square, Pen, PenTool, Shapes, Combine, Diff, WholeWord, Building, HelpCircle, Bot, Settings, Eye, View } from 'lucide-react';
+import { MousePointer2, Square, Pen, PenTool, Shapes, Combine, Diff, WholeWord, Building, HelpCircle, Bot, Settings, Eye, View, Grid3x3 } from 'lucide-react';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useMemo, useState } from 'react';
@@ -49,6 +49,7 @@ const designTools: { id: Tool; label: string; icon: React.ReactNode }[] = [
 const threeDTools: { id: Tool; label: string; icon: React.ReactNode }[] = [
     { id: 'pan', label: 'Select & Navigate', icon: <MousePointer2 /> },
     { id: 'asset', label: 'Place Building', icon: <Building /> },
+    { id: 'autofill', label: 'Draw Autofill Area', icon: <Grid3x3 /> },
 ];
 
 
