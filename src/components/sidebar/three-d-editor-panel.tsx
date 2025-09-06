@@ -43,14 +43,24 @@ export function ThreeDEditorPanel({
 
                 // If size or rotation changed, recalculate the path
                 if (updates.width || updates.depth || updates.rotation !== undefined) {
-                    const center = turf.center(turf.polygon(s.path.map(p => [p.lng, p.lat]))).geometry.coordinates;
-                    const width = newMeta.width || s.assetMeta.width || 10;
-                    const depth = newMeta.depth || s.assetMeta.depth || 8;
-                    const rotation = newMeta.rotation || 0;
+                    const center = turf.center(turf.polygon([s.path.map(p => [p.lng, p.lat])])).geometry.coordinates;
+                    const width = (newMeta.width || s.assetMeta.width || 10);
+                    const depth = (newMeta.depth || s.assetMeta.depth || 8);
+                    const rotation = newMeta.rotation === undefined ? s.assetMeta.rotation : newMeta.rotation;
                     
-                    const newPoly = turf.polygon(
-                        [turf.rectangle(center, width, depth, { units: 'meters', angle: rotation }).geometry.coordinates[0]]
-                    );
+                    // Convert width/depth from meters to degrees for bbox
+                    const halfWidthDegrees = width / 2 / 111320 / Math.cos(center[1] * Math.PI / 180);
+                    const halfDepthDegrees = depth / 2 / 111320;
+
+                    const bbox: turf.BBox = [
+                        center[0] - halfWidthDegrees,
+                        center[1] - halfDepthDegrees,
+                        center[0] + halfWidthDegrees,
+                        center[1] + halfDepthDegrees,
+                    ];
+                    
+                    const unrotatedPoly = turf.bboxPolygon(bbox);
+                    const newPoly = turf.transformRotate(unrotatedPoly, rotation, { pivot: center });
                     const newPath = newPoly.geometry.coordinates[0].map((c: number[]) => ({lat: c[1], lng: c[0]}));
                     
                     return {
@@ -85,15 +95,15 @@ export function ThreeDEditorPanel({
     const handleAiAssist = () => {
         if (!selectedAsset || !selectedAsset.assetMeta) return;
 
-        const { rotation, width = 10, depth = 10, floors } = selectedAsset.assetMeta;
+        const { rotation = 0, width = 10, depth = 10, floors } = selectedAsset.assetMeta;
         const originalPoly = turf.polygon([selectedAsset.path.map(p => [p.lng, p.lat])]);
         
         // Find the "front" edge (assuming longest side)
         let longestEdge: [turf.Position, turf.Position] | null = null;
         let maxDist = 0;
-        turf.coordEach(originalPoly, (current, i, features, multi, ring) => {
-          if (ring !== undefined && ring < originalPoly.geometry.coordinates.length) {
-            const nextCoord = originalPoly.geometry.coordinates[ring][i + 1];
+        turf.coordEach(originalPoly, (current, i) => {
+          if (i < originalPoly.geometry.coordinates[0].length - 1) {
+            const nextCoord = originalPoly.geometry.coordinates[0][i + 1];
             if (!nextCoord) return;
             const dist = turf.distance(current, nextCoord);
             if (dist > maxDist) {
@@ -111,9 +121,19 @@ export function ThreeDEditorPanel({
         const distance = Math.max(width, depth) + 5; // Place it one "building length" away + 5m spacing
         const newCenter = turf.destination(edgeMidpoint, distance / 1000, rotation + 90); // 90 deg from center of edge
        
-        const newPoly = turf.polygon(
-          [turf.rectangle(newCenter.geometry.coordinates, width, depth, { units: 'meters', angle: rotation }).geometry.coordinates[0]]
-        );
+        // Convert width/depth from meters to degrees for bbox
+        const centerCoords = newCenter.geometry.coordinates;
+        const halfWidthDegrees = width / 2 / 111320 / Math.cos(centerCoords[1] * Math.PI / 180);
+        const halfDepthDegrees = depth / 2 / 111320;
+        const bbox: turf.BBox = [
+            centerCoords[0] - halfWidthDegrees,
+            centerCoords[1] - halfDepthDegrees,
+            centerCoords[0] + halfWidthDegrees,
+            centerCoords[1] + halfDepthDegrees,
+        ];
+
+        const unrotatedPoly = turf.bboxPolygon(bbox);
+        const newPoly = turf.transformRotate(unrotatedPoly, rotation, { pivot: centerCoords });
         const newPath = newPoly.geometry.coordinates[0].map((c: number[]) => ({lat: c[1], lng: c[0]}));
         
         const newBuilding: Shape = {
@@ -193,7 +213,7 @@ export function ThreeDEditorPanel({
                                 <Slider 
                                     id="rotation"
                                     min={0} max={360} step={1} 
-                                    value={[selectedAsset.assetMeta.rotation]}
+                                    value={[selectedAsset.assetMeta.rotation || 0]}
                                     onValueChange={handleRotationChange}
                                 />
                             </div>
@@ -202,7 +222,7 @@ export function ThreeDEditorPanel({
                             <div className="space-y-2">
                                 <Label htmlFor="floors">Floors</Label>
                                 <div className="flex items-center gap-2">
-                                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleFloorsChange(selectedAsset.assetMeta!.floors - 1)}>
+                                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleFloorsChange((selectedAsset.assetMeta!.floors || 1) - 1)}>
                                         <Minus className="h-4 w-4" />
                                     </Button>
                                     <Input 
@@ -213,7 +233,7 @@ export function ThreeDEditorPanel({
                                         onChange={(e) => handleFloorsChange(parseInt(e.target.value, 10) || 1)}
                                         min={1}
                                     />
-                                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleFloorsChange(selectedAsset.assetMeta!.floors + 1)}>
+                                    <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => handleFloorsChange((selectedAsset.assetMeta!.floors || 1) + 1)}>
                                         <Plus className="h-4 w-4" />
                                     </Button>
                                 </div>
