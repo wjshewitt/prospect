@@ -466,7 +466,7 @@ class UrbanPlanner {
 
   private generateRoads(buildings: Feature<Polygon>[]): Feature<LineString>[] {
     if (buildings.length < 2) return [];
-    const roadNeighbors = this.settings.roadStyle === 'connect-neighbors' ? 2 : 1;
+    const roadNeighbors = (this.settings as any).roadNeighbors || 2; // Fallback
     const centers = buildings.map((b) => center(b));
     const edges = new Set<string>();
     const lines: Feature<LineString>[] = [];
