@@ -636,13 +636,25 @@ function placeBuildings(
     let nearestPoint: turf.helpers.Feature<turf.helpers.Point> | null = null;
     let minDistance = Infinity;
 
-    for (const road of roads.features) {
-        const snapped = turf.nearestPointOnLine(road, c, { units: 'kilometers' });
-        const dist = snapped.properties.dist;
-        if (dist !== undefined && dist < minDistance) {
-            minDistance = dist;
-            nearestPoint = snapped;
-        }
+    for (const roadFeature of roads.features) {
+      if (roadFeature.geometry.type === 'LineString') {
+          const snapped = turf.nearestPointOnLine(roadFeature, c, { units: 'kilometers' });
+          const dist = snapped.properties.dist;
+          if (dist !== undefined && dist < minDistance) {
+              minDistance = dist;
+              nearestPoint = snapped;
+          }
+      } else if (roadFeature.geometry.type === 'MultiLineString') {
+          for (const lineCoords of roadFeature.geometry.coordinates) {
+              const line = turf.lineString(lineCoords);
+              const snapped = turf.nearestPointOnLine(line, c, { units: 'kilometers' });
+              const dist = snapped.properties.dist;
+              if (dist !== undefined && dist < minDistance) {
+                  minDistance = dist;
+                  nearestPoint = snapped;
+              }
+          }
+      }
     }
 
     if (!nearestPoint) continue;
@@ -675,6 +687,7 @@ function placeBuildings(
 
   return turf.featureCollection(buildings);
 }
+
 
 /* -----------------------------------------------------------------------------
    Utilities
