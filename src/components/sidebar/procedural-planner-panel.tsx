@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { LayoutGrid, Loader2 } from 'lucide-react';
 import type { ProceduralGenerateLayoutInput } from '@/lib/procedural-types';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { Slider } from '../ui/slider';
 
 export type PlannerSettings = Omit<ProceduralGenerateLayoutInput, 'boundary'>;
 
@@ -34,16 +36,22 @@ export function ProceduralPlannerPanel({ onGenerate, isGenerating, isReady }: Pr
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value, type } = e.target;
+    const { id, value } = e.target;
+    // Handle empty string for optional number fields
+    const numValue = value === '' ? '' : parseFloat(value);
     setSettings(prev => ({
       ...prev,
-      [id]: type === 'number' ? parseFloat(value) : value,
+      [id]: numValue,
     }));
   };
 
   const handleSelectChange = (id: keyof PlannerSettings) => (value: string) => {
     setSettings(prev => ({ ...prev, [id]: value as any }));
   };
+  
+  const handleSliderChange = (id: keyof PlannerSettings) => (value: number[]) => {
+    setSettings(prev => ({...prev, [id]: value[0]}));
+  }
 
   return (
     <Card>
@@ -100,15 +108,48 @@ export function ProceduralPlannerPanel({ onGenerate, isGenerating, isReady }: Pr
                 </SelectContent>
               </Select>
             </div>
-             <div className="space-y-2">
-                <Label htmlFor="seed">Seed (Optional)</Label>
-                <Input
-                    id="seed"
-                    value={settings.seed}
-                    onChange={handleInputChange}
-                    placeholder="e.g., 12345"
-                />
-            </div>
+
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="advanced">
+                <AccordionTrigger className="text-sm">Advanced Settings</AccordionTrigger>
+                <AccordionContent className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="seed">Seed (Optional)</Label>
+                      <Input
+                          id="seed"
+                          value={settings.seed || ''}
+                          onChange={handleInputChange}
+                          placeholder="e.g., city-123"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex justify-between">
+                            <Label htmlFor="siteSetback">Site Setback</Label>
+                            <span className="text-xs text-muted-foreground">{settings.siteSetback} m</span>
+                        </div>
+                        <Slider id="siteSetback" value={[settings.siteSetback]} onValueChange={handleSliderChange('siteSetback')} min={0} max={50} step={1} />
+                    </div>
+                     <div className="space-y-2">
+                        <div className="flex justify-between">
+                            <Label htmlFor="roadSetback">Road Setback</Label>
+                            <span className="text-xs text-muted-foreground">{settings.roadSetback} m</span>
+                        </div>
+                        <Slider id="roadSetback" value={[settings.roadSetback]} onValueChange={handleSliderChange('roadSetback')} min={0} max={20} step={1} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="minBuildingSize">Min Bldg Size</Label>
+                            <Input id="minBuildingSize" type="number" value={settings.minBuildingSize} onChange={handleInputChange} placeholder="m²" />
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="maxBuildingSize">Max Bldg Size</Label>
+                            <Input id="maxBuildingSize" type="number" value={settings.maxBuildingSize} onChange={handleInputChange} placeholder="m²" />
+                        </div>
+                    </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+            
             <Button className="w-full" onClick={() => onGenerate(settings)} disabled={isGenerating}>
               {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LayoutGrid className="mr-2 h-4 w-4" />}
               Generate Full Layout
