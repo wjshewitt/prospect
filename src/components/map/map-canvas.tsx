@@ -782,12 +782,13 @@ const OpenStreetMapLayer = () => {
   const map = useMap();
   useEffect(() => {
     if (!map) return;
+    // This tile server provides labels with a transparent background
     const osmMapType = new google.maps.ImageMapType({
       getTileUrl: function (coord, zoom) {
-        return `https://a.tile.openstreetmap.org/${zoom}/${coord.x}/${coord.y}.png`;
+        return `https://tiles.wmflabs.org/osm-no-labels/${zoom}/${coord.x}/${coord.y}.png`;
       },
       tileSize: new google.maps.Size(256, 256),
-      name: 'OpenStreetMap',
+      name: 'OpenStreetMap Labels',
       maxZoom: 18,
     });
 
@@ -798,7 +799,7 @@ const OpenStreetMapLayer = () => {
       if (map && map.overlayMapTypes) {
         for (let i = 0; i < map.overlayMapTypes.getLength(); i++) {
             const mt = map.overlayMapTypes.getAt(i);
-            if (mt && mt.name === 'OpenStreetMap') {
+            if (mt && mt.name === 'OpenStreetMap Labels') {
                 map.overlayMapTypes.removeAt(i);
                 break;
             }
@@ -1111,3 +1112,5 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
+
+    
