@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { BarChart3, LandPlot, HelpCircle, LayoutGrid, Info, ChevronDown, Sparkles, ChevronLeft, ChevronRight, Building, Trash2, Pencil } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BarChart3, LandPlot, HelpCircle, LayoutGrid, Info, ChevronDown, Sparkles, Building, Trash2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ElevationAnalysis } from './elevation-analysis';
 import { DevelopmentDetails } from './development-details';
@@ -37,8 +37,6 @@ type StatisticsSidebarProps = {
   selectedAssetId: string | null;
   onDeleteAsset: (assetId: string) => void;
 };
-
-type SidebarView = 'stats' | 'summary' | 'planner';
 
 const SQ_METERS_TO_ACRES = 0.000247105;
 
@@ -107,8 +105,6 @@ export default function StatisticsSidebar({
     onDeleteAsset,
 }: StatisticsSidebarProps) {
 
-  const [view, setView] = useState<SidebarView>('stats');
-
   const projectBoundary = shapes.find(s => !s.bufferMeta && !s.zoneMeta && !s.assetMeta);
   const zones = shapes.filter(s => !!s.zoneMeta);
   const developedAreaMeters = zones.reduce((acc, z) => acc + (z.area || 0), 0);
@@ -122,41 +118,6 @@ export default function StatisticsSidebar({
   const selectedShapes = shapes.filter(s => selectedShapeIds.includes(s.id));
   const selectedAreaAcres = selectedShapes.reduce((acc, shape) => acc + (shape.area || 0), 0) * SQ_METERS_TO_ACRES;
 
-  const VIEWS: {id: SidebarView, title: string}[] = [
-      {id: 'planner', title: 'Planner'},
-      {id: 'stats', title: 'Statistics'},
-      {id: 'summary', title: 'Summary'},
-  ];
-  const currentViewIndex = VIEWS.findIndex(v => v.id === view);
-
-  const ViewSwitcher = () => (
-    <div className="flex items-center justify-center p-2">
-      <div className="inline-flex items-center justify-center rounded-md bg-primary/10 p-1 text-primary">
-          <Button 
-            size="icon" 
-            variant="ghost" 
-            className="h-8 w-8 rounded-sm hover:bg-primary/20"
-            onClick={() => setView(VIEWS[(currentViewIndex + VIEWS.length - 1) % VIEWS.length].id)}
-            title="Previous View"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <div className="w-24 text-center">
-            <h3 className="font-semibold">{VIEWS[currentViewIndex].title}</h3>
-          </div>
-           <Button 
-            size="icon" 
-            variant="ghost" 
-            className="h-8 w-8 rounded-sm hover:bg-primary/20"
-            onClick={() => setView(VIEWS[(currentViewIndex + 1) % VIEWS.length].id)}
-            title="Next View"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-      </div>
-    </div>
-  );
-
   return (
     <aside 
       id="stats-sidebar" 
@@ -169,11 +130,17 @@ export default function StatisticsSidebar({
       {is3DView ? (
         <ThreeDAssetPanel shapes={shapes} selectedAssetId={selectedAssetId} onDeleteAsset={onDeleteAsset} />
       ) : (
-        <>
-            <ViewSwitcher />
+        <Tabs defaultValue="stats" className="flex flex-col h-full">
+            <div className="p-2">
+                <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="stats">Statistics</TabsTrigger>
+                    <TabsTrigger value="planner">Planner</TabsTrigger>
+                    <TabsTrigger value="summary">Summary</TabsTrigger>
+                </TabsList>
+            </div>
             <Separator />
             <ScrollArea className="flex-1">
-                {view === 'stats' && (
+                <TabsContent value="stats">
                     <div className="p-4 space-y-6">
                     <Card>
                         <CardHeader>
@@ -239,15 +206,15 @@ export default function StatisticsSidebar({
                         />
                     </div>
                     </div>
-                )}
-                {view === 'summary' && (
+                </TabsContent>
+                <TabsContent value="summary">
                    <AiSummaryPanel 
                     siteName={siteName}
                     shapes={shapes}
                     elevationGrid={elevationGrid}
                    />
-                )}
-                {view === 'planner' && (
+                </TabsContent>
+                <TabsContent value="planner">
                     <div className="p-4 space-y-6">
                         <ProceduralPlannerPanel 
                             onGenerate={onGenerateProceduralLayout}
@@ -256,12 +223,10 @@ export default function StatisticsSidebar({
                         />
                         <AiPlacementPanel />
                     </div>
-                )}
+                </TabsContent>
             </ScrollArea>
-        </>
+        </Tabs>
       )}
     </aside>
   );
 }
-
-    
