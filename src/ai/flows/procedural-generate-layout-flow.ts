@@ -105,7 +105,7 @@ class UrbanPlanner {
   private rand: () => number;
   private boundaryArea: number;
 
-  constructor(boundaryInput: LatLng[], settings: ProceduralGenerateLayoutInput) {
+  constructor(boundaryInput: any, settings: ProceduralGenerateLayoutInput) {
     this.settings = settings;
     this.boundary = this.normalizeBoundary(boundaryInput);
     this.boundaryArea = turf.area(this.boundary);
@@ -424,3 +424,5 @@ const proceduralGenerateLayoutFlow = ai.defineFlow(
     }
   }
 );
+
+    
