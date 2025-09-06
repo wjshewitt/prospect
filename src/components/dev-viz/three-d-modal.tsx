@@ -5,7 +5,7 @@ import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import type { Shape, ElevationGrid, Tool, LatLng } from '@/lib/types';
 import { uuid } from '@/components/map/map-canvas';
 import DeckGL, { PickingInfo } from '@deck.gl/react';
-import { TerrainLayer } from '@deck.gl/geo-layers';
+import { TerrainLayer, MjolnirEvent } from '@deck.gl/geo-layers';
 import { PolygonLayer } from '@deck.gl/layers';
 import { PathStyleExtension } from '@deck.gl/extensions';
 import { Map } from 'react-map-gl';
@@ -13,7 +13,6 @@ import { Move3d, MousePointer, ZoomIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as turf from '@turf/turf';
 
-const MAP_STYLE = 'mapbox://styles/mapbox/satellite-v9';
 const GRASS_TEXTURE_URL = 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/grass.png';
 
 
@@ -75,10 +74,7 @@ export function ThreeDVisualization({
 
   // Update internal view state if the initial state prop changes (e.g., when re-entering 3D mode)
   useEffect(() => {
-    if (isFirstLoad.current) {
-        setViewState(initialViewState);
-        isFirstLoad.current = false;
-    }
+    setViewState(initialViewState);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialViewState]);
 
@@ -250,7 +246,7 @@ export function ThreeDVisualization({
         setSelectedAssetId(null);
     }
     
-    const handleDeckClick = (info: PickingInfo, event: any) => {
+    const handleDeckClick = (info: PickingInfo, event: MjolnirEvent) => {
         if (event.srcEvent.type === 'dblclick' || dragInfo) return;
 
         if (clickTimeout.current) {
@@ -306,8 +302,8 @@ export function ThreeDVisualization({
 
     const { grid } = elevationGrid.pointGrid;
     const { minX, maxX, minY, maxY } = elevationGrid.xyBounds;
-
-    const terrainLayer = new TerrainLayer({
+    
+    const terrainLayerProps = {
       id: 'terrain',
       minZoom: 0,
       maxZoom: 20,
@@ -319,7 +315,10 @@ export function ThreeDVisualization({
       zScaler: 1.2,
       texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : null,
       color: groundColor,
-    });
+    };
+    
+    // This is the key change. We create the layer based on the props.
+    const terrainLayer = new TerrainLayer(terrainLayerProps);
     
     const buildingLayer = new PolygonLayer({
         id: 'buildings',
@@ -369,6 +368,8 @@ export function ThreeDVisualization({
         dashJustified: true,
         extensions: [new PathStyleExtension({dash: true})],
         extruded: false,
+        // This is the key change to clip the terrain
+        mask: true,
     });
     
     const autofillDrawLayer = new PolygonLayer({
@@ -415,7 +416,7 @@ export function ThreeDVisualization({
       <DeckGL {...deckProps}>
         {groundStyle === 'satellite' && (
              <Map 
-                mapStyle={MAP_STYLE} 
+                mapStyle={'mapbox://styles/mapbox/satellite-v9'} 
                 mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
                 preventStyleDiffing
                 interactive={false}
@@ -426,4 +427,3 @@ export function ThreeDVisualization({
     </div>
   );
 }
-
