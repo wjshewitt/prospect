@@ -1112,5 +1112,5 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     </div>
   );
 };
-
+    
     
