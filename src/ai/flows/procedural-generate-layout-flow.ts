@@ -588,8 +588,7 @@ function placeBuildings(
   rng: RNG
 ): FeatureCollection<Polygon> {
   const buildings: Feature<Polygon>[] = [];
-  const roadsCombined: Feature<any> =
-    roads.features.length === 1 ? roads.features[0] : (turf.combine(roads).features[0] as any);
+  if (roads.features.length === 0) return turf.featureCollection([]);
 
   for (const parcel of parcels.features) {
     let buildable: Feature<Polygon | MultiPolygon> | null = null;
@@ -632,8 +631,23 @@ function placeBuildings(
     if (!buildablePoly) continue;
 
     const c = (turf.centroid(buildablePoly).geometry.coordinates as [number, number]) ?? [0, 0];
-    const snapped = turf.nearestPointOnLine(roadsCombined as any, turf.point(c), { units: 'kilometers' }) as any;
-    const brg = turf.bearing(turf.point(c), snapped);
+    
+    // Find the nearest point on ANY road segment
+    let nearestPoint: turf.helpers.Feature<turf.helpers.Point> | null = null;
+    let minDistance = Infinity;
+
+    for (const road of roads.features) {
+        const snapped = turf.nearestPointOnLine(road, c, { units: 'kilometers' });
+        const dist = snapped.properties.dist;
+        if (dist !== undefined && dist < minDistance) {
+            minDistance = dist;
+            nearestPoint = snapped;
+        }
+    }
+
+    if (!nearestPoint) continue;
+
+    const brg = turf.bearing(turf.point(c), nearestPoint);
 
     const w = lerp(cfg.minBldgWidthM, cfg.maxBldgWidthM, rng());
     const d = lerp(cfg.minBldgDepthM, cfg.maxBldgDepthM, rng());
