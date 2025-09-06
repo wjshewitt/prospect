@@ -330,37 +330,28 @@ class UrbanPlanner {
               // Get parcel centroid
               const center = turf.centroid(parcel);
               
-              // Create a rectangular or circular building
-              const useRect = this.rand() > 0.3; // 70% rectangles, 30% circles
-              
               let building: Feature<Polygon> | null = null;
               
-              if (useRect) {
-                  // Create rectangular building
-                  const ratio = 0.6 + this.rand() * 0.8; // aspect ratio between 0.6 and 1.4
-                  const width = Math.sqrt(targetArea * ratio);
-                  const height = targetArea / width;
-                  
-                  // Create rectangle using a small buffer around a line
-                  const halfWidth = width / 2;
-                  const halfHeight = height / 2;
-                  const centerCoord = turf.getCoord(center);
-                  
-                  // Create rectangle vertices
-                  const vertices = [
-                      turf.destination(turf.destination(centerCoord, halfWidth, 90), halfHeight, 0).geometry.coordinates,
-                      turf.destination(turf.destination(centerCoord, halfWidth, 90), halfHeight, 180).geometry.coordinates,
-                      turf.destination(turf.destination(centerCoord, halfWidth, -90), halfHeight, 180).geometry.coordinates,
-                      turf.destination(turf.destination(centerCoord, halfWidth, -90), halfHeight, 0).geometry.coordinates,
-                      turf.destination(turf.destination(centerCoord, halfWidth, 90), halfHeight, 0).geometry.coordinates, // close the polygon
-                  ];
-                  
-                  building = turf.polygon([vertices]);
-              } else {
-                  // Create circular building
-                  const radius = Math.sqrt(targetArea / Math.PI);
-                  building = turf.circle(center, radius, { units: 'meters', steps: 8 });
-              }
+              // Create rectangular building
+              const ratio = 0.6 + this.rand() * 0.8; // aspect ratio between 0.6 and 1.4
+              const width = Math.sqrt(targetArea * ratio);
+              const height = targetArea / width;
+              
+              // Create rectangle using a small buffer around a line
+              const halfWidth = width / 2;
+              const halfHeight = height / 2;
+              const centerCoord = turf.getCoord(center);
+              
+              // Create rectangle vertices
+              const vertices = [
+                  turf.destination(turf.destination(centerCoord, halfWidth, 90), halfHeight, 0).geometry.coordinates,
+                  turf.destination(turf.destination(centerCoord, halfWidth, 90), halfHeight, 180).geometry.coordinates,
+                  turf.destination(turf.destination(centerCoord, halfWidth, -90), halfHeight, 180).geometry.coordinates,
+                  turf.destination(turf.destination(centerCoord, halfWidth, -90), halfHeight, 0).geometry.coordinates,
+                  turf.destination(turf.destination(centerCoord, halfWidth, 90), halfHeight, 0).geometry.coordinates, // close the polygon
+              ];
+              
+              building = turf.polygon([vertices]);
               
               if (building) {
                   // Ensure building is within parcel

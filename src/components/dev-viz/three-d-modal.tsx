@@ -80,7 +80,7 @@ export function ThreeDVisualization({
         id: 'buildings',
         data: assets,
         getPolygon: d => d.path.map(p => [p.lng, p.lat]),
-        getFillColor: d => selectedAssetId === d.id ? [255, 193, 7, 255] : [228, 228, 231, 255], // Light gray, nearly white
+        getFillColor: d => selectedAssetId === d.id ? [255, 193, 7, 255] : [228, 225, 219, 255], // Light beige color
         getLineColor: d => selectedAssetId === d.id ? [255, 255, 255, 255] : [100, 116, 139, 255], // Slate-500 for outlines
         lineWidthMinPixels: d => selectedAssetId === d.id ? 2 : 1,
         extruded: true,
