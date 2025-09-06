@@ -71,7 +71,11 @@ export function ThreeDVisualization({
     if (!info.coordinate) return;
     
     // Check if click is inside the main boundary
-    const boundaryPoly = turf.polygon([boundary.path.map(p => [p.lng, p.lat])]);
+    const boundaryCoords = boundary.path.map(p => [p.lng, p.lat]);
+    if (boundaryCoords.length > 0 && (boundaryCoords[0][0] !== boundaryCoords[boundaryCoords.length - 1][0] || boundaryCoords[0][1] !== boundaryCoords[boundaryCoords.length - 1][1])) {
+        boundaryCoords.push(boundaryCoords[0]);
+    }
+    const boundaryPoly = turf.polygon([boundaryCoords]);
     const clickPoint = turf.point(info.coordinate);
 
     if (!turf.booleanPointInPolygon(clickPoint, boundaryPoly)) {
