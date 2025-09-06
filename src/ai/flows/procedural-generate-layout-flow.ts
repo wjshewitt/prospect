@@ -12,7 +12,40 @@
  */
 
 import { ai } from '@/ai/genkit';
-import * as turf from '@turf/turf';
+import area from '@turf/area';
+import bbox from '@turf/bbox';
+import bearing from '@turf/bearing';
+import booleanContains from '@turf/boolean-contains';
+import booleanDisjoint from '@turf/boolean-disjoint';
+import booleanPointInPolygon from '@turf/boolean-point-in-polygon';
+import booleanWithin from '@turf/boolean-within';
+import buffer from '@turf/buffer';
+import center from '@turf/center';
+import centroid from '@turf/centroid';
+import cleanCoords from '@turf/clean-coords';
+import combine from '@turf/combine';
+import destination from '@turf/destination';
+import difference from '@turf/difference';
+import distance from '@turf/distance';
+import featureCollection from '@turf/feature-collection';
+import flatten from '@turf/flatten';
+import intersect from '@turf/intersect';
+import lineString from '@turf/line-string';
+import nearestPoint from '@turf/nearest-point';
+import nearestPointOnLine from '@turf/nearest-point-on-line';
+import point from '@turf/point';
+import pointGrid from '@turf/point-grid';
+import pointToLineDistance from '@turf/point-to-line-distance';
+import polygon from '@turf/polygon';
+import randomPoint from '@turf/random-point';
+import randomPolygon from '@turf/random-polygon';
+import simplify from '@turf/simplify';
+import voronoi from '@turf/voronoi';
+import transformRotate from '@turf/transform-rotate';
+import transformScale from '@turf/transform-scale';
+import transformTranslate from '@turf/transform-translate';
+import booleanIntersects from '@turf/boolean-intersects';
+
 import type {
   Feature,
   FeatureCollection,
@@ -60,7 +93,7 @@ export async function proceduralGenerateLayout(
   // The planner returns FeatureCollections, but the parcels are implicitly defined.
   // For now, we will return an empty FeatureCollection for parcels.
   // A future enhancement could be to calculate parcels from the space between roads.
-  const parcels = turf.featureCollection([]);
+  const parcels = featureCollection([]);
 
   return {
     roads,
@@ -89,7 +122,7 @@ class UrbanPlanner {
   constructor(boundaryInput: Feature<Polygon | MultiPolygon>, settings: ProceduralGenerateLayoutInput) {
     this.boundary = this.normalizeBoundary(boundaryInput);
     this.settings = settings;
-    this.boundaryArea = turf.area(this.boundary);
+    this.boundaryArea = area(this.boundary);
     this.rand = settings.seed
       ? this.mulberry32(this.hashCode(settings.seed))
       : Math.random;
@@ -116,7 +149,7 @@ class UrbanPlanner {
 
   private normalizeBoundary(input: Feature<Polygon | MultiPolygon>): Feature<Polygon | MultiPolygon> {
     if (!input) throw new Error("No boundary provided");
-    return turf.cleanCoords(input);
+    return cleanCoords(input);
   }
 
   public generateLayout() {
@@ -124,9 +157,9 @@ class UrbanPlanner {
     const buildings = this.generateBuildings(buildableArea);
     const roads = this.generateRoads(buildings);
     return {
-      buildings: turf.featureCollection(buildings),
-      greenSpaces: turf.featureCollection(greenSpaces),
-      roads: turf.featureCollection(roads),
+      buildings: featureCollection(buildings),
+      greenSpaces: featureCollection(greenSpaces),
+      roads: featureCollection(roads),
     };
   }
 
@@ -135,7 +168,7 @@ class UrbanPlanner {
     let base: Feature<Polygon | MultiPolygon> = this.boundary;
 
     if (s.siteSetback > 0) {
-      const shrunk = turf.buffer(base, -s.siteSetback, { units: "meters" });
+      const shrunk = buffer(base, -s.siteSetback, { units: "meters" });
       if (
         shrunk &&
         shrunk.geometry &&
@@ -150,21 +183,21 @@ class UrbanPlanner {
 
     switch (s.greenSpaceType) {
       case "central": {
-        const center = turf.center(base);
-        const scaled = turf.transformScale(base, 0.4, { origin: center });
+        const centerPoint = center(base);
+        const scaled = transformScale(base, 0.4, { origin: centerPoint });
         if (scaled) {
-          const clipped = turf.intersect(scaled, base) || scaled;
+          const clipped = intersect(scaled, base) || scaled;
           clipped.properties = { type: "green-space" };
           greenSpaces.push(clipped as Feature<Polygon | MultiPolygon>);
-          const diff = turf.difference(base, clipped);
+          const diff = difference(base, clipped);
           if (diff) buildableArea = diff;
         }
         break;
       }
       case "perimeter": {
-        const inner = turf.buffer(base, -40, { units: "meters" });
+        const inner = buffer(base, -40, { units: "meters" });
         if (inner) {
-          const ring = turf.difference(base, inner);
+          const ring = difference(base, inner);
           if (ring) {
             ring.properties = { type: "green-space" };
             greenSpaces.push(ring);
@@ -179,25 +212,25 @@ class UrbanPlanner {
           Math.floor(this.boundaryArea / 30000)
         );
         for (let i = 0; i < numParks; i++) {
-          const bbox = turf.bbox(buildableArea);
+          const bboxFeat = bbox(buildableArea);
           let pt;
           let tries = 0;
           do {
-            pt = turf.randomPoint(1, { bbox }).features[0];
+            pt = randomPoint(1, { bbox: bboxFeat }).features[0];
             tries++;
           } while (
-            !turf.booleanPointInPolygon(pt, buildableArea) &&
+            !booleanPointInPolygon(pt, buildableArea) &&
             tries < 100
           );
 
           if (tries < 100) {
             const radius = 15 + this.rand() * 25;
-            const park = turf.buffer(pt, radius, { units: "meters" });
-            const clipped = turf.intersect(park, buildableArea);
+            const park = buffer(pt, radius, { units: "meters" });
+            const clipped = intersect(park, buildableArea);
             if (clipped) {
               clipped.properties = { type: "green-space" };
-              greenSpaces.push(turf.cleanCoords(clipped as Feature<Polygon | MultiPolygon>));
-              const diff = turf.difference(buildableArea, clipped);
+              greenSpaces.push(cleanCoords(clipped as Feature<Polygon | MultiPolygon>));
+              const diff = difference(buildableArea, clipped);
               if (diff) buildableArea = diff;
             }
           }
@@ -206,35 +239,35 @@ class UrbanPlanner {
       }
     }
     return {
-      buildableArea: turf.cleanCoords(buildableArea),
+      buildableArea: cleanCoords(buildableArea),
       greenSpaces,
     };
   }
   
   private generateCandidatePoints(buildableArea: Feature<Polygon | MultiPolygon>, targetCount: number): Feature<Point>[] {
     const { layout, spacing } = this.settings;
-    const bbox = turf.bbox(buildableArea);
+    const bboxFeat = bbox(buildableArea);
     const pts: Feature<Point>[] = [];
-    const inside = (pt: Feature<Point>) => turf.booleanPointInPolygon(pt, buildableArea);
+    const inside = (pt: Feature<Point>) => booleanPointInPolygon(pt, buildableArea);
     const avgArea = Math.max(
       1,
       this.boundaryArea / Math.max(1, targetCount)
     );
     const spacingMeters = Math.max(spacing, Math.sqrt(avgArea) * 0.8);
-    const center = turf.center(buildableArea);
+    const centerPoint = center(buildableArea);
 
     if (layout === "grid") {
       const cellKm = Math.max(0.02, spacingMeters / 1000);
-      const grid = turf.pointGrid(bbox, cellKm, {
+      const grid = pointGrid(bboxFeat, cellKm, {
         units: "kilometers",
         mask: buildableArea,
       });
       pts.push(...grid.features);
     } else if (layout === "radial") {
       const diagMeters =
-        turf.distance(
-          turf.point([bbox[0], bbox[1]]),
-          turf.point([bbox[2], bbox[3]]),
+        distance(
+          point([bboxFeat[0], bboxFeat[1]]),
+          point([bboxFeat[2], bboxFeat[3]]),
           { units: "kilometers" }
         ) * 1000;
       const rMax = Math.max(50, diagMeters * 0.35);
@@ -246,8 +279,8 @@ class UrbanPlanner {
           Math.round((2 * Math.PI * r) / spacingMeters)
         );
         for (let k = 0; k < perRing; k++) {
-          const bearing = (360 / perRing) * k + (this.rand() * 20 - 10);
-          const pt = turf.destination(center, r / 1000, bearing, {
+          const bearingVal = (360 / perRing) * k + (this.rand() * 20 - 10);
+          const pt = destination(centerPoint, r / 1000, bearingVal, {
             units: "kilometers",
           });
           if (inside(pt)) pts.push(pt);
@@ -261,12 +294,12 @@ class UrbanPlanner {
       const maxAttempts = target * 30;
       let attempts = 0;
       while (accepted.length < target && attempts < maxAttempts) {
-        const rp = turf.randomPoint(1, { bbox }).features[0];
+        const rp = randomPoint(1, { bbox: bboxFeat }).features[0];
         attempts++;
         if (!inside(rp)) continue;
         let ok = true;
         for (const a of accepted) {
-          if (turf.distance(rp, a, { units: "meters" }) < minNN) {
+          if (distance(rp, a, { units: "meters" }) < minNN) {
             ok = false;
             break;
           }
@@ -300,7 +333,7 @@ class UrbanPlanner {
       attempts < MAX_PLACEMENT_ATTEMPTS
     ) {
       const sourcePt =
-        candidates[i % candidates.length] || turf.center(buildableArea);
+        candidates[i % candidates.length] || center(buildableArea);
       i++;
       attempts++;
 
@@ -308,12 +341,12 @@ class UrbanPlanner {
       const angle = this.rand() * 360;
       const dist = this.rand() * jitterM;
       const pt = dist
-        ? turf.destination(sourcePt, dist / 1000, angle, {
+        ? destination(sourcePt, dist / 1000, angle, {
             units: "kilometers",
           })
         : sourcePt;
 
-      if (!turf.booleanPointInPolygon(pt, buildableArea)) continue;
+      if (!booleanPointInPolygon(pt, buildableArea)) continue;
 
       const candidateBuilding = this.createBuilding(
         pt.geometry.coordinates,
@@ -327,7 +360,7 @@ class UrbanPlanner {
 
       let isOverlapping = false;
       const spacing = this.settings.spacing;
-      const candidateBuffer = turf.buffer(
+      const candidateBuffer = buffer(
         candidateBuilding,
         spacing / 2.0,
         { units: "meters" }
@@ -335,7 +368,7 @@ class UrbanPlanner {
       if (!candidateBuffer) continue;
 
       for (let b of placedBuffers) {
-        if (!turf.booleanDisjoint(candidateBuffer, b)) {
+        if (!booleanDisjoint(candidateBuffer, b)) {
           isOverlapping = true;
           break;
         }
@@ -346,7 +379,7 @@ class UrbanPlanner {
         placedBuffers.push(candidateBuffer as Feature<Polygon>);
       }
     }
-    return placed.map((f) => turf.cleanCoords(f) as Feature<Polygon>);
+    return placed.map((f) => cleanCoords(f) as Feature<Polygon>);
   }
 
   private metersToDegrees(meters: number, latitude: number): { lat: number, lng: number } {
@@ -361,15 +394,15 @@ class UrbanPlanner {
 
     if (containerType === "Polygon") {
       try {
-        return turf.booleanContains(container, feature);
+        return booleanContains(container, feature);
       } catch (e) {
         console.warn("Error during booleanContains, returning false.", e);
         return false;
       }
     } else if (containerType === "MultiPolygon") {
       for (const polyCoords of container.geometry.coordinates) {
-        const poly = turf.polygon(polyCoords);
-        if (turf.booleanContains(poly, feature)) {
+        const poly = polygon(polyCoords);
+        if (booleanContains(poly, feature)) {
           return true;
         }
       }
@@ -378,16 +411,16 @@ class UrbanPlanner {
     return false;
   }
 
-  private createBuilding(center: Position, id: number): Feature<Polygon> | null {
+  private createBuilding(centerCoords: Position, id: number): Feature<Polygon> | null {
     const { minBuildingSize, maxBuildingSize, buildingShape } = this.settings;
-    const area = minBuildingSize + this.rand() * (maxBuildingSize - minBuildingSize);
+    const buildingArea = minBuildingSize + this.rand() * (maxBuildingSize - minBuildingSize);
     const ratio = 0.6 + this.rand() * 0.8;
-    const width = Math.sqrt(area * ratio);
-    const height = area / width;
+    const width = Math.sqrt(buildingArea * ratio);
+    const height = buildingArea / width;
 
-    const halfW = this.metersToDegrees(width / 2, center[1]).lng;
-    const halfH = this.metersToDegrees(height / 2, center[1]).lat;
-    const [cx, cy] = center;
+    const halfW = this.metersToDegrees(width / 2, centerCoords[1]).lng;
+    const halfH = this.metersToDegrees(height / 2, centerCoords[1]).lat;
+    const [cx, cy] = centerCoords;
     const [xmin, ymin, xmax, ymax] = [
       cx - halfW,
       cy - halfH,
@@ -430,21 +463,21 @@ class UrbanPlanner {
       ];
     }
 
-    const building = turf.polygon(coords, {
+    const bldg = polygon(coords, {
       id: `b_${id}`,
       type: "building",
     });
-    const rotated = turf.transformRotate(building, this.rand() * 360, {
-      pivot: center,
+    const rotated = transformRotate(bldg, this.rand() * 360, {
+      pivot: centerCoords,
     });
-    rotated.properties!.area = Math.round(turf.area(rotated));
+    rotated.properties!.area = Math.round(area(rotated));
     return rotated;
   }
 
   private generateRoads(buildings: Feature<Polygon>[]): Feature<LineString>[] {
     if (buildings.length < 2) return [];
     const roadNeighbors = this.settings.roadStyle === 'connect-neighbors' ? 2 : 1;
-    const centers = buildings.map((b) => turf.center(b));
+    const centers = buildings.map((b) => center(b));
     const edges = new Set<string>();
     const lines: Feature<LineString>[] = [];
 
@@ -452,7 +485,7 @@ class UrbanPlanner {
       const dists = centers
         .map((c, j) => ({
           j,
-          d: i === j ? Infinity : turf.distance(centers[i], c),
+          d: i === j ? Infinity : distance(centers[i], c),
         }))
         .sort((a, b) => a.d - b.d);
 
@@ -462,7 +495,7 @@ class UrbanPlanner {
         if (!edges.has(key)) {
           edges.add(key);
           lines.push(
-            turf.lineString(
+            lineString(
               [
                 centers[i].geometry.coordinates,
                 centers[j].geometry.coordinates,
@@ -473,7 +506,7 @@ class UrbanPlanner {
         }
       }
     }
-    return lines.map((l) => turf.cleanCoords(l) as Feature<LineString>);
+    return lines.map((l) => cleanCoords(l) as Feature<LineString>);
   }
 }
 
@@ -487,7 +520,7 @@ function boundaryToPolygon(boundary: {lat: number, lng: number}[]): Feature<Poly
   if (!positionsEqual(coords[0], coords[coords.length - 1])) {
     coords.push(coords[0]);
   }
-  return turf.polygon([coords]);
+  return polygon([coords]);
 }
 
 function positionsEqual(a: Position, b: Position, eps = 1e-9): boolean {
