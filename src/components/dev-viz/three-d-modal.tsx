@@ -54,6 +54,7 @@ export function ThreeDVisualization({
   setShapes,
 }: ThreeDVisualizationProps) {
 
+  const { toast } = useToast();
   const [viewState, setViewState] = useState(initialViewState);
   const isFirstLoad = React.useRef(true);
 
@@ -70,7 +71,7 @@ export function ThreeDVisualization({
     if (!info.coordinate) return;
     
     // Check if click is inside the main boundary
-    const boundaryPoly = turf.polygon(boundary.path.map(p => [p.lng, p.lat]));
+    const boundaryPoly = turf.polygon([boundary.path.map(p => [p.lng, p.lat])]);
     const clickPoint = turf.point(info.coordinate);
 
     if (!turf.booleanPointInPolygon(clickPoint, boundaryPoly)) {
@@ -87,21 +88,20 @@ export function ThreeDVisualization({
     const center = { lat: info.coordinate[1], lng: info.coordinate[0] };
     const centerPoint = turf.point([center.lng, center.lat]);
     
-    // Create a rectangle and rotate it
-    const halfW = buildingWidth / 2;
-    const halfD = buildingDepth / 2;
+    // Convert width/depth from meters to degrees for bbox
+    const halfWidthDegrees = buildingWidth / 2 / 111320 / Math.cos(center.lat * Math.PI / 180);
+    const halfDepthDegrees = buildingDepth / 2 / 111320;
+    
     const bbox: turf.BBox = [
-      centerPoint.geometry.coordinates[0] - halfW, 
-      centerPoint.geometry.coordinates[1] - halfD, 
-      centerPoint.geometry.coordinates[0] + halfW, 
-      centerPoint.geometry.coordinates[1] + halfD
+      centerPoint.geometry.coordinates[0] - halfWidthDegrees, 
+      centerPoint.geometry.coordinates[1] - halfDepthDegrees, 
+      centerPoint.geometry.coordinates[0] + halfWidthDegrees, 
+      centerPoint.geometry.coordinates[1] + halfDepthDegrees
     ];
     
     const unrotatedPoly = turf.bboxPolygon(bbox);
     
-    // Convert meters to degrees for turf
-    const turfPoly = turf.toMercator(unrotatedPoly);
-    const path = turf.getCoords(turf.toWgs84(turfPoly))[0].map((c: any) => ({ lat: c[1], lng: c[0] }));
+    const path = unrotatedPoly.geometry.coordinates[0].map((c: any) => ({ lat: c[1], lng: c[0] }));
     
     const newBuilding: Shape = {
         id: uuid(),
@@ -218,7 +218,7 @@ export function ThreeDVisualization({
 
 
     return [terrainLayer, boundaryLayer, zoneLayer, buildingLayer];
-  }, [elevationGrid, assets, zones, selectedAssetId, boundary, setSelectedAssetId]);
+  }, [elevationGrid, assets, zones, selectedAssetId, boundary]);
 
   if (!viewState) {
     return (
