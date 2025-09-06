@@ -63,6 +63,8 @@ export function ThreeDVisualization({
   const isFirstLoad = React.useRef(true);
   const [isDrawingAutofill, setIsDrawingAutofill] = useState(false);
   const [autofillPath, setAutofillPath] = useState<LatLng[] | null>(null);
+  const clickTimeout = useRef<NodeJS.Timeout | null>(null);
+
 
   // Update internal view state if the initial state prop changes (e.g., when re-entering 3D mode)
   useEffect(() => {
@@ -209,7 +211,7 @@ export function ThreeDVisualization({
         setSelectedTool('pan');
     };
 
-    const handleClick = (info: PickingInfo) => {
+    const handleSingleClick = (info: PickingInfo) => {
         // If drawing, add a point to the path
         if (isDrawingAutofill && info.coordinate) {
             setAutofillPath(prev => {
@@ -240,6 +242,21 @@ export function ThreeDVisualization({
         // Otherwise, deselect
         setSelectedAssetId(null);
     }
+    
+    const handleDeckClick = (info: PickingInfo, event: any) => {
+        if (event.srcEvent.type === 'dblclick') return;
+
+        if (clickTimeout.current) {
+            clearTimeout(clickTimeout.current);
+            clickTimeout.current = null;
+            handleFinishDrawing();
+        } else {
+            clickTimeout.current = setTimeout(() => {
+                handleSingleClick(info);
+                clickTimeout.current = null;
+            }, 250);
+        }
+    };
 
 
   // Memoize layer creation for performance.
@@ -341,8 +358,7 @@ export function ThreeDVisualization({
     onViewStateChange: ({viewState}: {viewState: any}) => setViewState(viewState),
     controller: {doubleClickZoom: false}, // Disable double click zoom to use it for finishing drawing
     style: { position: 'relative', width: '100%', height: '100%' },
-    onClick: handleClick,
-    onDoubleClick: handleFinishDrawing,
+    onClick: handleDeckClick,
     getCursor: ({ isDragging }: { isDragging: boolean }) => {
         if (isDrawingAutofill) return 'crosshair';
         if (isDragging) return 'grabbing';
