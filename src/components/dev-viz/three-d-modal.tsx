@@ -9,7 +9,7 @@ import type {PickingInfo} from '@deck.gl/core';
 import { TerrainLayer } from '@deck.gl/geo-layers';
 import { PolygonLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl';
-import { Move3d, MousePointer, ZoomIn } from 'lucide-react';
+import { Move3d, MousePointer, ZoomIn, AppWindow, Move, Trash2, Palette, Satellite, Fence, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as turf from '@turf/turf';
 import { TerrainExtension } from '@deck.gl/extensions';
@@ -508,3 +508,5 @@ export function ThreeDVisualization({
     </div>
   );
 }
+
+    
