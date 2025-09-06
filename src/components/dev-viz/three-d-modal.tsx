@@ -247,12 +247,12 @@ export function ThreeDVisualization({
     }
     
     const handleDeckClick = (info: PickingInfo, event: MjolnirEvent) => {
-        if (event.srcEvent.type === 'dblclick' || dragInfo) return;
+        if (dragInfo) return;
 
         if (clickTimeout.current) {
             clearTimeout(clickTimeout.current);
             clickTimeout.current = null;
-            handleFinishDrawing();
+            if(isDrawingAutofill) handleFinishDrawing();
         } else {
             clickTimeout.current = setTimeout(() => {
                 handleSingleClick(info);
@@ -304,20 +304,19 @@ export function ThreeDVisualization({
     const { minX, maxX, minY, maxY } = elevationGrid.xyBounds;
     
     const terrainLayerProps = {
-      id: 'terrain',
-      minZoom: 0,
-      maxZoom: 20,
-      elevationData: grid,
-      bounds: [minX, minY, maxX, maxY],
-      material: {
-        diffuse: 0.9,
-      },
-      zScaler: 1.2,
-      texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : null,
-      color: groundColor,
-    };
+        id: 'terrain',
+        minZoom: 0,
+        maxZoom: 20,
+        elevationData: grid,
+        bounds: [minX, minY, maxX, maxY],
+        texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : null,
+        color: groundColor,
+        material: {
+          diffuse: 0.9,
+        },
+        zScaler: 1.2,
+      };
     
-    // This is the key change. We create the layer based on the props.
     const terrainLayer = new TerrainLayer(terrainLayerProps);
     
     const buildingLayer = new PolygonLayer({
@@ -368,7 +367,6 @@ export function ThreeDVisualization({
         dashJustified: true,
         extensions: [new PathStyleExtension({dash: true})],
         extruded: false,
-        // This is the key change to clip the terrain
         mask: true,
     });
     
@@ -427,3 +425,5 @@ export function ThreeDVisualization({
     </div>
   );
 }
+
+    
