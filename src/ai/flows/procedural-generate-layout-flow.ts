@@ -52,7 +52,12 @@ class UrbanPlanner {
   private normalizeBoundary(input: LatLng[]): Feature<Polygon> {
     if (!input || input.length < 3) throw new Error("Boundary must have at least 3 points");
     const coords = input.map(p => [p.lng, p.lat]);
-    coords.push(coords[0]); // Close the polygon
+    // Ensure the polygon is closed for Turf.js
+    const firstPoint = coords[0];
+    const lastPoint = coords[coords.length - 1];
+    if (firstPoint[0] !== lastPoint[0] || firstPoint[1] !== lastPoint[1]) {
+        coords.push(firstPoint);
+    }
     return turf.polygon([coords]);
   }
   
