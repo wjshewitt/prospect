@@ -8,20 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { LayoutGrid, Loader2 } from 'lucide-react';
+import type { ProceduralGenerateLayoutInput } from '@/lib/procedural-types';
 
-export type PlannerSettings = {
-  density: 'low' | 'medium' | 'high' | 'very-high';
-  layout: 'grid' | 'cul-de-sac' | 'radial' | 'organic' | 'linear' | 'cluster' | 'mixed';
-  roadStyle: 'connect-neighbors' | 'trunk-branch';
-  greenSpaceType: 'none' | 'distributed' | 'central' | 'perimeter';
-  seed: string;
-  roadSetback: number;
-  siteSetback: number;
-  minBuildingSize: number;
-  maxBuildingSize: number;
-  spacing: number;
-  buildingShape: 'rectangle' | 'l-shape' | 't-shape' | 'mixed';
-};
+export type PlannerSettings = Omit<ProceduralGenerateLayoutInput, 'boundary'>;
 
 interface ProceduralPlannerPanelProps {
   onGenerate: (settings: PlannerSettings) => void;
@@ -53,7 +42,7 @@ export function ProceduralPlannerPanel({ onGenerate, isGenerating, isReady }: Pr
   };
 
   const handleSelectChange = (id: keyof PlannerSettings) => (value: string) => {
-    setSettings(prev => ({ ...prev, [id]: value }));
+    setSettings(prev => ({ ...prev, [id]: value as any }));
   };
 
   return (

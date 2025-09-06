@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { analyzeElevation } from '@/services/elevation';
 import { generateSolarLayout } from '@/ai/flows/generate-solar-layout-flow';
 import { proceduralGenerateLayout } from '@/ai/flows/procedural-generate-layout-flow';
-import type { PlannerSettings } from '@/components/sidebar/procedural-planner-panel';
+import type { ProceduralGenerateLayoutInput } from '@/lib/procedural-types';
 import { useAuth } from '@/hooks/use-auth';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc, collection, addDoc } from 'firebase/firestore';
@@ -245,7 +245,7 @@ function VisionPageContent() {
     }
   };
 
-  const handleGenerateProceduralLayout = async (settings: PlannerSettings) => {
+  const handleGenerateProceduralLayout = async (settings: Omit<ProceduralGenerateLayoutInput, 'boundary'>) => {
     if (!projectBoundary) return;
 
     setIsGenerating(true);
@@ -572,7 +572,7 @@ function VisionPageContent() {
           shapes={shapes}
           siteName={siteName}
           isOpen={isSidebarOpen}
-          setIsOpen={setIsSidebarOpen}
+          setIsOpen={setIsOpen}
           gridResolution={gridResolution} // Use immediate value for slider UI
           setGridResolution={setGridResolution}
           steepnessThreshold={steepnessThreshold}
@@ -586,7 +586,7 @@ function VisionPageContent() {
           isGenerating={isGenerating}
           is3DView={is3DMode}
           selectedAssetId={selectedAssetId}
-          onDeleteAsset={handleDeleteAsset}
+          onDeleteAsset={onDeleteAsset}
         />
       </div>
       <NameSiteDialog 
