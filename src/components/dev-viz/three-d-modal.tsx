@@ -5,9 +5,9 @@ import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import type { Shape, ElevationGrid, Tool, LatLng } from '@/lib/types';
 import { uuid } from '@/components/map/map-canvas';
 import DeckGL, { PickingInfo } from '@deck.gl/react';
-import { TerrainLayer, MjolnirEvent } from '@deck.gl/geo-layers';
+import { TerrainLayer } from '@deck.gl/geo-layers';
 import { PolygonLayer } from '@deck.gl/layers';
-import { PathStyleExtension, DrapingExtension } from '@deck.gl/extensions';
+import { PathStyleExtension } from '@deck.gl/extensions';
 import { Map } from 'react-map-gl';
 import { Move3d, MousePointer, ZoomIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -245,7 +245,7 @@ export function ThreeDVisualization({
         setSelectedAssetId(null);
     }
     
-    const handleDeckClick = (info: PickingInfo, event: MjolnirEvent) => {
+    const handleDeckClick = (info: PickingInfo) => {
         if (dragInfo) return;
 
         if (clickTimeout.current) {
@@ -328,9 +328,8 @@ export function ThreeDVisualization({
         filled: true,
         stroked: false,
         texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : undefined,
-        extensions: [new DrapingExtension()],
+        extensions: [new (DrapingExtension as any)()],
         drapingSource: 'terrain',
-        drapingTarget: 'terrain',
     });
     
     const buildingLayer = new PolygonLayer({
