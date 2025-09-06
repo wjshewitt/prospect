@@ -5,7 +5,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import type { Shape, ElevationGrid } from '@/lib/types';
 import DeckGL from '@deck.gl/react';
 import { TerrainLayer } from '@deck.gl/geo-layers';
-import { PolygonLayer } from '@deck.gl/layers';
+import { PolygonLayer, PathStyleExtension } from '@deck.gl/layers';
 import { Map } from 'react-map-gl';
 import { Move3d, MousePointer, ZoomIn } from 'lucide-react';
 
@@ -123,7 +123,9 @@ export function ThreeDVisualization({
         getLineColor: [252, 165, 3, 255], // bright orange
         getLineWidth: 4,
         lineWidthMinPixels: 4,
-        getLineDashArray: [8, 4],
+        getDashArray: [8, 4],
+        dashJustified: true,
+        extensions: [new PathStyleExtension({dash: true})],
         extruded: false,
     });
 
