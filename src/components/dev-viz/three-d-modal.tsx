@@ -8,6 +8,7 @@ import DeckGL from '@deck.gl/react';
 import type {PickingInfo} from '@deck.gl/core';
 import { TerrainLayer } from '@deck.gl/geo-layers';
 import { PolygonLayer } from '@deck.gl/layers';
+import { PathStyleExtension } from '@deck.gl/extensions';
 import { Map } from 'react-map-gl';
 import { Move3d, MousePointer, ZoomIn, AppWindow, Move, Trash2, Palette, Satellite, Fence, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -269,6 +270,11 @@ export function ThreeDVisualization({
     };
     
     const onDragStart = (info: PickingInfo) => {
+        // Add a guard to prevent crashes when dragging off-map
+        if (!info.coordinate) {
+            return;
+        }
+
         if (selectedTool === 'multi-select') {
             setSelectionBox([info.startPickingPointer[0], info.startPickingPointer[1], info.startPickingPointer[0], info.startPickingPointer[1]]);
             return;
@@ -373,9 +379,8 @@ export function ThreeDVisualization({
         elevationData: grid,
         bounds: [minX, minY, maxX, maxY],
         texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : null,
-        color: groundStyle === 'color' ? groundColor : [255,255,255],
         material: {
-            diffuse: 1.0,
+            diffuse: groundStyle === 'color' ? groundColor.map(c => c / 255) : 1.0,
             ambient: 0.5,
             shininess: 32,
             specularColor: [255, 255, 255],
@@ -415,9 +420,10 @@ export function ThreeDVisualization({
             const color = getZoneColor(d.zoneMeta.kind);
             return [...color.slice(0,3), 200];
         },
-        getLineDashArray: [5, 5],
+        getDashArray: [5, 5],
         lineWidthMinPixels: 2,
         extruded: false,
+        extensions: [new PathStyleExtension({dash: true})]
     });
 
     const boundaryLayer = new PolygonLayer({
