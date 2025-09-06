@@ -56,7 +56,7 @@ export async function proceduralGenerateLayout(
 
   // Boundary normalization
   const boundary = boundaryToPolygon(input.boundary);
-  const seed = cfg.seed ?? hashBoundaryAndSettings(input.boundary, cfg);
+  const seed = cfg.seed ? Number(cfg.seed) : hashBoundaryAndSettings(input.boundary, cfg);
   const rng = mulberry32(seed);
 
   // Local projector (meters) centered at site centroid
@@ -195,7 +195,7 @@ function normalizeSettings(input: ProceduralGenerateLayoutInput): NormalizedSett
   const base = densityParams[density];
 
   const cfg: NormalizedSettings = {
-    seed: anyInput.seed ?? undefined,
+    seed: anyInput.seed ? Number(anyInput.seed) : undefined,
     density,
     layout,
 
