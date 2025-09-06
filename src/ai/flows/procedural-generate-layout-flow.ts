@@ -1,14 +1,8 @@
 'use server';
-
 /**
- * src/ai/flows/procedural-generate-layout-flow.ts
- *
- * This module MUST export:
- * - proceduralGenerateLayout (named)
- * - proceduralGenerateLayoutFlow (named)
- * - default export = proceduralGenerateLayout
- *
- * If you still see "module has no exports", restart the dev server to clear Turbopack cache.
+ * @fileOverview This file defines a Genkit flow for generating procedural site layouts.
+ * It contains the core logic for generating roads, parcels, and buildings based on
+ * a set of user-defined parameters.
  */
 
 import { ai } from '@/ai/genkit';
@@ -27,18 +21,14 @@ import combine from '@turf/combine';
 import destination from '@turf/destination';
 import difference from '@turf/difference';
 import distance from '@turf/distance';
-import featureCollection from '@turf/feature-collection';
+import { featureCollection, point, polygon, lineString } from '@turf/helpers';
 import flatten from '@turf/flatten';
 import intersect from '@turf/intersect';
-import lineString from '@turf/line-string';
 import nearestPoint from '@turf/nearest-point';
 import nearestPointOnLine from '@turf/nearest-point-on-line';
-import point from '@turf/point';
 import pointGrid from '@turf/point-grid';
 import pointToLineDistance from '@turf/point-to-line-distance';
-import polygon from '@turf/polygon';
-import randomPoint from '@turf/random-point';
-import randomPolygon from '@turf/random-polygon';
+import { randomPoint, randomPolygon } from '@turf/random';
 import simplify from '@turf/simplify';
 import voronoi from '@turf/voronoi';
 import transformRotate from '@turf/transform-rotate';
