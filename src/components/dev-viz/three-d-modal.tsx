@@ -212,7 +212,16 @@ export function ThreeDVisualization({
     const handleClick = (info: PickingInfo) => {
         // If drawing, add a point to the path
         if (isDrawingAutofill && info.coordinate) {
-            setAutofillPath(prev => prev ? [...prev, { lng: info.coordinate[0], lat: info.coordinate[1] }] : null);
+            setAutofillPath(prev => {
+                const newPath = prev ? [...prev, { lng: info.coordinate[0], lat: info.coordinate[1] }] : null;
+                if (newPath?.length === 1) {
+                    toast({
+                        title: 'Drawing Area',
+                        description: 'Click to add more points. Double-click to finish.',
+                    });
+                }
+                return newPath;
+            });
             return;
         }
 
@@ -356,5 +365,3 @@ export function ThreeDVisualization({
     </div>
   );
 }
-
-    
