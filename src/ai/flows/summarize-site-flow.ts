@@ -7,7 +7,7 @@
  */
 
 import { z } from 'zod';
-import { defineFlow, definePrompt } from 'genkit/flow';
+import { ai } from '@/ai/genkit';
 
 // Define the input schema for the flow
 const SummarizeSiteInputSchema = z.object({
@@ -35,7 +35,7 @@ export async function summarizeSite(input: SummarizeSiteInput): Promise<Summariz
 }
 
 // Define the prompt for the AI model
-const summarizeSitePrompt = definePrompt({
+const summarizeSitePrompt = ai.definePrompt({
   name: 'summarizeSitePrompt',
   inputSchema: SummarizeSiteInputSchema,
   outputSchema: SummarizeSiteOutputSchema,
@@ -84,7 +84,7 @@ const summarizeSitePrompt = definePrompt({
 });
 
 // Define the main Genkit flow
-const summarizeSiteFlow = defineFlow(
+const summarizeSiteFlow = ai.defineFlow(
   {
     name: 'summarizeSiteFlow',
     inputSchema: SummarizeSiteInputSchema,

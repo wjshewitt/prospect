@@ -11,7 +11,6 @@
  * If you still see "module has no exports", restart the dev server to clear Turbopack cache.
  */
 
-import { defineFlow } from 'genkit/flow';
 import * as turf from '@turf/turf';
 import type {
   Feature,
@@ -22,6 +21,7 @@ import type {
   Polygon,
   Position,
 } from 'geojson';
+import { ai } from '@/ai/genkit';
 
 import {
   ProceduralGenerateLayoutInputSchema,
@@ -34,7 +34,7 @@ import {
    Flow definition
 ----------------------------------------------------------------------------- */
 
-export const proceduralGenerateLayoutFlow = defineFlow(
+export const proceduralGenerateLayoutFlow = ai.defineFlow(
   {
     name: 'proceduralGenerateLayoutFlow',
     inputSchema: ProceduralGenerateLayoutInputSchema,

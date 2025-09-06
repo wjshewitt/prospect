@@ -9,7 +9,6 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit/zod';
-import {defineFlow, definePrompt} from 'genkit/flow';
 
 const AISuggestBuildingPlacementInputSchema = z.object({
   propertyDetails: z
@@ -43,7 +42,7 @@ export async function suggestBuildingPlacement(
   return aiSuggestBuildingPlacementFlow(input);
 }
 
-const aiSuggestBuildingPlacementPrompt = definePrompt(
+const aiSuggestBuildingPlacementPrompt = ai.definePrompt(
   {
     name: 'aiSuggestBuildingPlacementPrompt',
     inputSchema: AISuggestBuildingPlacementInputSchema,
@@ -70,7 +69,7 @@ const aiSuggestBuildingPlacementPrompt = definePrompt(
   }
 );
 
-const aiSuggestBuildingPlacementFlow = defineFlow(
+const aiSuggestBuildingPlacementFlow = ai.defineFlow(
   {
     name: 'aiSuggestBuildingPlacementFlow',
     inputSchema: AISuggestBuildingPlacementInputSchema,

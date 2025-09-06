@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod';
-import { defineFlow } from 'genkit/flow';
+import { ai } from '@/ai/genkit';
 
 // -----------------------------
 // Schemas (unchanged)
@@ -207,7 +207,7 @@ function scaleXY(a: XY, s: number): XY {
 // -----------------------------
 // Flow implementation
 // -----------------------------
-const generateSolarLayoutFlow = defineFlow(
+const generateSolarLayoutFlow = ai.defineFlow(
   {
     name: 'generateSolarLayoutFlow',
     inputSchema: GenerateSolarLayoutInputSchema,
