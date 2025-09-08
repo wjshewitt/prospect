@@ -10,7 +10,7 @@ import { TerrainLayer } from '@deck.gl/geo-layers';
 import { PolygonLayer } from '@deck.gl/layers';
 import { PathStyleExtension } from '@deck.gl/extensions';
 import { Map } from 'react-map-gl';
-import { Move3d, MousePointer, ZoomIn, AppWindow, Move, Trash2, Palette, Satellite, Fence, Eye } from 'lucide-react';
+import { Move3d, MousePointer, ZoomIn, AppWindow, Move, Trash2, Palette, Satellite, Fence, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as turf from '@turf/turf';
 import { cn } from '@/lib/utils';
@@ -36,6 +36,7 @@ interface ThreeDVisualizationProps {
   groundStyle: 'satellite' | 'color' | 'texture';
   groundColor: [number, number, number];
   setSelectedShapeIds: (ids: string[]) => void;
+  terrainExaggeration: number;
 }
 
 function NavigationGuide() {
@@ -67,6 +68,7 @@ export function ThreeDVisualization({
   groundStyle,
   groundColor,
   setSelectedShapeIds,
+  terrainExaggeration,
 }: ThreeDVisualizationProps) {
 
   const { toast } = useToast();
@@ -380,12 +382,14 @@ export function ThreeDVisualization({
         bounds: [minX, minY, maxX, maxY],
         texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : null,
         material: {
-            diffuse: groundStyle === 'color' ? groundColor.map(c => c / 255) : 1.0,
+            diffuse: groundStyle === 'color' ? 
+                [groundColor[0]/255, groundColor[1]/255, groundColor[2]/255] :
+                (groundStyle === 'texture' ? 1.0 : undefined), // Set to undefined for satellite so texture doesn't tint it
             ambient: 0.5,
             shininess: 32,
             specularColor: [255, 255, 255],
         },
-        zScaler: 1.2,
+        elevationMultiplier: terrainExaggeration,
       });
     
     const buildingLayer = new PolygonLayer({
@@ -448,7 +452,7 @@ export function ThreeDVisualization({
 
 
     return [terrainLayer, zoneLayer, buildingLayer, boundaryLayer, autofillDrawLayer];
-  }, [elevationGrid, assets, zones, selectedAssetId, boundary, autofillPath, groundStyle, groundColor]);
+  }, [elevationGrid, assets, zones, selectedAssetId, boundary, autofillPath, groundStyle, groundColor, terrainExaggeration]);
 
   if (!viewState) {
     return (
