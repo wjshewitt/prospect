@@ -24,7 +24,6 @@ interface ThreeDVisualizationProps {
   assets: Shape[];
   zones: Shape[];
   boundary: Shape;
-  elevationGrid: ElevationGrid;
   onDeleteAsset: (assetId: string) => void;
   selectedAssetId: string | null;
   setSelectedAssetId: (id: string | null) => void;
@@ -56,7 +55,6 @@ export function ThreeDVisualization({
   assets,
   zones,
   boundary,
-  elevationGrid,
   onDeleteAsset,
   selectedAssetId,
   setSelectedAssetId,
@@ -369,22 +367,27 @@ export function ThreeDVisualization({
 
   // Memoize layer creation for performance.
   const layers = useMemo(() => {
-    if (!elevationGrid.pointGrid || !elevationGrid.xyBounds) return [];
+    let textureUrl: string | null = null;
+    if (groundStyle === 'satellite') {
+      textureUrl = `https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.png`;
+    } else if (groundStyle === 'texture') {
+      textureUrl = GRASS_TEXTURE_URL;
+    }
 
-    const { grid } = elevationGrid.pointGrid;
-    const { minX, maxX, minY, maxY } = elevationGrid.xyBounds;
-    
     const terrainLayer = new TerrainLayer({
         id: 'terrain',
         minZoom: 0,
         maxZoom: 20,
-        elevationData: grid,
-        bounds: [minX, minY, maxX, maxY],
-        texture: groundStyle === 'texture' ? GRASS_TEXTURE_URL : null,
+        elevationData: `https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.png`,
+        texture: textureUrl,
+        elevationDecoder: {
+            r: 256,
+            g: 1,
+            b: 1 / 256,
+            offset: -32768
+        },
         material: {
-            diffuse: groundStyle === 'color' ? 
-                [groundColor[0]/255, groundColor[1]/255, groundColor[2]/255] :
-                (groundStyle === 'texture' ? 1.0 : undefined), // Set to undefined for satellite so texture doesn't tint it
+            diffuse: groundStyle === 'color' ? [groundColor[0]/255, groundColor[1]/255, groundColor[2]/255] : 1.0,
             ambient: 0.5,
             shininess: 32,
             specularColor: [255, 255, 255],
@@ -452,7 +455,7 @@ export function ThreeDVisualization({
 
 
     return [terrainLayer, zoneLayer, buildingLayer, boundaryLayer, autofillDrawLayer];
-  }, [elevationGrid, assets, zones, selectedAssetId, boundary, autofillPath, groundStyle, groundColor, terrainExaggeration]);
+  }, [assets, zones, selectedAssetId, boundary, autofillPath, groundStyle, groundColor, terrainExaggeration]);
 
   if (!viewState) {
     return (
@@ -483,11 +486,10 @@ export function ThreeDVisualization({
 
   return (
     <div className="w-full h-full relative">
-      <DeckGL {...deckProps}>
+       <DeckGL {...deckProps} mapboxApiAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}>
         {groundStyle === 'satellite' && (
           <Map 
               mapStyle={'mapbox://styles/mapbox/satellite-v9'} 
-              mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
               preventStyleDiffing
               interactive={false}
           />
