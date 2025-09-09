@@ -547,6 +547,7 @@ function VisionPageContent() {
                             groundStyle={groundStyle}
                             groundColor={groundColor}
                             setSelectedShapeIds={setSelectedShapeIds}
+                            terrainExaggeration={1.5}
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full">

@@ -369,7 +369,7 @@ export function ThreeDVisualization({
   const layers = useMemo(() => {
     let textureUrl: string | null = null;
     if (groundStyle === 'satellite') {
-      textureUrl = `https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.png`;
+      textureUrl = `https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.png?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`;
     } else if (groundStyle === 'texture') {
       textureUrl = GRASS_TEXTURE_URL;
     }
@@ -378,7 +378,7 @@ export function ThreeDVisualization({
         id: 'terrain',
         minZoom: 0,
         maxZoom: 20,
-        elevationData: `https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.png`,
+        elevationData: `https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`,
         texture: textureUrl,
         elevationDecoder: {
             r: 256,

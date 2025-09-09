@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { collection, getDocs, orderBy, query, limit, startAfter, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, LogOut } from 'lucide-react';
@@ -27,32 +27,47 @@ export default function WelcomePage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const PAGE_SIZE = 12;
 
-  const fetchProjects = useCallback(async () => {
-    if (user) {
-        setIsLoadingProjects(true);
-        try {
-            const projectsCollectionRef = collection(db, 'users', user.uid, 'projects');
-            const q = query(projectsCollectionRef, orderBy('lastModified', 'desc'));
-            const querySnapshot = await getDocs(q);
-            const userProjects: Project[] = [];
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                userProjects.push({
-                    id: doc.id,
-                    siteName: data.siteName || 'Untitled Project',
-                    shapes: data.shapes || [],
-                    lastModified: data.lastModified,
-                });
-            });
-            setProjects(userProjects);
-        } catch (error) {
-            console.error("Failed to fetch projects:", error);
-        } finally {
-            setIsLoadingProjects(false);
-        }
+  const fetchProjects = useCallback(async (isLoadMore: boolean = false) => {
+    if (!user) return;
+    if (isLoadMore) {
+      setIsLoadingMore(true);
+    } else {
+      setIsLoadingProjects(true);
+    }
+    try {
+      const projectsCollectionRef = collection(db, 'users', user.uid, 'projects');
+      let qBase = query(projectsCollectionRef, orderBy('lastModified', 'desc'), limit(PAGE_SIZE));
+      if (isLoadMore && lastDoc) {
+        qBase = query(projectsCollectionRef, orderBy('lastModified', 'desc'), startAfter(lastDoc), limit(PAGE_SIZE));
       }
-  }, [user]);
+      const querySnapshot = await getDocs(qBase);
+      const userProjects: Project[] = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        userProjects.push({
+          id: doc.id,
+          siteName: data.siteName || 'Untitled Project',
+          shapes: data.shapes || [],
+          lastModified: data.lastModified,
+        });
+      });
+      const newLastDoc = querySnapshot.docs[querySnapshot.docs.length - 1] || null;
+      setLastDoc(newLastDoc);
+      setProjects(prev => isLoadMore ? [...prev, ...userProjects] : userProjects);
+    } catch (error) {
+      console.error("Failed to fetch projects:", error);
+    } finally {
+      if (isLoadMore) {
+        setIsLoadingMore(false);
+      } else {
+        setIsLoadingProjects(false);
+      }
+    }
+  }, [user, lastDoc]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -61,8 +76,9 @@ export default function WelcomePage() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    fetchProjects();
-  }, [fetchProjects]);
+    fetchProjects(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut(auth);
@@ -108,16 +124,28 @@ export default function WelcomePage() {
                     </Button>
                 </div>
 
-                <div className="mt-8">
+                <div className="mt-8 space-y-6">
                     {isLoadingProjects ? (
-                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                            <ProjectCard.Skeleton />
-                            <ProjectCard.Skeleton />
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {Array.from({length: 8}).map((_, i) => (
+                              <ProjectCard.Skeleton key={i} />
+                            ))}
                         </div>
                     ) : projects.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                           {projects.map(p => <ProjectCard key={p.id} project={p} />)}
-                        </div>
+                        <>
+                          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {projects.map(p => <ProjectCard key={p.id} project={p} />)}
+                          </div>
+                          <div className="flex justify-center">
+                            <Button variant="outline" disabled={isLoadingMore || !lastDoc} onClick={() => fetchProjects(true)}>
+                              {isLoadingMore ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading...
+                                </>
+                              ) : lastDoc ? 'Load More' : 'All caught up'}
+                            </Button>
+                          </div>
+                        </>
                     ) : (
                         <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-white/50 p-12 text-center">
                             <h3 className="text-xl font-medium">No projects yet</h3>
