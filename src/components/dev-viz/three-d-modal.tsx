@@ -1,24 +1,41 @@
+"use client";
 
-'use client';
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
+import type { Shape, ElevationGrid, Tool, LatLng } from "@/lib/types";
+import { uuid } from "@/components/map/map-canvas";
+import DeckGL from "@deck.gl/react";
+import type { PickingInfo } from "@deck.gl/core";
+import { TerrainLayer } from "@deck.gl/geo-layers";
+import { PolygonLayer } from "@deck.gl/layers";
+import { PathStyleExtension } from "@deck.gl/extensions";
+import { Map } from "react-map-gl";
+import {
+  Move3d,
+  MousePointer,
+  ZoomIn,
+  AppWindow,
+  Move,
+  Trash2,
+  Palette,
+  Satellite,
+  Fence,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import * as turf from "@turf/turf";
+import { cn } from "@/lib/utils";
+import { Switch } from "../ui/switch";
+import { mapboxgl, isMapboxConfigured } from "@/lib/mapbox-config";
 
-import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
-import type { Shape, ElevationGrid, Tool, LatLng } from '@/lib/types';
-import { uuid } from '@/components/map/map-canvas';
-import DeckGL from '@deck.gl/react';
-import type {PickingInfo} from '@deck.gl/core';
-import { TerrainLayer } from '@deck.gl/geo-layers';
-import { PolygonLayer } from '@deck.gl/layers';
-import { PathStyleExtension } from '@deck.gl/extensions';
-import { Map } from 'react-map-gl';
-import { Move3d, MousePointer, ZoomIn, AppWindow, Move, Trash2, Palette, Satellite, Fence, Eye, EyeOff } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import * as turf from '@turf/turf';
-import { cn } from '@/lib/utils';
-import { Switch } from '../ui/switch';
-
-
-const GRASS_TEXTURE_URL = 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/grass.png';
-
+const GRASS_TEXTURE_URL =
+  "https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/grass.png";
 
 interface ThreeDVisualizationProps {
   assets: Shape[];
@@ -32,23 +49,34 @@ interface ThreeDVisualizationProps {
   setSelectedTool: (tool: Tool) => void;
   setShapes: React.Dispatch<React.SetStateAction<Shape[]>>;
   autofillTemplate: Shape | null;
-  groundStyle: 'satellite' | 'color' | 'texture';
+  groundStyle: "satellite" | "color" | "texture";
   groundColor: [number, number, number];
   setSelectedShapeIds: (ids: string[]) => void;
   terrainExaggeration: number;
 }
 
 function NavigationGuide() {
-    return (
-        <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-md p-3 rounded-lg shadow-lg border text-xs text-foreground w-60 z-10">
-            <h4 className="font-bold mb-2 flex items-center gap-2"><Move3d className="h-4 w-4" /> 3D Navigation</h4>
-            <ul className="space-y-1.5">
-                <li className="flex items-center gap-2"><MousePointer className="h-4 w-4 text-muted-foreground" /> <strong>Select/Drag:</strong> Left-click + Drag</li>
-                <li className="flex items-center gap-2"><Move3d className="h-4 w-4 text-muted-foreground" /> <strong>Rotate/Pitch:</strong> Right-click + Drag</li>
-                <li className="flex items-center gap-2"><ZoomIn className="h-4 w-4 text-muted-foreground" /> <strong>Zoom:</strong> Scroll wheel</li>
-            </ul>
-        </div>
-    )
+  return (
+    <div className="absolute top-4 left-4 bg-background/80 backdrop-blur-md p-3 rounded-lg shadow-lg border text-xs text-foreground w-60 z-10">
+      <h4 className="font-bold mb-2 flex items-center gap-2">
+        <Move3d className="h-4 w-4" /> 3D Navigation
+      </h4>
+      <ul className="space-y-1.5">
+        <li className="flex items-center gap-2">
+          <MousePointer className="h-4 w-4 text-muted-foreground" />{" "}
+          <strong>Select/Drag:</strong> Left-click + Drag
+        </li>
+        <li className="flex items-center gap-2">
+          <Move3d className="h-4 w-4 text-muted-foreground" />{" "}
+          <strong>Rotate/Pitch:</strong> Right-click + Drag
+        </li>
+        <li className="flex items-center gap-2">
+          <ZoomIn className="h-4 w-4 text-muted-foreground" />{" "}
+          <strong>Zoom:</strong> Scroll wheel
+        </li>
+      </ul>
+    </div>
+  );
 }
 
 export function ThreeDVisualization({
@@ -68,394 +96,495 @@ export function ThreeDVisualization({
   setSelectedShapeIds,
   terrainExaggeration,
 }: ThreeDVisualizationProps) {
-
   const { toast } = useToast();
   const [viewState, setViewState] = useState(initialViewState);
   const [isDrawingAutofill, setIsDrawingAutofill] = useState(false);
   const [autofillPath, setAutofillPath] = useState<LatLng[] | null>(null);
   const clickTimeout = useRef<NodeJS.Timeout | null>(null);
-  const [dragInfo, setDragInfo] = useState<{ id: string; dx: number; dy: number; initialPositions: Map<string, LatLng[]> } | null>(null);
-  const [selectionBox, setSelectionBox] = useState<[number, number, number, number] | null>(null);
-
+  const [dragInfo, setDragInfo] = useState<{
+    id: string;
+    dx: number;
+    dy: number;
+    initialPositions: Map<string, LatLng[]>;
+  } | null>(null);
+  const [selectionBox, setSelectionBox] = useState<
+    [number, number, number, number] | null
+  >(null);
 
   // Update internal view state if the initial state prop changes (e.g., when re-entering 3D mode)
   useEffect(() => {
     setViewState(initialViewState);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialViewState]);
 
   useEffect(() => {
     // Start drawing when the tool is selected
-    if (selectedTool === 'autofill' && !isDrawingAutofill) {
-        setIsDrawingAutofill(true);
-        setAutofillPath([]);
+    if (selectedTool === "autofill" && !isDrawingAutofill) {
+      setIsDrawingAutofill(true);
+      setAutofillPath([]);
     }
     // Cancel drawing if the tool changes
-    if (selectedTool !== 'autofill' && isDrawingAutofill) {
-        setIsDrawingAutofill(false);
-        setAutofillPath(null);
+    if (selectedTool !== "autofill" && isDrawingAutofill) {
+      setIsDrawingAutofill(false);
+      setAutofillPath(null);
     }
   }, [selectedTool, isDrawingAutofill]);
 
-  const handlePlaceBuilding = useCallback((info: PickingInfo) => {
-    if (!info.coordinate) return;
-    
-    const boundaryCoords = boundary.path.map(p => [p.lng, p.lat]);
-    if (boundaryCoords.length > 0 && (boundaryCoords[0][0] !== boundaryCoords[boundaryCoords.length - 1][0] || boundaryCoords[0][1] !== boundaryCoords[boundaryCoords.length - 1][1])) {
-        boundaryCoords.push(boundaryCoords[0]);
-    }
-    const boundaryPoly = turf.polygon([boundaryCoords]);
-    const clickPoint = turf.point(info.coordinate);
+  const handlePlaceBuilding = useCallback(
+    (info: PickingInfo) => {
+      if (!info.coordinate) return;
 
-    if (!turf.booleanPointInPolygon(clickPoint, boundaryPoly)) {
+      const boundaryCoords = boundary.path.map((p) => [p.lng, p.lat]);
+      if (
+        boundaryCoords.length > 0 &&
+        (boundaryCoords[0][0] !==
+          boundaryCoords[boundaryCoords.length - 1][0] ||
+          boundaryCoords[0][1] !== boundaryCoords[boundaryCoords.length - 1][1])
+      ) {
+        boundaryCoords.push(boundaryCoords[0]);
+      }
+      const boundaryPoly = turf.polygon([boundaryCoords]);
+      const clickPoint = turf.point(info.coordinate);
+
+      if (!turf.booleanPointInPolygon(clickPoint, boundaryPoly)) {
         toast({
-            variant: 'destructive',
-            title: 'Out of Bounds',
-            description: 'Buildings can only be placed inside the main site boundary.',
+          variant: "destructive",
+          title: "Out of Bounds",
+          description:
+            "Buildings can only be placed inside the main site boundary.",
         });
         return;
-    }
+      }
 
-    const buildingWidth = 8;
-    const buildingDepth = 10;
-    const center = { lat: info.coordinate[1], lng: info.coordinate[0] };
-    
-    const horizontalDistance = buildingWidth / (111.32 * Math.cos(center.lat * (Math.PI / 180)));
-    const verticalDistance = buildingDepth / 111.32;
-    
-    const xmin = center.lng - horizontalDistance/2000;
-    const xmax = center.lng + horizontalDistance/2000;
-    const ymin = center.lat - verticalDistance/2000;
-    const ymax = center.lat + verticalDistance/2000;
+      const buildingWidth = 8;
+      const buildingDepth = 10;
+      const center = { lat: info.coordinate[1], lng: info.coordinate[0] };
 
-    const unrotatedPoly = turf.bboxPolygon([xmin, ymin, xmax, ymax]);
-    
-    const path = unrotatedPoly.geometry.coordinates[0].map((c: any) => ({ lat: c[1], lng: c[0] }));
-    
-    const newBuilding: Shape = {
+      const horizontalDistance =
+        buildingWidth / (111.32 * Math.cos(center.lat * (Math.PI / 180)));
+      const verticalDistance = buildingDepth / 111.32;
+
+      const xmin = center.lng - horizontalDistance / 2000;
+      const xmax = center.lng + horizontalDistance / 2000;
+      const ymin = center.lat - verticalDistance / 2000;
+      const ymax = center.lat + verticalDistance / 2000;
+
+      const unrotatedPoly = turf.bboxPolygon([xmin, ymin, xmax, ymax]);
+
+      const path = unrotatedPoly.geometry.coordinates[0].map((c: any) => ({
+        lat: c[1],
+        lng: c[0],
+      }));
+
+      const newBuilding: Shape = {
         id: uuid(),
-        type: 'rectangle',
+        type: "rectangle",
         path,
         area: buildingWidth * buildingDepth,
         assetMeta: {
-            assetType: 'building',
-            key: 'default_building',
-            floors: 2,
-            rotation: 0,
-            width: buildingWidth,
-            depth: buildingDepth
+          assetType: "building",
+          key: "default_building",
+          floors: 2,
+          rotation: 0,
+          width: buildingWidth,
+          depth: buildingDepth,
         },
-    };
-    
-    setShapes(prev => [...prev, newBuilding]);
-    toast({
-        title: 'Building Placed',
-        description: 'A new building has been added to the site.',
-    });
+      };
 
-  }, [boundary.path, setShapes, toast]);
+      setShapes((prev) => [...prev, newBuilding]);
+      toast({
+        title: "Building Placed",
+        description: "A new building has been added to the site.",
+      });
+    },
+    [boundary.path, setShapes, toast]
+  );
 
-    const handleAutofill = (fillAreaPath: LatLng[]) => {
-        if (!autofillTemplate || !autofillTemplate.assetMeta) return;
+  const handleAutofill = (fillAreaPath: LatLng[]) => {
+    if (!autofillTemplate || !autofillTemplate.assetMeta) return;
 
-        const fillPolygon = turf.polygon([[...fillAreaPath.map(p => [p.lng, p.lat]), [fillAreaPath[0].lng, fillAreaPath[0].lat]]]);
-        const { width = 10, depth = 10, rotation = 0, floors } = autofillTemplate.assetMeta;
-        
-        const spacingX = width + 5; // 5m spacing
-        const spacingY = depth + 8;
-        const fillBbox = turf.bbox(fillPolygon);
+    const fillPolygon = turf.polygon([
+      [
+        ...fillAreaPath.map((p) => [p.lng, p.lat]),
+        [fillAreaPath[0].lng, fillAreaPath[0].lat],
+      ],
+    ]);
+    const {
+      width = 10,
+      depth = 10,
+      rotation = 0,
+      floors,
+    } = autofillTemplate.assetMeta;
 
-        const newBuildings: Shape[] = [];
+    const spacingX = width + 5; // 5m spacing
+    const spacingY = depth + 8;
+    const fillBbox = turf.bbox(fillPolygon);
 
-        for (let x = fillBbox[0]; x < fillBbox[2]; x += spacingX / (111.32 * Math.cos(fillBbox[1] * (Math.PI/180))) / 1000) {
-            for (let y = fillBbox[1]; y < fillBbox[3]; y += spacingY / 111.32 / 1000) {
-                const center = [x, y];
-                const pt = turf.point(center);
+    const newBuildings: Shape[] = [];
 
-                if (turf.booleanPointInPolygon(pt, fillPolygon)) {
-                     const horizontalDistance = width / (111.32 * Math.cos(center[1] * (Math.PI / 180)));
-                     const verticalDistance = depth / 111.32;
-        
-                     const xmin = center[0] - horizontalDistance/2000;
-                     const xmax = center[0] + horizontalDistance/2000;
-                     const ymin = center[1] - verticalDistance/2000;
-                     const ymax = center[1] + verticalDistance/2000;
+    for (
+      let x = fillBbox[0];
+      x < fillBbox[2];
+      x += spacingX / (111.32 * Math.cos(fillBbox[1] * (Math.PI / 180))) / 1000
+    ) {
+      for (
+        let y = fillBbox[1];
+        y < fillBbox[3];
+        y += spacingY / 111.32 / 1000
+      ) {
+        const center = [x, y];
+        const pt = turf.point(center);
 
-                     const newPoly = turf.transformRotate(turf.bboxPolygon([xmin, ymin, xmax, ymax]), rotation, { pivot: center });
-                     const newPath = newPoly.geometry.coordinates[0].map((c: number[]) => ({lat: c[1], lng: c[0]}));
+        if (turf.booleanPointInPolygon(pt, fillPolygon)) {
+          const horizontalDistance =
+            width / (111.32 * Math.cos(center[1] * (Math.PI / 180)));
+          const verticalDistance = depth / 111.32;
 
-                     newBuildings.push({
-                        id: uuid(),
-                        type: 'rectangle',
-                        path: newPath,
-                        area: width * depth,
-                        assetMeta: { assetType: 'building', key: 'default_building', floors, rotation, width, depth },
-                     });
-                }
-            }
+          const xmin = center[0] - horizontalDistance / 2000;
+          const xmax = center[0] + horizontalDistance / 2000;
+          const ymin = center[1] - verticalDistance / 2000;
+          const ymax = center[1] + verticalDistance / 2000;
+
+          const newPoly = turf.transformRotate(
+            turf.bboxPolygon([xmin, ymin, xmax, ymax]),
+            rotation,
+            { pivot: center }
+          );
+          const newPath = newPoly.geometry.coordinates[0].map(
+            (c: number[]) => ({ lat: c[1], lng: c[0] })
+          );
+
+          newBuildings.push({
+            id: uuid(),
+            type: "rectangle",
+            path: newPath,
+            area: width * depth,
+            assetMeta: {
+              assetType: "building",
+              key: "default_building",
+              floors,
+              rotation,
+              width,
+              depth,
+            },
+          });
         }
-        
-        setShapes(prev => [...prev, ...newBuildings]);
-        toast({
-            title: 'Area Autofilled',
-            description: `${newBuildings.length} new buildings were placed.`,
-        });
-        setAutofillPath(null);
-    };
-
-    const handleFinishDrawing = () => {
-        if (!isDrawingAutofill || !autofillPath) return;
-
-        if (autofillPath.length > 2) {
-            handleAutofill([...autofillPath, autofillPath[0]]);
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Area Too Small',
-                description: 'Please click at least 3 points to define an area.',
-            });
-        }
-        setIsDrawingAutofill(false);
-        setAutofillPath(null);
-        setSelectedTool('pan');
-    };
-
-    const handleSingleClick = (info: PickingInfo) => {
-        // If drawing, add a point to the path
-        if (isDrawingAutofill && info.coordinate) {
-            if (!autofillPath?.length) {
-                toast({
-                    title: 'Drawing Area',
-                    description: 'Click to add points. Double-click to finish.',
-                });
-            }
-            setAutofillPath(prev => {
-                const newPath = prev ? [...prev, { lng: info.coordinate[0], lat: info.coordinate[1] }] : [];
-                return newPath;
-            });
-            return;
-        }
-
-        // If an asset is clicked, select it
-        if (info.object) {
-            setSelectedAssetId(info.object.id);
-            setSelectedShapeIds([info.object.id]);
-            return;
-        }
-        
-        // If in placement mode, place an asset
-        if (selectedTool === 'asset') {
-            handlePlaceBuilding(info);
-            return;
-        }
-
-        // Otherwise, deselect
-        setSelectedAssetId(null);
-        setSelectedShapeIds([]);
+      }
     }
-    
-    const handleDeckClick = (info: PickingInfo) => {
-        if (dragInfo) return;
 
-        if (clickTimeout.current) {
-            clearTimeout(clickTimeout.current);
-            clickTimeout.current = null;
-            if(isDrawingAutofill) handleFinishDrawing();
-        } else {
-            clickTimeout.current = setTimeout(() => {
-                handleSingleClick(info);
-                clickTimeout.current = null;
-            }, 250);
-        }
-    };
-    
-    const onDragStart = (info: PickingInfo) => {
-        // Add a guard to prevent crashes when dragging off-map
-        if (!info.coordinate) {
-            return;
-        }
+    setShapes((prev) => [...prev, ...newBuildings]);
+    toast({
+      title: "Area Autofilled",
+      description: `${newBuildings.length} new buildings were placed.`,
+    });
+    setAutofillPath(null);
+  };
 
-        if (selectedTool === 'multi-select') {
-            setSelectionBox([info.startPickingPointer[0], info.startPickingPointer[1], info.startPickingPointer[0], info.startPickingPointer[1]]);
-            return;
-        }
-        
-        if (selectedTool === 'move-selection') {
-             setDragInfo({
-                id: 'selection',
-                dx: info.coordinate[0],
-                dy: info.coordinate[1],
-                initialPositions: new Map(shapes.map(s => [s.id, s.path]))
-            });
-            return;
-        }
+  const handleFinishDrawing = () => {
+    if (!isDrawingAutofill || !autofillPath) return;
 
-        if (info.object && info.object.id === selectedAssetId) {
-            setDragInfo({
-                id: info.object.id,
-                dx: info.coordinate[0] - info.object.path[0].lng,
-                dy: info.coordinate[1] - info.object.path[0].lat,
-                initialPositions: new Map()
-            });
-        }
-    };
+    if (autofillPath.length > 2) {
+      handleAutofill([...autofillPath, autofillPath[0]]);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Area Too Small",
+        description: "Please click at least 3 points to define an area.",
+      });
+    }
+    setIsDrawingAutofill(false);
+    setAutofillPath(null);
+    setSelectedTool("pan");
+  };
 
-    const onDrag = (info: PickingInfo) => {
-        if (!info.coordinate) return;
-        
-        if (selectedTool === 'multi-select' && selectionBox) {
-            setSelectionBox([selectionBox[0], selectionBox[1], info.pointer[0], info.pointer[1]]);
-            return;
-        }
+  const handleSingleClick = (info: PickingInfo) => {
+    // If drawing, add a point to the path
+    if (isDrawingAutofill && info.coordinate) {
+      if (!autofillPath?.length) {
+        toast({
+          title: "Drawing Area",
+          description: "Click to add points. Double-click to finish.",
+        });
+      }
+      setAutofillPath((prev) => {
+        const newPath = prev
+          ? [...prev, { lng: info.coordinate[0], lat: info.coordinate[1] }]
+          : [];
+        return newPath;
+      });
+      return;
+    }
 
-        if (!dragInfo) return;
-        
-        if (dragInfo.id === 'selection') {
-            const lngDiff = info.coordinate[0] - dragInfo.dx;
-            const latDiff = info.coordinate[1] - dragInfo.dy;
-            
-            setShapes(prev => prev.map(s => {
-                const initialPath = dragInfo.initialPositions.get(s.id);
-                if (initialPath && selectedShapeIds.includes(s.id)) {
-                    const newPath = initialPath.map(p => ({
-                        lng: p.lng + lngDiff,
-                        lat: p.lat + latDiff,
-                    }));
-                    return {...s, path: newPath};
-                }
-                return s;
+    // If an asset is clicked, select it
+    if (info.object) {
+      setSelectedAssetId(info.object.id);
+      setSelectedShapeIds([info.object.id]);
+      return;
+    }
+
+    // If in placement mode, place an asset
+    if (selectedTool === "asset") {
+      handlePlaceBuilding(info);
+      return;
+    }
+
+    // Otherwise, deselect
+    setSelectedAssetId(null);
+    setSelectedShapeIds([]);
+  };
+
+  const handleDeckClick = (info: PickingInfo) => {
+    if (dragInfo) return;
+
+    if (clickTimeout.current) {
+      clearTimeout(clickTimeout.current);
+      clickTimeout.current = null;
+      if (isDrawingAutofill) handleFinishDrawing();
+    } else {
+      clickTimeout.current = setTimeout(() => {
+        handleSingleClick(info);
+        clickTimeout.current = null;
+      }, 250);
+    }
+  };
+
+  const onDragStart = (info: PickingInfo) => {
+    // Add a guard to prevent crashes when dragging off-map
+    if (!info.coordinate) {
+      return;
+    }
+
+    if (selectedTool === "multi-select") {
+      setSelectionBox([
+        info.startPickingPointer[0],
+        info.startPickingPointer[1],
+        info.startPickingPointer[0],
+        info.startPickingPointer[1],
+      ]);
+      return;
+    }
+
+    if (selectedTool === "move-selection") {
+      setDragInfo({
+        id: "selection",
+        dx: info.coordinate[0],
+        dy: info.coordinate[1],
+        initialPositions: new Map(shapes.map((s) => [s.id, s.path])),
+      });
+      return;
+    }
+
+    if (info.object && info.object.id === selectedAssetId) {
+      setDragInfo({
+        id: info.object.id,
+        dx: info.coordinate[0] - info.object.path[0].lng,
+        dy: info.coordinate[1] - info.object.path[0].lat,
+        initialPositions: new Map(),
+      });
+    }
+  };
+
+  const onDrag = (info: PickingInfo) => {
+    if (!info.coordinate) return;
+
+    if (selectedTool === "multi-select" && selectionBox) {
+      setSelectionBox([
+        selectionBox[0],
+        selectionBox[1],
+        info.pointer[0],
+        info.pointer[1],
+      ]);
+      return;
+    }
+
+    if (!dragInfo) return;
+
+    if (dragInfo.id === "selection") {
+      const lngDiff = info.coordinate[0] - dragInfo.dx;
+      const latDiff = info.coordinate[1] - dragInfo.dy;
+
+      setShapes((prev) =>
+        prev.map((s) => {
+          const initialPath = dragInfo.initialPositions.get(s.id);
+          if (initialPath && selectedShapeIds.includes(s.id)) {
+            const newPath = initialPath.map((p) => ({
+              lng: p.lng + lngDiff,
+              lat: p.lat + latDiff,
             }));
+            return { ...s, path: newPath };
+          }
+          return s;
+        })
+      );
+    } else {
+      const newLng = info.coordinate[0] - dragInfo.dx;
+      const newLat = info.coordinate[1] - dragInfo.dy;
 
-        } else {
-            const newLng = info.coordinate[0] - dragInfo.dx;
-            const newLat = info.coordinate[1] - dragInfo.dy;
-            
-            const originalShape = shapes.find(s => s.id === dragInfo.id);
-            if (!originalShape) return;
-            
-            const lngDiff = newLng - originalShape.path[0].lng;
-            const latDiff = newLat - originalShape.path[0].lat;
-            
-            const newPath = originalShape.path.map(p => ({
-                lng: p.lng + lngDiff,
-                lat: p.lat + latDiff,
-            }));
-            
-            setShapes(prev => prev.map(s => s.id === dragInfo.id ? {...s, path: newPath} : s));
-        }
-    };
+      const originalShape = shapes.find((s) => s.id === dragInfo.id);
+      if (!originalShape) return;
 
-    const onDragEnd = (info: PickingInfo) => {
-        if (selectedTool === 'multi-select' && selectionBox) {
-            const [x1, y1, x2, y2] = selectionBox;
-            const selectionBounds = {
-                x: Math.min(x1, x2),
-                y: Math.min(y1, y2),
-                width: Math.abs(x1 - x2),
-                height: Math.abs(y1 - y2)
-            };
-            const picked = info.deck.pickObjects(selectionBounds);
-            const selectedIds = picked.filter(p => p.object?.assetMeta).map(p => p.object.id);
-            setSelectedShapeIds(selectedIds);
-            setSelectionBox(null);
-            setSelectedTool('pan');
-        }
+      const lngDiff = newLng - originalShape.path[0].lng;
+      const latDiff = newLat - originalShape.path[0].lat;
 
-        setDragInfo(null);
-    };
+      const newPath = originalShape.path.map((p) => ({
+        lng: p.lng + lngDiff,
+        lat: p.lat + latDiff,
+      }));
 
+      setShapes((prev) =>
+        prev.map((s) => (s.id === dragInfo.id ? { ...s, path: newPath } : s))
+      );
+    }
+  };
+
+  const onDragEnd = (info: PickingInfo) => {
+    if (selectedTool === "multi-select" && selectionBox) {
+      const [x1, y1, x2, y2] = selectionBox;
+      const selectionBounds = {
+        x: Math.min(x1, x2),
+        y: Math.min(y1, y2),
+        width: Math.abs(x1 - x2),
+        height: Math.abs(y1 - y2),
+      };
+      const picked = info.deck.pickObjects(selectionBounds);
+      const selectedIds = picked
+        .filter((p) => p.object?.assetMeta)
+        .map((p) => p.object.id);
+      setSelectedShapeIds(selectedIds);
+      setSelectionBox(null);
+      setSelectedTool("pan");
+    }
+
+    setDragInfo(null);
+  };
+
+  // Helper function to create color texture data URL
+  const createColorTextureDataUrl = (rgb: [number, number, number]) => {
+    return `data:image/svg+xml;base64,${btoa(
+      `<svg xmlns='http://www.w3.org/2000/svg' width='1' height='1'>
+        <rect width='1' height='1' fill='rgb(${rgb[0]},${rgb[1]},${rgb[2]})'/>
+      </svg>`
+    )}`;
+  };
 
   // Memoize layer creation for performance.
   const layers = useMemo(() => {
     let textureUrl: string | null = null;
-    if (groundStyle === 'satellite') {
-      textureUrl = `https://api.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}@2x.png?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`;
-    } else if (groundStyle === 'texture') {
+    if (groundStyle === "satellite") {
+      // Use proxy to avoid CORS issues
+      textureUrl = `/api/mapbox-proxy?path=/v4/mapbox.satellite/{z}/{x}/{y}@2x.png`;
+    } else if (groundStyle === "texture") {
       textureUrl = GRASS_TEXTURE_URL;
+    } else if (groundStyle === "color") {
+      textureUrl = createColorTextureDataUrl(groundColor);
     }
 
     const terrainLayer = new TerrainLayer({
-        id: 'terrain',
-        minZoom: 0,
-        maxZoom: 20,
-        elevationData: `https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`,
-        texture: textureUrl,
-        elevationDecoder: {
-            r: 256,
-            g: 1,
-            b: 1 / 256,
-            offset: -32768
-        },
-        material: {
-            diffuse: groundStyle === 'color' ? [groundColor[0]/255, groundColor[1]/255, groundColor[2]/255] : 1.0,
-            ambient: 0.5,
-            shininess: 32,
-            specularColor: [255, 255, 255],
-        },
-        elevationMultiplier: terrainExaggeration,
-      });
-    
-    const buildingLayer = new PolygonLayer({
-        id: 'buildings',
-        data: assets,
-        getPolygon: d => d.path.map(p => [p.lng, p.lat]),
-        getFillColor: d => selectedAssetId === d.id ? [255, 193, 7, 255] : [228, 225, 219, 255], // Light beige color
-        getLineColor: d => selectedAssetId === d.id ? [255, 255, 255, 255] : [100, 116, 139, 255], // Slate-500 for outlines
-        lineWidthMinPixels: d => selectedAssetId === d.id ? 2 : 1,
-        extruded: true,
-        getElevation: (d: any) => (d.assetMeta?.floors || 1) * 3, // 3 meters per floor
-        pickable: true,
+      id: "terrain",
+      minZoom: 0,
+      maxZoom: 20,
+      elevationData: `/api/mapbox-proxy?path=/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw`,
+      texture: textureUrl,
+      elevationDecoder: {
+        r: 256,
+        g: 1,
+        b: 1 / 256,
+        offset: -32768,
+      },
+      material: {
+        diffuse: 1.0,
+        ambient: 0.5,
+        shininess: 32,
+        specularColor: [255, 255, 255],
+      },
+      elevationMultiplier: terrainExaggeration,
     });
 
-    const getZoneColor = (kind: Shape['zoneMeta']['kind']) => {
-        switch(kind) {
-            case 'residential': return [134, 239, 172, 100]; // green
-            case 'commercial': return [147, 197, 253, 100]; // blue
-            case 'amenity': return [252, 211, 77, 100]; // amber
-            case 'green_space': return [34, 197, 94, 80]; // darker green
-            case 'solar': return [251, 146, 60, 100]; // orange
-            default: return [100, 100, 100, 100];
-        }
-    }
+    const buildingLayer = new PolygonLayer({
+      id: "buildings",
+      data: assets,
+      getPolygon: (d) => d.path.map((p) => [p.lng, p.lat]),
+      getFillColor: (d) =>
+        selectedAssetId === d.id ? [255, 193, 7, 255] : [228, 225, 219, 255], // Light beige color
+      getLineColor: (d) =>
+        selectedAssetId === d.id ? [255, 255, 255, 255] : [100, 116, 139, 255], // Slate-500 for outlines
+      lineWidthMinPixels: 1,
+      extruded: true,
+      getElevation: (d: any) => (d.assetMeta?.floors || 1) * 3, // 3 meters per floor
+      pickable: true,
+    });
+
+    const getZoneColor = (kind: Shape["zoneMeta"]["kind"]) => {
+      switch (kind) {
+        case "residential":
+          return [134, 239, 172, 100]; // green
+        case "commercial":
+          return [147, 197, 253, 100]; // blue
+        case "amenity":
+          return [252, 211, 77, 100]; // amber
+        case "green_space":
+          return [34, 197, 94, 80]; // darker green
+        case "solar":
+          return [251, 146, 60, 100]; // orange
+        default:
+          return [100, 100, 100, 100];
+      }
+    };
 
     const zoneLayer = new PolygonLayer({
-        id: 'zones',
-        data: zones.filter(z => z.visible !== false),
-        getPolygon: d => d.path.map(p => [p.lng, p.lat]),
-        getFillColor: (d: any) => getZoneColor(d.zoneMeta.kind),
-        getLineColor: (d: any) => {
-            const color = getZoneColor(d.zoneMeta.kind);
-            return [...color.slice(0,3), 200];
-        },
-        getDashArray: [5, 5],
-        lineWidthMinPixels: 2,
-        extruded: false,
-        extensions: [new PathStyleExtension({dash: true})]
+      id: "zones",
+      data: zones.filter((z) => z.visible !== false),
+      getPolygon: (d) => d.path.map((p) => [p.lng, p.lat]),
+      getFillColor: (d: any) => getZoneColor(d.zoneMeta.kind),
+      getLineColor: (d: any) => {
+        const color = getZoneColor(d.zoneMeta.kind);
+        return [...color.slice(0, 3), 200];
+      },
+      getDashArray: [5, 5],
+      lineWidthMinPixels: 2,
+      extruded: false,
+      extensions: [new PathStyleExtension({ dash: true })],
     });
 
     const boundaryLayer = new PolygonLayer({
-        id: 'boundary-3d',
-        data: [boundary].filter(b => b.visible !== false),
-        getPolygon: d => d.path.map(p => [p.lng, p.lat]),
-        getFillColor: [0,0,0,0], // transparent fill
-        getLineColor: [252, 165, 3, 255], // bright orange
-        getLineWidth: 4,
-        lineWidthMinPixels: 4,
-        extruded: false,
+      id: "boundary-3d",
+      data: [boundary].filter((b) => b.visible !== false),
+      getPolygon: (d) => d.path.map((p) => [p.lng, p.lat]),
+      getFillColor: [0, 0, 0, 0], // transparent fill
+      getLineColor: [252, 165, 3, 255], // bright orange
+      getLineWidth: 4,
+      lineWidthMinPixels: 4,
+      extruded: false,
     });
-    
+
     const autofillDrawLayer = new PolygonLayer({
-        id: 'autofill-draw-layer',
-        data: autofillPath ? [{polygon: autofillPath.map(p => [p.lng, p.lat])}] : [],
-        getFillColor: [255, 193, 7, 50],
-        getLineColor: [255, 193, 7, 200],
-        getLineWidth: 2,
-        lineWidthMinPixels: 2,
+      id: "autofill-draw-layer",
+      data: autofillPath
+        ? [{ polygon: autofillPath.map((p) => [p.lng, p.lat]) }]
+        : [],
+      getFillColor: [255, 193, 7, 50],
+      getLineColor: [255, 193, 7, 200],
+      getLineWidth: 2,
+      lineWidthMinPixels: 2,
     });
 
-
-    return [terrainLayer, zoneLayer, buildingLayer, boundaryLayer, autofillDrawLayer];
-  }, [assets, zones, selectedAssetId, boundary, autofillPath, groundStyle, groundColor, terrainExaggeration]);
+    return [
+      terrainLayer,
+      zoneLayer,
+      buildingLayer,
+      boundaryLayer,
+      autofillDrawLayer,
+    ];
+  }, [
+    assets,
+    zones,
+    selectedAssetId,
+    boundary,
+    autofillPath,
+    groundStyle,
+    groundColor,
+    terrainExaggeration,
+  ]);
 
   if (!viewState) {
     return (
@@ -464,47 +593,61 @@ export function ThreeDVisualization({
       </div>
     );
   }
-  
+
   const deckProps = {
     layers: layers,
     viewState: viewState,
-    onViewStateChange: ({viewState}: {viewState: any}) => setViewState(viewState),
-    controller: {doubleClickZoom: false},
-    style: { position: 'relative', width: '100%', height: '100%' },
+    onViewStateChange: ({ viewState }: { viewState: any }) =>
+      setViewState(viewState),
+    controller: { doubleClickZoom: false },
+    style: { position: "relative", width: "100%", height: "100%" },
     onClick: handleDeckClick,
     onDragStart,
     onDrag,
     onDragEnd,
     getCursor: ({ isDragging }: { isDragging: boolean }) => {
-        if (selectedTool === 'multi-select') return 'crosshair';
-        if (isDrawingAutofill) return 'crosshair';
-        if (isDragging) return 'grabbing';
-        if (selectedTool === 'asset') return 'copy';
-        return 'grab';
+      if (selectedTool === "multi-select") return "crosshair";
+      if (isDrawingAutofill) return "crosshair";
+      if (isDragging) return "grabbing";
+      if (selectedTool === "asset") return "copy";
+      return "grab";
     },
   };
 
   return (
     <div className="w-full h-full relative">
-       <DeckGL {...deckProps} mapboxApiAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}>
-        {groundStyle === 'satellite' && (
-          <Map 
-              mapStyle={'mapbox://styles/mapbox/satellite-v9'} 
-              preventStyleDiffing
-              interactive={false}
+      <DeckGL {...deckProps}>
+        {groundStyle === "satellite" && isMapboxConfigured() && (
+          <Map
+            mapStyle={"mapbox://styles/mapbox/satellite-v9"}
+            preventStyleDiffing
+            interactive={false}
           />
         )}
+        {groundStyle === "satellite" && !isMapboxConfigured() && (
+          <div className="absolute inset-0 bg-muted flex items-center justify-center">
+            <div className="text-center p-4">
+              <Satellite className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                Satellite imagery unavailable
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Mapbox token not configured
+              </p>
+            </div>
+          </div>
+        )}
       </DeckGL>
-       {selectionBox && (
-          <div
-              className="absolute border-2 border-dashed border-blue-500 bg-blue-500/20 pointer-events-none"
-              style={{
-                  left: Math.min(selectionBox[0], selectionBox[2]),
-                  top: Math.min(selectionBox[1], selectionBox[3]),
-                  width: Math.abs(selectionBox[2] - selectionBox[0]),
-                  height: Math.abs(selectionBox[3] - selectionBox[1]),
-              }}
-          />
+      {selectionBox && (
+        <div
+          className="absolute border-2 border-dashed border-blue-500 bg-blue-500/20 pointer-events-none"
+          style={{
+            left: Math.min(selectionBox[0], selectionBox[2]),
+            top: Math.min(selectionBox[1], selectionBox[3]),
+            width: Math.abs(selectionBox[2] - selectionBox[0]),
+            height: Math.abs(selectionBox[3] - selectionBox[1]),
+          }}
+        />
       )}
       <NavigationGuide />
     </div>
