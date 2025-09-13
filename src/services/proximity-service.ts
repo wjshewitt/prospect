@@ -139,12 +139,8 @@ export async function getProximityData(shape: Shape): Promise<ProximityData> {
                   if (nearest) distancePt = nearest;
                 }
 
-                const distKm = turf.distance(centerPt, placePt, {
-                  units: "kilometers",
-                });
-                const distMiles = turf.distance(centerPt, placePt, {
-                  units: "miles",
-                });
+                const distKm = turf.distance(centerPt, placePt, "kilometers");
+                const distMiles = turf.distance(centerPt, placePt, "miles");
 
                 (data as any)[key] = {
                   name: place.name || "Unknown",

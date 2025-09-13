@@ -39,6 +39,9 @@ export const ProceduralGenerateLayoutInputSchema = z.object({
 // Main input type used by the UrbanPlanner class and UI
 export type ProceduralSettings = z.infer<typeof ProceduralGenerateLayoutInputSchema>;
 
+// Alias for backward compatibility and clarity
+export type ProceduralGenerateLayoutInput = ProceduralSettings;
+
 // Output schema remains the same
 const GeoJsonFeatureCollectionSchema = z.any();
 
