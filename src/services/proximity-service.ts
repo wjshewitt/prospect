@@ -3,8 +3,9 @@
 
 import type { Shape } from "@/lib/types";
 import * as turf from "@turf/turf";
-import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
-import nearestPointOnLine from "@turf/nearest-point-on-line";
+// Type declarations for modules with export issues
+const booleanPointInPolygon: any = require("@turf/boolean-point-in-polygon");
+const nearestPointOnLine: any = require("@turf/nearest-point-on-line");
 
 interface ProximityData {
   airport?: {
@@ -139,12 +140,8 @@ export async function getProximityData(shape: Shape): Promise<ProximityData> {
                   if (nearest) distancePt = nearest;
                 }
 
-                const distKm = turf.distance(centerPt, placePt, {
-                  units: "kilometers",
-                });
-                const distMiles = turf.distance(centerPt, placePt, {
-                  units: "miles",
-                });
+                const distKm = turf.distance(centerPt, placePt, "kilometers");
+                const distMiles = turf.distance(centerPt, placePt, "miles");
 
                 (data as any)[key] = {
                   name: place.name || "Unknown",

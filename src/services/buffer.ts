@@ -24,7 +24,7 @@ export function applyBuffer(shape: Shape, distance: number): { path: LatLng[], a
   }
 
   const turfPolygon = turf.polygon([turfPoints]);
-  const buffered = turf.buffer(turfPolygon, distance, { units: 'meters' });
+  const buffered = turf.buffer(turfPolygon, distance, 'meters');
 
   if (!buffered || !buffered.geometry || !buffered.geometry.coordinates || buffered.geometry.coordinates.length === 0) {
     throw new Error('Buffer operation resulted in an empty shape. The distance may be too large.');

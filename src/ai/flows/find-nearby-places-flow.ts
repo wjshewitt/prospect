@@ -7,6 +7,7 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import {
   Client,
+  PlaceType1,
   PlaceType2,
   Place,
 } from '@googlemaps/google-maps-services-js';
@@ -41,7 +42,7 @@ const findPlaceTool = ai.defineTool(
     description: 'Finds the nearest place of a given type and returns its details.',
     inputSchema: z.object({
       location: FindNearbyPlacesInputSchema,
-      type: z.nativeEnum(PlaceType2),
+      type: z.union([z.nativeEnum(PlaceType1), z.nativeEnum(PlaceType2)]),
     }),
     outputSchema: PlaceInfoSchema,
   },
@@ -51,9 +52,8 @@ const findPlaceTool = ai.defineTool(
       const response = await mapsClient.placesNearby({
         params: {
           location,
-          radius: 50000, // 50km search radius
           type,
-          rankby: 'distance',
+          rankby: 'distance' as any, // Type assertion for now - this is a valid value
           key: process.env.GOOGLE_MAPS_API_KEY!,
         },
       });
@@ -64,8 +64,8 @@ const findPlaceTool = ai.defineTool(
 
         const from = turf.point([location.lng, location.lat]);
         const to = turf.point([placeLocation.lng, placeLocation.lat]);
-        const distanceKm = turf.distance(from, to, { units: 'kilometers' });
-        const distanceMiles = turf.distance(from, to, { units: 'miles' });
+        const distanceKm = turf.distance(from, to, 'kilometers');
+        const distanceMiles = turf.distance(from, to, 'miles');
         
         return {
           name: place.name || 'Unknown',
@@ -92,7 +92,7 @@ const findNearbyPlacesFlow = ai.defineFlow(
     let airport, town;
     
     try {
-      airport = await findPlaceTool({ location, type: PlaceType2.airport });
+      airport = await findPlaceTool({ location, type: PlaceType1.airport });
     } catch (e) {
       console.log("Could not find a nearby airport.");
     }

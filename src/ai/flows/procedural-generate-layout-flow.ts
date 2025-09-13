@@ -7,7 +7,8 @@
 import { ai } from '@/ai/genkit';
 import { ProceduralGenerateLayoutInputSchema, ProceduralGenerateLayoutOutputSchema, ProceduralGenerateLayoutInput, ProceduralGenerateLayoutOutput } from '@/lib/procedural-types';
 import * as turf from '@turf/turf';
-import type { Feature, Polygon, LineString, FeatureCollection, MultiPolygon, Point } from '@turf/turf';
+import { getCoord } from '@turf/invariant';
+import type { Feature, Polygon, LineString, FeatureCollection, MultiPolygon, Point } from 'geojson';
 
 
 // --- Main exported function ---
@@ -43,7 +44,7 @@ function extractPolygons(geom: Feature<Polygon | MultiPolygon> | null): Feature<
     } else if (geom.geometry.type === 'MultiPolygon') {
         // Convert MultiPolygon to array of Polygons
         const multiPoly = geom as Feature<MultiPolygon>;
-        return multiPoly.geometry.coordinates.map(coords => 
+        return multiPoly.geometry.coordinates.map((coords: number[][][]) => 
             turf.polygon(coords)
         );
     }
@@ -59,8 +60,8 @@ function findNearestPoint(targetPoint: Feature<Point>, points: FeatureCollection
     
     for (const point of points.features) {
         // Skip the same point
-        if (turf.getCoord(point)[0] === turf.getCoord(targetPoint)[0] && 
-            turf.getCoord(point)[1] === turf.getCoord(targetPoint)[1]) {
+        if (getCoord(point)[0] === getCoord(targetPoint)[0] &&
+            getCoord(point)[1] === getCoord(targetPoint)[1]) {
             continue;
         }
         
@@ -80,7 +81,7 @@ function generateGridParcels(area: Feature<Polygon>, cellSize: number = 50): Fea
     const parcels: Feature<Polygon>[] = [];
     
     // Create a grid of squares
-    const squareGrid = turf.squareGrid(bbox, cellSize, { units: 'meters' });
+    const squareGrid = turf.squareGrid(bbox, cellSize, 'meters');
     
     // Clip each square to the area
     for (const square of squareGrid.features) {
@@ -143,7 +144,7 @@ class UrbanPlanner {
   private generateGreenSpacesAndBuildable(): { buildableArea: Feature<Polygon>, greenSpaces: Feature<Polygon>[] } {
       let base = this.boundary;
       if (this.settings.siteSetback > 0) {
-          const shrunk = turf.buffer(base, -this.settings.siteSetback, { units: 'meters' });
+          const shrunk = turf.buffer(base, -this.settings.siteSetback, 'meters');
           if (shrunk) {
               const polygons = extractPolygons(shrunk as Feature<Polygon | MultiPolygon>);
               if (polygons.length > 0) {
@@ -162,9 +163,9 @@ class UrbanPlanner {
           case "central": {
               const center = turf.center(base);
               const bbox = turf.bbox(base);
-              const width = turf.distance([bbox[0], bbox[1]], [bbox[2], bbox[1]], { units: 'kilometers' });
-              const height = turf.distance([bbox[0], bbox[1]], [bbox[0], bbox[3]], { units: 'kilometers' });
-              const park = turf.circle(center, Math.min(width, height) * 0.2, { units: 'kilometers' });
+              const width = turf.distance(turf.point([bbox[0], bbox[1]]), turf.point([bbox[2], bbox[1]]), 'kilometers');
+              const height = turf.distance(turf.point([bbox[0], bbox[1]]), turf.point([bbox[0], bbox[3]]), 'kilometers');
+              const park = turf.circle(center, Math.min(width, height) * 0.2, 'kilometers');
               
               try {
                   const clipped = turf.intersect(park, base);
@@ -186,7 +187,7 @@ class UrbanPlanner {
               break;
           }
           case "perimeter": {
-              const inner = turf.buffer(base, -40, { units: 'meters' });
+              const inner = turf.buffer(base, -40, 'meters');
               if (inner) {
                   const innerPolygons = extractPolygons(inner as Feature<Polygon | MultiPolygon>);
                   if (innerPolygons.length > 0) {
@@ -270,7 +271,7 @@ class UrbanPlanner {
       // Subtract road buffers if there are roads
       if (roads.features.length > 0 && this.settings.roadSetback > 0) {
           try {
-              const roadBuffer = turf.buffer(roads, this.settings.roadSetback, { units: 'meters' });
+              const roadBuffer = turf.buffer(roads, this.settings.roadSetback, 'meters');
               if (roadBuffer) {
                   const diff = turf.difference(area, roadBuffer as Feature<Polygon | MultiPolygon>);
                   if (diff) {
