@@ -1,6 +1,9 @@
 import * as turf from "@turf/turf";
 import type { LatLng } from "@/lib/types";
 
+// Type declaration for module with export issues
+const booleanPointInPolygon: any = require("@turf/boolean-point-in-polygon");
+
 /**
  * A closed polygon ring (first point equals last point)
  */
@@ -165,7 +168,7 @@ export function containsPolygon(
     const point = turf.point(centroid.geometry.coordinates);
 
     try {
-      return turf.booleanPointInPolygon(point, outerPoly);
+      return booleanPointInPolygon(point, outerPoly);
     } catch {
       // Fallback: check if centroid of inner is inside outer bounds
       const innerBounds = turf.bbox(innerPoly);
@@ -232,11 +235,12 @@ export function simplifyPath(
   try {
     const coords = path.map((p) => [p.lng, p.lat]);
     const line = turf.lineString(coords);
-    const simplified = turf.simplify(line, {
-      tolerance: toleranceMeters / 100000,
-    }); // Convert meters to degrees (approximate)
+    const simplified = turf.simplify(line, toleranceMeters / 100000, false);
 
-    return simplified.geometry.coordinates.map(([lng, lat]) => ({ lat, lng }));
+    if (simplified.type === 'Feature' && simplified.geometry.type === 'LineString') {
+      return simplified.geometry.coordinates.map(([lng, lat]: number[]) => ({ lat, lng }));
+    }
+    return path;
   } catch (error) {
     console.warn("Error simplifying path:", error);
     return path;

@@ -14,7 +14,7 @@ import type { PickingInfo } from "@deck.gl/core";
 import { TerrainLayer } from "@deck.gl/geo-layers";
 import { PolygonLayer } from "@deck.gl/layers";
 import { PathStyleExtension } from "@deck.gl/extensions";
-import { Map } from "react-map-gl";
+import { Map } from "react-map-gl/maplibre";
 import {
   Move3d,
   MousePointer,

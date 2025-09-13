@@ -4,8 +4,9 @@
 import type { Shape } from '@/lib/types';
 import * as turf from '@turf/turf';
 import { uuid } from '@/components/map/map-canvas';
+import type { Feature, Polygon, MultiPolygon } from 'geojson';
 
-function shapeToTurfPolygon(shape: Shape): turf.Feature<turf.Polygon> {
+function shapeToTurfPolygon(shape: Shape): Feature<Polygon> {
     const turfPoints = shape.path.map(p => [p.lng, p.lat]);
     if (turfPoints.length > 0 && (turfPoints[0][0] !== turfPoints[turfPoints.length - 1][0] || turfPoints[0][1] !== turfPoints[turfPoints.length - 1][1])) {
         turfPoints.push(turfPoints[0]);
@@ -14,7 +15,7 @@ function shapeToTurfPolygon(shape: Shape): turf.Feature<turf.Polygon> {
 }
 
 function turfPolygonToShape(
-    polygon: turf.Feature<turf.Polygon | turf.MultiPolygon> | null, 
+    polygon: Feature<Polygon | MultiPolygon> | null, 
     type: Shape['type']
 ): Shape | null {
     if (!polygon || !polygon.geometry) return null;

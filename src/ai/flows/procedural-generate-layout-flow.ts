@@ -44,7 +44,7 @@ function extractPolygons(geom: Feature<Polygon | MultiPolygon> | null): Feature<
     } else if (geom.geometry.type === 'MultiPolygon') {
         // Convert MultiPolygon to array of Polygons
         const multiPoly = geom as Feature<MultiPolygon>;
-        return multiPoly.geometry.coordinates.map(coords => 
+        return multiPoly.geometry.coordinates.map((coords: number[][][]) => 
             turf.polygon(coords)
         );
     }
