@@ -30,6 +30,7 @@ import { LayerControl } from "./layer-control";
 import { AnnotationTool } from "../annotation/annotation-tool";
 import { AnnotationOverlay } from "../annotation/annotation-overlay";
 import { LocalAuthorityLayer } from "./local-authority-layer";
+import { normalizeShapesForMapLibre, shapeToGeoJSONFeature } from "@/lib/shape-conversion";
 
 // MapLibre imports
 import { MapLibreProvider, useMapLibre } from "@/core/mapping/MapLibreProvider";
@@ -98,6 +99,11 @@ const MapLibreCanvasInner: React.FC<MapLibreCanvasProps> = ({
   const { map, isLoaded } = useMapLibre();
   const { toast } = useToast();
   
+  // Normalize shapes for MapLibre compatibility
+  const normalizedShapes = useMemo(() => {
+    return normalizeShapesForMapLibre(shapes);
+  }, [shapes]);
+
   // State management
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [bufferDialog, setBufferDialog] = useState<BufferState | null>(null);
@@ -180,13 +186,13 @@ const MapLibreCanvasInner: React.FC<MapLibreCanvasProps> = ({
       <DrawingManager
         selectedTool={selectedTool}
         onShapeComplete={handleShapeComplete}
-        shapes={shapes}
+        shapes={normalizedShapes}
         selectedShapeIds={selectedShapeIds}
         onShapeSelect={handleShapeSelect}
       />
       
       <LayerManager
-        shapes={shapes}
+        shapes={normalizedShapes}
         selectedShapeIds={selectedShapeIds}
         overlays={layerOverlays}
         onShapeClick={handleShapeClick}
