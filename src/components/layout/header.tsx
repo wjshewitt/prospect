@@ -143,6 +143,7 @@ export default function Header({
               onClick={onClear}
               disabled={!hasShapes}
               aria-label="Clear all drawings"
+              className="hover:bg-gradient-to-r hover:from-green-500 hover:to-orange-500 hover:text-white hover:border-green-500 transition-all duration-200"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Clear

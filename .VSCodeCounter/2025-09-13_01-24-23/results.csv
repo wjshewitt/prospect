@@ -1,0 +1,168 @@
+"filename", "language", "TypeScript", "TypeScript JSX", "YAML", "Markdown", "JSON with Comments", "JSON", "JavaScript", "Docker", "CSS", "Python", "pip requirements", "HTML", "comment", "blank", "total"
+"/Users/wjshewitt/prospect/.kilocode/mcp.json", "JSON", 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 11
+"/Users/wjshewitt/prospect/Dockerfile", "Docker", 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 6, 4, 17
+"/Users/wjshewitt/prospect/README.md", "Markdown", 0, 0, 0, 137, 0, 0, 0, 0, 0, 0, 0, 0, 0, 55, 192
+"/Users/wjshewitt/prospect/WARP.md", "Markdown", 0, 0, 0, 61, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 86
+"/Users/wjshewitt/prospect/apphosting.yaml", "YAML", 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 2, 8
+"/Users/wjshewitt/prospect/components.json", "JSON", 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 0, 21
+"/Users/wjshewitt/prospect/docker-compose.yml", "YAML", 0, 0, 28, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 31
+"/Users/wjshewitt/prospect/docs/advanced-polygon-selection-architecture.md", "Markdown", 0, 0, 0, 485, 0, 0, 0, 0, 0, 0, 0, 0, 0, 116, 601
+"/Users/wjshewitt/prospect/docs/blueprint.md", "Markdown", 0, 0, 0, 17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 21
+"/Users/wjshewitt/prospect/docs/demographics-ui-spec.md", "Markdown", 0, 0, 0, 123, 0, 0, 0, 0, 0, 0, 0, 0, 0, 34, 157
+"/Users/wjshewitt/prospect/docs/flood-service.md", "Markdown", 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 38
+"/Users/wjshewitt/prospect/docs/implementation-prompt.md", "Markdown", 0, 0, 0, 156, 0, 0, 0, 0, 0, 0, 0, 0, 0, 51, 207
+"/Users/wjshewitt/prospect/docs/implementation-specifications.md", "Markdown", 0, 0, 0, 835, 0, 0, 0, 0, 0, 0, 0, 0, 0, 136, 971
+"/Users/wjshewitt/prospect/docs/toolset-enhancement-proposal.md", "Markdown", 0, 0, 0, 173, 0, 0, 0, 0, 0, 0, 0, 0, 0, 61, 234
+"/Users/wjshewitt/prospect/index.html", "HTML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 536, 7, 8, 551
+"/Users/wjshewitt/prospect/index.ts", "TypeScript", 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 14
+"/Users/wjshewitt/prospect/next.config.ts", "TypeScript", 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 4, 44
+"/Users/wjshewitt/prospect/package-lock.json", "JSON", 0, 0, 0, 0, 0, 18319, 0, 0, 0, 0, 0, 0, 0, 1, 18320
+"/Users/wjshewitt/prospect/package.json", "JSON", 0, 0, 0, 0, 0, 87, 0, 0, 0, 0, 0, 0, 0, 1, 88
+"/Users/wjshewitt/prospect/plan.md", "Markdown", 0, 0, 0, 134, 0, 0, 0, 0, 0, 0, 0, 0, 0, 54, 188
+"/Users/wjshewitt/prospect/postcss.config.mjs", "JavaScript", 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 1, 2, 9
+"/Users/wjshewitt/prospect/public/script.js", "JavaScript", 0, 0, 0, 0, 0, 0, 1319, 0, 0, 0, 0, 0, 76, 220, 1615
+"/Users/wjshewitt/prospect/requirements.txt", "pip requirements", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 4
+"/Users/wjshewitt/prospect/script.js", "JavaScript", 0, 0, 0, 0, 0, 0, 1319, 0, 0, 0, 0, 0, 76, 220, 1615
+"/Users/wjshewitt/prospect/src/ai/dev.ts", "TypeScript", 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 9
+"/Users/wjshewitt/prospect/src/ai/flows/ai-suggest-building-placement.ts", "TypeScript", 59, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 10, 76
+"/Users/wjshewitt/prospect/src/ai/flows/find-nearby-places-flow.ts", "TypeScript", 95, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 17, 115
+"/Users/wjshewitt/prospect/src/ai/flows/generate-solar-layout-flow.ts", "TypeScript", 223, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 32, 280
+"/Users/wjshewitt/prospect/src/ai/flows/procedural-generate-layout-flow.ts", "TypeScript", 327, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 37, 64, 428
+"/Users/wjshewitt/prospect/src/ai/flows/summarize-site-flow.ts", "TypeScript", 169, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 32, 216
+"/Users/wjshewitt/prospect/src/ai/genkit.ts", "TypeScript", 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 13
+"/Users/wjshewitt/prospect/src/app/api/local-authorities/route.ts", "TypeScript", 187, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 31, 260
+"/Users/wjshewitt/prospect/src/app/api/mapbox-proxy/route.ts", "TypeScript", 54, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 10, 73
+"/Users/wjshewitt/prospect/src/app/api/ons/demographics/route.ts", "TypeScript", 98, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 14, 127
+"/Users/wjshewitt/prospect/src/app/api/ons/demographics/test/route.ts", "TypeScript", 62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 12, 83
+"/Users/wjshewitt/prospect/src/app/api/uk-data/flood/route.ts", "TypeScript", 80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 13, 99
+"/Users/wjshewitt/prospect/src/app/api/uk-geoai/flood/local-flood.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"/Users/wjshewitt/prospect/src/app/api/uk-geoai/flood/route.ts", "TypeScript", 62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 12, 76
+"/Users/wjshewitt/prospect/src/app/dev/demographics-test/page.tsx", "TypeScript JSX", 0, 74, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 81
+"/Users/wjshewitt/prospect/src/app/dev/location-preview/page.tsx", "TypeScript JSX", 0, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 7, 95
+"/Users/wjshewitt/prospect/src/app/globals.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 1118, 0, 0, 0, 32, 171, 1321
+"/Users/wjshewitt/prospect/src/app/layout.tsx", "TypeScript JSX", 0, 29, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 33
+"/Users/wjshewitt/prospect/src/app/login/page.tsx", "TypeScript JSX", 0, 860, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 59, 940
+"/Users/wjshewitt/prospect/src/app/page.tsx", "TypeScript JSX", 0, 769, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 35, 821
+"/Users/wjshewitt/prospect/src/app/privacy/page.tsx", "TypeScript JSX", 0, 369, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 25, 397
+"/Users/wjshewitt/prospect/src/app/signup/page.tsx", "TypeScript JSX", 0, 860, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 59, 940
+"/Users/wjshewitt/prospect/src/app/terms/page.tsx", "TypeScript JSX", 0, 268, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 19, 290
+"/Users/wjshewitt/prospect/src/app/vision/page.tsx", "TypeScript JSX", 0, 898, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 27, 75, 1000
+"/Users/wjshewitt/prospect/src/app/welcome/page.tsx", "TypeScript JSX", 0, 341, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 22, 367
+"/Users/wjshewitt/prospect/src/components/ai/building-placement-dialog.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2
+"/Users/wjshewitt/prospect/src/components/annotation/annotation-editor.tsx", "TypeScript JSX", 0, 52, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 58
+"/Users/wjshewitt/prospect/src/components/annotation/annotation-overlay.tsx", "TypeScript JSX", 0, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 7, 117
+"/Users/wjshewitt/prospect/src/components/annotation/annotation-tool.tsx", "TypeScript JSX", 0, 149, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 163
+"/Users/wjshewitt/prospect/src/components/assessment/site-assessment-dialog.tsx", "TypeScript JSX", 0, 1062, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 44, 1130
+"/Users/wjshewitt/prospect/src/components/auth/firebase-auth-provider.tsx", "TypeScript JSX", 0, 33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 45
+"/Users/wjshewitt/prospect/src/components/dev-viz/three-d-modal.tsx", "TypeScript JSX", 0, 581, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 64, 659
+"/Users/wjshewitt/prospect/src/components/layout/header.tsx", "TypeScript JSX", 0, 153, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 161
+"/Users/wjshewitt/prospect/src/components/map/address-search-box.tsx", "TypeScript JSX", 0, 61, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 14, 77
+"/Users/wjshewitt/prospect/src/components/map/buffer-dialog.tsx", "TypeScript JSX", 0, 73, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 9, 83
+"/Users/wjshewitt/prospect/src/components/map/layer-control.tsx", "TypeScript JSX", 0, 173, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 7, 183
+"/Users/wjshewitt/prospect/src/components/map/local-authority-layer.tsx", "TypeScript JSX", 0, 188, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 35, 37, 260
+"/Users/wjshewitt/prospect/src/components/map/map-canvas.tsx", "TypeScript JSX", 0, 1393, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 62, 161, 1616
+"/Users/wjshewitt/prospect/src/components/map/map-provider-manager.tsx", "TypeScript JSX", 0, 96, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 16, 119
+"/Users/wjshewitt/prospect/src/components/map/name-site-dialog.tsx", "TypeScript JSX", 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 79
+"/Users/wjshewitt/prospect/src/components/map/shape-context-menu.tsx", "TypeScript JSX", 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 82
+"/Users/wjshewitt/prospect/src/components/map/site-marker.tsx", "TypeScript JSX", 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 22, 95
+"/Users/wjshewitt/prospect/src/components/map/zone-dialog.tsx", "TypeScript JSX", 0, 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 11, 116
+"/Users/wjshewitt/prospect/src/components/measurement/measurement-overlay.tsx", "TypeScript JSX", 0, 76, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 82
+"/Users/wjshewitt/prospect/src/components/project/create-project-modal.tsx", "TypeScript JSX", 0, 115, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 17, 135
+"/Users/wjshewitt/prospect/src/components/project/project-details-step.tsx", "TypeScript JSX", 0, 68, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 74
+"/Users/wjshewitt/prospect/src/components/project/project-location-step.tsx", "TypeScript JSX", 0, 485, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 34, 531
+"/Users/wjshewitt/prospect/src/components/project/project-name-step.tsx", "TypeScript JSX", 0, 31, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 37
+"/Users/wjshewitt/prospect/src/components/sidebar/ai-placement-panel.tsx", "TypeScript JSX", 0, 131, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 142
+"/Users/wjshewitt/prospect/src/components/sidebar/ai-summary-panel.tsx", "TypeScript JSX", 0, 296, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 28, 339
+"/Users/wjshewitt/prospect/src/components/sidebar/demographics-panel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2
+"/Users/wjshewitt/prospect/src/components/sidebar/demographics/age-distribution-card.tsx", "TypeScript JSX", 0, 46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 51
+"/Users/wjshewitt/prospect/src/components/sidebar/demographics/data-freshness-indicator.tsx", "TypeScript JSX", 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 14
+"/Users/wjshewitt/prospect/src/components/sidebar/demographics/demographic-skeleton.tsx", "TypeScript JSX", 0, 29, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 31
+"/Users/wjshewitt/prospect/src/components/sidebar/demographics/demographics-panel.tsx", "TypeScript JSX", 0, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 92
+"/Users/wjshewitt/prospect/src/components/sidebar/demographics/empty-state.tsx", "TypeScript JSX", 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 18
+"/Users/wjshewitt/prospect/src/components/sidebar/demographics/metric-card.tsx", "TypeScript JSX", 0, 66, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 74
+"/Users/wjshewitt/prospect/src/components/sidebar/demographics/metrics-grid.tsx", "TypeScript JSX", 0, 28, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 32
+"/Users/wjshewitt/prospect/src/components/sidebar/demographics/source-attribution.tsx", "TypeScript JSX", 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 12
+"/Users/wjshewitt/prospect/src/components/sidebar/demographics/types.ts", "TypeScript", 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 22
+"/Users/wjshewitt/prospect/src/components/sidebar/development-details.tsx", "TypeScript JSX", 0, 77, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 16, 94
+"/Users/wjshewitt/prospect/src/components/sidebar/elevation-analysis.tsx", "TypeScript JSX", 0, 183, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 197
+"/Users/wjshewitt/prospect/src/components/sidebar/procedural-planner-panel.tsx", "TypeScript JSX", 0, 150, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 11, 162
+"/Users/wjshewitt/prospect/src/components/sidebar/solar-analysis.tsx", "TypeScript JSX", 0, 74, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 85
+"/Users/wjshewitt/prospect/src/components/sidebar/statistics-sidebar.tsx", "TypeScript JSX", 0, 342, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 15, 358
+"/Users/wjshewitt/prospect/src/components/sidebar/three-d-editor-panel.tsx", "TypeScript JSX", 0, 321, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42, 363
+"/Users/wjshewitt/prospect/src/components/terrain/basic-terrain-analysis.tsx", "TypeScript JSX", 0, 122, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 8, 131
+"/Users/wjshewitt/prospect/src/components/terrain/terrain-analysis-panel.tsx", "TypeScript JSX", 0, 105, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 14, 125
+"/Users/wjshewitt/prospect/src/components/tools/tool-palette.tsx", "TypeScript JSX", 0, 528, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 32, 574
+"/Users/wjshewitt/prospect/src/components/tools/zoning/zone-tool.tsx", "TypeScript JSX", 0, 370, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 58, 476
+"/Users/wjshewitt/prospect/src/components/tutorial/tutorial-guide.tsx", "TypeScript JSX", 0, 140, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 21, 163
+"/Users/wjshewitt/prospect/src/components/ui/accordion.tsx", "TypeScript JSX", 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 59
+"/Users/wjshewitt/prospect/src/components/ui/alert-dialog.tsx", "TypeScript JSX", 0, 127, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 142
+"/Users/wjshewitt/prospect/src/components/ui/alert.tsx", "TypeScript JSX", 0, 53, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 60
+"/Users/wjshewitt/prospect/src/components/ui/avatar.tsx", "TypeScript JSX", 0, 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 51
+"/Users/wjshewitt/prospect/src/components/ui/badge.tsx", "TypeScript JSX", 0, 31, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 37
+"/Users/wjshewitt/prospect/src/components/ui/button.tsx", "TypeScript JSX", 0, 51, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 57
+"/Users/wjshewitt/prospect/src/components/ui/calendar.tsx", "TypeScript JSX", 0, 65, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 71
+"/Users/wjshewitt/prospect/src/components/ui/card.tsx", "TypeScript JSX", 0, 71, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 80
+"/Users/wjshewitt/prospect/src/components/ui/carousel.tsx", "TypeScript JSX", 0, 232, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 263
+"/Users/wjshewitt/prospect/src/components/ui/chart.tsx", "TypeScript JSX", 0, 327, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 37, 366
+"/Users/wjshewitt/prospect/src/components/ui/checkbox.tsx", "TypeScript JSX", 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 31
+"/Users/wjshewitt/prospect/src/components/ui/collapsible.tsx", "TypeScript JSX", 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 12
+"/Users/wjshewitt/prospect/src/components/ui/dialog.tsx", "TypeScript JSX", 0, 109, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 123
+"/Users/wjshewitt/prospect/src/components/ui/dropdown-menu.tsx", "TypeScript JSX", 0, 182, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 201
+"/Users/wjshewitt/prospect/src/components/ui/form.tsx", "TypeScript JSX", 0, 153, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 179
+"/Users/wjshewitt/prospect/src/components/ui/input.tsx", "TypeScript JSX", 0, 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 23
+"/Users/wjshewitt/prospect/src/components/ui/label.tsx", "TypeScript JSX", 0, 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 27
+"/Users/wjshewitt/prospect/src/components/ui/menubar.tsx", "TypeScript JSX", 0, 237, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 257
+"/Users/wjshewitt/prospect/src/components/ui/popover.tsx", "TypeScript JSX", 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 32
+"/Users/wjshewitt/prospect/src/components/ui/progress.tsx", "TypeScript JSX", 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 29
+"/Users/wjshewitt/prospect/src/components/ui/radio-group.tsx", "TypeScript JSX", 0, 39, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 45
+"/Users/wjshewitt/prospect/src/components/ui/save-load-dropdown.tsx", "TypeScript JSX", 0, 187, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 200
+"/Users/wjshewitt/prospect/src/components/ui/scroll-area.tsx", "TypeScript JSX", 0, 43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 49
+"/Users/wjshewitt/prospect/src/components/ui/select.tsx", "TypeScript JSX", 0, 146, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 161
+"/Users/wjshewitt/prospect/src/components/ui/separator.tsx", "TypeScript JSX", 0, 27, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 32
+"/Users/wjshewitt/prospect/src/components/ui/sheet.tsx", "TypeScript JSX", 0, 125, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 141
+"/Users/wjshewitt/prospect/src/components/ui/sidebar.tsx", "TypeScript JSX", 0, 697, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 55, 764
+"/Users/wjshewitt/prospect/src/components/ui/skeleton.tsx", "TypeScript JSX", 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 16
+"/Users/wjshewitt/prospect/src/components/ui/slider.tsx", "TypeScript JSX", 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 29
+"/Users/wjshewitt/prospect/src/components/ui/switch.tsx", "TypeScript JSX", 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 30
+"/Users/wjshewitt/prospect/src/components/ui/table.tsx", "TypeScript JSX", 0, 107, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 118
+"/Users/wjshewitt/prospect/src/components/ui/tabs.tsx", "TypeScript JSX", 0, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 56
+"/Users/wjshewitt/prospect/src/components/ui/textarea.tsx", "TypeScript JSX", 0, 18, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 22
+"/Users/wjshewitt/prospect/src/components/ui/toast.tsx", "TypeScript JSX", 0, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 14, 130
+"/Users/wjshewitt/prospect/src/components/ui/toaster.tsx", "TypeScript JSX", 0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 36
+"/Users/wjshewitt/prospect/src/components/ui/tooltip.tsx", "TypeScript JSX", 0, 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 31
+"/Users/wjshewitt/prospect/src/components/welcome/project-card.tsx", "TypeScript JSX", 0, 264, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 22, 289
+"/Users/wjshewitt/prospect/src/config/demographics.ts", "TypeScript", 45, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 6, 58
+"/Users/wjshewitt/prospect/src/hooks/use-auth.tsx", "TypeScript JSX", 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 14
+"/Users/wjshewitt/prospect/src/hooks/use-local-storage.ts", "TypeScript", 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 9, 52
+"/Users/wjshewitt/prospect/src/hooks/use-mobile.tsx", "TypeScript JSX", 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 20
+"/Users/wjshewitt/prospect/src/hooks/use-toast.ts", "TypeScript", 160, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 32, 195
+"/Users/wjshewitt/prospect/src/lib/firebase.ts", "TypeScript", 31, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 8, 45
+"/Users/wjshewitt/prospect/src/lib/map-providers.ts", "TypeScript", 104, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 7, 117
+"/Users/wjshewitt/prospect/src/lib/mapbox-config.ts", "TypeScript", 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 5, 15
+"/Users/wjshewitt/prospect/src/lib/procedural-types.ts", "TypeScript", 38, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 9, 52
+"/Users/wjshewitt/prospect/src/lib/sandbox.ts", "TypeScript", 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 6, 31
+"/Users/wjshewitt/prospect/src/lib/terrain-analysis.ts", "TypeScript", 126, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 28, 155
+"/Users/wjshewitt/prospect/src/lib/types.ts", "TypeScript", 277, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21, 28, 326
+"/Users/wjshewitt/prospect/src/lib/urban-planner.ts", "TypeScript", 584, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 60, 657
+"/Users/wjshewitt/prospect/src/lib/utils.ts", "TypeScript", 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 7
+"/Users/wjshewitt/prospect/src/services/annotation.ts", "TypeScript", 72, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 79
+"/Users/wjshewitt/prospect/src/services/buffer.ts", "TypeScript", 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 12, 46
+"/Users/wjshewitt/prospect/src/services/data-integrator-service.ts", "TypeScript", 380, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 43, 441
+"/Users/wjshewitt/prospect/src/services/demographics/orchestrator.ts", "TypeScript", 265, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 61, 39, 365
+"/Users/wjshewitt/prospect/src/services/demographics/providers/base.ts", "TypeScript", 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 5, 32
+"/Users/wjshewitt/prospect/src/services/demographics/providers/census.ts", "TypeScript", 498, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 31, 56, 585
+"/Users/wjshewitt/prospect/src/services/elevation.ts", "TypeScript", 190, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 28, 43, 261
+"/Users/wjshewitt/prospect/src/services/geometry/google-map-adapter.ts", "TypeScript", 267, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 53, 332
+"/Users/wjshewitt/prospect/src/services/geometry/map-adapter.ts", "TypeScript", 70, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 97, 24, 191
+"/Users/wjshewitt/prospect/src/services/geometry/polygon.ts", "TypeScript", 260, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 62, 38, 360
+"/Users/wjshewitt/prospect/src/services/local-authority/local-authority-service.ts", "TypeScript", 199, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 65, 34, 298
+"/Users/wjshewitt/prospect/src/services/measurement.ts", "TypeScript", 123, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 26, 205
+"/Users/wjshewitt/prospect/src/services/pdf-report-service.ts", "TypeScript", 536, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 18, 52, 606
+"/Users/wjshewitt/prospect/src/services/procedural-generation.ts", "TypeScript", 59, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 16, 92
+"/Users/wjshewitt/prospect/src/services/proximity-service.ts", "TypeScript", 151, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 21, 179
+"/Users/wjshewitt/prospect/src/services/turf-operations.ts", "TypeScript", 51, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 18, 70
+"/Users/wjshewitt/prospect/src/services/zoning/rules.ts", "TypeScript", 267, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 41, 31, 339
+"/Users/wjshewitt/prospect/styles.css", "CSS", 0, 0, 0, 0, 0, 0, 0, 0, 863, 0, 0, 0, 21, 149, 1033
+"/Users/wjshewitt/prospect/tailwind.config.ts", "TypeScript", 103, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 105
+"/Users/wjshewitt/prospect/tsconfig.json", "JSON with Comments", 0, 0, 0, 0, 27, 0, 0, 0, 0, 0, 0, 0, 0, 1, 28
+"Total", "-", 6468, 16697, 30, 2145, 27, 18438, 2644, 7, 1981, 0, 4, 536, 1380, 3928, 54285

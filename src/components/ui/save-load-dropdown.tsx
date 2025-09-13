@@ -111,7 +111,11 @@ export function SaveLoadDropdown({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 hover:bg-gradient-to-r hover:from-green-500 hover:to-orange-500 hover:text-white hover:border-green-500 transition-all duration-200"
+          >
             {isSaving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : saveSuccess ? (

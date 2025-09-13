@@ -1,0 +1,4 @@
+requests
+geopandas
+shapely
+git+https://github.com/datasciencecampus/census21api.git

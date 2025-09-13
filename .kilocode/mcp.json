@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "sequentialthinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "alwaysAllow": []
+    }
+  }
+}
+{
+  "mcpServers": {
+    "kepler-docs": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-gitbook"],
+      "env": {
+        "GITBOOK_INTEGRATION_TOKEN": "your-token-if-needed"
+      }
+    }
+  }
+}

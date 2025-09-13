@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LandVision - AI-Powered Land Analysis Platform</title>
+    <meta
+      name="description"
+      content="Transform land development with AI-powered analysis, visualization, and intelligence for real estate developers, urban planners, and land analysts."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="nav-container">
+        <div class="nav-brand">
+          <svg
+            class="logo-icon"
+            width="32"
+            height="32"
+            viewBox="0 0 32 32"
+            fill="none"
+          >
+            <rect width="32" height="32" rx="8" fill="#4ade80" />
+            <path d="M8 12h16v8H8z" fill="white" opacity="0.9" />
+            <path d="M10 14h12v4H10z" fill="#4ade80" />
+            <circle cx="16" cy="16" r="2" fill="white" />
+          </svg>
+          <span class="brand-name">LandVision</span>
+        </div>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#how-it-works">How it Works</a>
+          <a href="#benefits">Benefits</a>
+          <button class="btn-secondary">Sign In</button>
+          <button class="btn-primary">Get Demo</button>
+        </div>
+        <button class="mobile-menu-toggle" aria-label="Toggle menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <div class="hero-content">
+          <div class="hero-text">
+            <h1 class="hero-headline">
+              Transform Land Development with
+              <span class="gradient-text">AI-Powered Analysis</span>
+            </h1>
+            <p class="hero-description">
+              LandVision empowers real estate developers, urban planners, and
+              land analysts with cutting-edge AI to visualize opportunities,
+              analyze risks, and make data-driven decisions that transform
+              communities.
+            </p>
+            <div class="hero-actions">
+              <button class="btn-primary-large">Start Free Demo</button>
+              <button class="btn-secondary-large">
+                <svg
+                  width="20"
+                  height="20"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+                Watch Demo
+              </button>
+            </div>
+            <div class="hero-stats">
+              <div class="stat">
+                <span class="stat-number">500K+</span>
+                <span class="stat-label">Acres Analyzed</span>
+              </div>
+              <div class="stat">
+                <span class="stat-number">95%</span>
+                <span class="stat-label">Accuracy Rate</span>
+              </div>
+              <div class="stat">
+                <span class="stat-number">2.5x</span>
+                <span class="stat-label">Faster Decisions</span>
+              </div>
+            </div>
+          </div>
+          <div class="hero-visual">
+            <div class="dashboard-mockup">
+              <div class="mockup-header">
+                <div class="mockup-controls">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
+              <div class="mockup-content">
+                <div class="map-visualization">
+                  <div class="data-overlay">
+                    <div class="data-point active"></div>
+                    <div class="data-point"></div>
+                    <div class="data-point"></div>
+                  </div>
+                  <div class="analysis-panel">
+                    <div class="metric">
+                      <span class="metric-label">Development Score</span>
+                      <span class="metric-value">8.7/10</span>
+                    </div>
+                    <div class="metric">
+                      <span class="metric-label">Risk Level</span>
+                      <span class="metric-value low">Low</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">Powerful AI-Driven Capabilities</h2>
+          <p class="section-description">
+            Leverage advanced AI and machine learning to unlock insights from
+            land data, streamline analysis, and accelerate your development
+            process.
+          </p>
+        </div>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg
+                width="32"
+                height="32"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                />
+              </svg>
+            </div>
+            <h3 class="feature-title">AI-Powered Analysis</h3>
+            <p class="feature-description">
+              Advanced machine learning algorithms analyze soil composition,
+              topography, environmental factors, and zoning data to provide
+              comprehensive land insights.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg
+                width="32"
+                height="32"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
+                />
+              </svg>
+            </div>
+            <h3 class="feature-title">Interactive Visualization</h3>
+            <p class="feature-description">
+              Transform complex data into intuitive 3D maps, heatmaps, and
+              interactive dashboards that make land analysis accessible and
+              actionable.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg
+                width="32"
+                height="32"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
+            </div>
+            <h3 class="feature-title">Real-Time Intelligence</h3>
+            <p class="feature-description">
+              Get instant alerts on market changes, regulatory updates, and
+              development opportunities with our real-time monitoring system.
+            </p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg
+                width="32"
+                height="32"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+            </div>
+            <h3 class="feature-title">Risk Assessment</h3>
+            <p class="feature-description">
+              Identify potential risks including environmental hazards,
+              regulatory challenges, and market volatility before making
+              investment decisions.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="how-it-works">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">How LandVision Works</h2>
+          <p class="section-description">
+            Our streamlined process transforms raw land data into actionable
+            insights in just three simple steps.
+          </p>
+        </div>
+        <div class="process-steps">
+          <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <h3 class="step-title">Import Your Data</h3>
+              <p class="step-description">
+                Upload land surveys, GIS data, satellite imagery, and property
+                records. Our AI automatically processes and standardizes all
+                formats.
+              </p>
+            </div>
+            <div class="step-visual">
+              <div class="upload-animation">
+                <div class="upload-icon">
+                  <svg
+                    width="24"
+                    height="24"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <h3 class="step-title">AI Analysis</h3>
+              <p class="step-description">
+                Our advanced algorithms analyze soil conditions, environmental
+                factors, zoning regulations, and market trends to generate
+                comprehensive insights.
+              </p>
+            </div>
+            <div class="step-visual">
+              <div class="analysis-animation">
+                <div class="brain-icon">
+                  <svg
+                    width="24"
+                    height="24"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <h3 class="step-title">Actionable Insights</h3>
+              <p class="step-description">
+                Receive detailed reports, risk assessments, and development
+                recommendations through interactive dashboards and automated
+                notifications.
+              </p>
+            </div>
+            <div class="step-visual">
+              <div class="insights-animation">
+                <div class="chart-icon">
+                  <svg
+                    width="24"
+                    height="24"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section id="benefits" class="benefits">
+      <div class="container">
+        <div class="section-header">
+          <h2 class="section-title">
+            Why Leading Organizations Choose LandVision
+          </h2>
+          <p class="section-description">
+            Join thousands of professionals who have accelerated their land
+            development process and reduced risks with our AI-powered platform.
+          </p>
+        </div>
+        <div class="benefits-content">
+          <div class="testimonials">
+            <div class="testimonial">
+              <div class="testimonial-content">
+                <p class="testimonial-text">
+                  "LandVision has transformed our due diligence process. We can
+                  now analyze potential sites 10x faster and with unprecedented
+                  accuracy. It's become an essential tool for our development
+                  pipeline."
+                </p>
+                <div class="testimonial-author">
+                  <div class="author-info">
+                    <span class="author-name">Sarah Chen</span>
+                    <span class="author-role"
+                      >VP of Development, Urban Properties</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="testimonial">
+              <div class="testimonial-content">
+                <p class="testimonial-text">
+                  "The AI-powered risk assessment saved us from a costly
+                  mistake. LandVision identified environmental concerns that
+                  weren't visible in traditional surveys. Outstanding platform."
+                </p>
+                <div class="testimonial-author">
+                  <div class="author-info">
+                    <span class="author-name">Michael Rodriguez</span>
+                    <span class="author-role"
+                      >Senior Urban Planner, Metro Planning</span
+                    >
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-number-large">500K+</div>
+              <div class="stat-label-large">Acres Analyzed</div>
+              <p class="stat-description">
+                Comprehensive analysis across diverse terrains and markets
+              </p>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number-large">95%</div>
+              <div class="stat-label-large">Accuracy Rate</div>
+              <p class="stat-description">
+                Industry-leading precision in risk and opportunity assessment
+              </p>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number-large">2.5x</div>
+              <div class="stat-label-large">Faster Decisions</div>
+              <p class="stat-description">
+                Accelerate your development timeline with instant insights
+              </p>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number-large">$2.3M</div>
+              <div class="stat-label-large">Average Savings</div>
+              <p class="stat-description">
+                Risk mitigation and efficiency gains per project
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+      <div class="container">
+        <div class="cta-content">
+          <h2 class="cta-title">Ready to Transform Your Land Development?</h2>
+          <p class="cta-description">
+            Start your free demo today and discover how AI-powered analysis can
+            accelerate your projects and reduce risks.
+          </p>
+          <div class="cta-actions">
+            <button class="btn-primary-large">Start Free Demo</button>
+            <button class="btn-secondary-large">Schedule Consultation</button>
+          </div>
+          <p class="cta-note">
+            No credit card required. Setup in under 5 minutes.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-content">
+          <div class="footer-brand">
+            <div class="footer-logo">
+              <svg
+                class="logo-icon"
+                width="32"
+                height="32"
+                viewBox="0 0 32 32"
+                fill="none"
+              >
+                <rect width="32" height="32" rx="8" fill="#4ade80" />
+                <path d="M8 12h16v8H8z" fill="white" opacity="0.9" />
+                <path d="M10 14h12v4H10z" fill="#4ade80" />
+                <circle cx="16" cy="16" r="2" fill="white" />
+              </svg>
+              <span class="brand-name">LandVision</span>
+            </div>
+            <p class="footer-description">
+              AI-powered land analysis platform for real estate developers,
+              urban planners, and land analysts.
+            </p>
+          </div>
+          <div class="footer-links">
+            <div class="link-group">
+              <h4 class="link-group-title">Product</h4>
+              <a href="#features">Features</a>
+              <a href="#pricing">Pricing</a>
+              <a href="#integrations">Integrations</a>
+              <a href="#api">API</a>
+            </div>
+            <div class="link-group">
+              <h4 class="link-group-title">Company</h4>
+              <a href="#about">About</a>
+              <a href="#careers">Careers</a>
+              <a href="#blog">Blog</a>
+              <a href="#contact">Contact</a>
+            </div>
+            <div class="link-group">
+              <h4 class="link-group-title">Resources</h4>
+              <a href="#documentation">Documentation</a>
+              <a href="#help">Help Center</a>
+              <a href="#community">Community</a>
+              <a href="#status">Status</a>
+            </div>
+            <div class="link-group">
+              <h4 class="link-group-title">Legal</h4>
+              <a href="#privacy">Privacy</a>
+              <a href="#terms">Terms</a>
+              <a href="#security">Security</a>
+              <a href="#compliance">Compliance</a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p class="copyright">© 2025 LandVision. All rights reserved.</p>
+          <div class="social-links">
+            <a href="#" aria-label="Twitter">
+              <svg
+                width="20"
+                height="20"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  d="M6.29 18.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0020 3.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.073 4.073 0 01.8 7.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 010 16.407a11.616 11.616 0 006.29 1.84"
+                />
+              </svg>
+            </a>
+            <a href="#" aria-label="LinkedIn">
+              <svg
+                width="20"
+                height="20"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M16.338 16.338H13.67V12.16c0-.995-.017-2.277-1.387-2.277-1.39 0-1.601 1.086-1.601 2.207v4.248H8.014v-8.59h2.559v1.174h.037c.356-.675 1.227-1.387 2.526-1.387 2.703 0 3.203 1.778 3.203 4.092v4.711zM5.005 6.575a1.548 1.548 0 11-.003-3.096 1.548 1.548 0 01.003 3.096zm-1.337 9.763H6.34v-8.59H3.667v8.59zM17.668 1H2.328C1.595 1 1 1.581 1 2.298v15.403C1 18.418 1.595 19 2.328 19h15.34c.734 0 1.332-.582 1.332-1.299V2.298C19 1.581 18.402 1 17.668 1z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

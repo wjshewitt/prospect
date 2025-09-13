@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import {
   Map,
   useMap,
@@ -14,7 +20,13 @@ import type {
   ElevationGrid,
   ElevationGridCell,
   LatLng,
+  LiveMeasurement,
+  MeasurementConfig,
+  LayerOverlay,
+  Annotation,
 } from "@/lib/types";
+import { MeasurementOverlay } from "../measurement/measurement-overlay";
+import { MeasurementService } from "@/services/measurement";
 import type { PolygonRing } from "@/services/geometry/polygon";
 import type { ZoneKind } from "@/services/zoning/rules";
 import { validateBuildingPlacement } from "@/services/zoning/rules";
@@ -25,6 +37,11 @@ import { ZoneDialog, type ZoneDialogState } from "./zone-dialog";
 import { applyBuffer } from "@/services/buffer";
 import { SiteMarker } from "./site-marker";
 import * as turf from "@turf/turf";
+import { LayerControl } from "./layer-control";
+import { MapProviderManager } from "./map-provider-manager";
+import { AnnotationTool } from "../annotation/annotation-tool";
+import { AnnotationOverlay } from "../annotation/annotation-overlay";
+import { LocalAuthorityLayer } from "./local-authority-layer";
 
 interface MapCanvasProps {
   shapes: Shape[];
@@ -41,6 +58,24 @@ interface MapCanvasProps {
   className?: string;
   viewState: any;
   onCameraChanged: (e: MapCameraChangedEvent) => void;
+  measurementConfig?: MeasurementConfig;
+  mapProvider: string;
+  setMapProvider: (id: string) => void;
+  layerVisibility: { [key: string]: boolean };
+  setLayerVisibility: (
+    visibility:
+      | { [key: string]: boolean }
+      | ((prev: { [key: string]: boolean }) => { [key: string]: boolean })
+  ) => void;
+  annotations: Annotation[];
+  setAnnotations: React.Dispatch<React.SetStateAction<Annotation[]>>;
+  localAuthorityInfo?: {
+    name: string;
+    reference: string;
+    entity: string;
+    planningAuthority: string;
+  } | null;
+  setLocalAuthorityInfo?: (info: any) => void;
 }
 
 interface ContextMenuState {
@@ -53,7 +88,9 @@ export function uuid() {
 }
 
 // Enhanced zone colors with better contrast and visibility
-const getEnhancedZoneColor = (kind?: Shape["zoneMeta"]["kind"]) => {
+const getEnhancedZoneColor = (
+  kind?: "residential" | "commercial" | "green_space" | "amenity" | "solar"
+) => {
   const effectiveKind = kind ?? "default";
   switch (effectiveKind) {
     case "residential":
@@ -247,19 +284,28 @@ const DrawingManagerComponent: React.FC<{
   selectedTool: Tool;
   setSelectedTool: (tool: Tool) => void;
   shapes: Shape[];
+  measurementConfig?: MeasurementConfig;
   onZoneDrawn: (path: LatLng[], area: number) => void;
   onBoundaryDrawn: (shape: Omit<Shape, "id">) => void;
 }> = ({
   selectedTool,
   setSelectedTool,
   shapes,
+  measurementConfig,
   onZoneDrawn,
   onBoundaryDrawn,
 }) => {
   const map = useMap();
   const [drawingManager, setDrawingManager] =
     useState<google.maps.drawing.DrawingManager | null>(null);
+  const [liveMeasurement, setLiveMeasurement] =
+    useState<LiveMeasurement | null>(null);
+  const [cursorPosition, setCursorPosition] = useState<{
+    x: number;
+    y: number;
+  }>({ x: 0, y: 0 });
   const { toast } = useToast();
+  const pathRef = useRef<LatLng[]>([]);
 
   useEffect(() => {
     if (!map) return;
@@ -775,11 +821,18 @@ const FreehandDrawingTool: React.FC<{
   onDrawEnd: (path: LatLng[]) => void;
   setSelectedTool: (tool: Tool) => void;
   shapes: Shape[];
-}> = ({ onDrawEnd, setSelectedTool, shapes }) => {
+  measurementConfig?: MeasurementConfig;
+}> = ({ onDrawEnd, setSelectedTool, shapes, measurementConfig }) => {
   const map = useMap();
   const [isDrawing, setIsDrawing] = useState(false);
   const pathRef = useRef<LatLng[]>([]);
   const polylineRef = useRef<google.maps.Polyline | null>(null);
+  const [liveMeasurement, setLiveMeasurement] =
+    useState<LiveMeasurement | null>(null);
+  const [cursorPosition, setCursorPosition] = useState<{
+    x: number;
+    y: number;
+  }>({ x: 0, y: 0 });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -837,6 +890,35 @@ const FreehandDrawingTool: React.FC<{
       if (!isDrawing || !e.latLng) return;
 
       pathRef.current.push(e.latLng.toJSON());
+
+      // Calculate live measurements
+      if (pathRef.current.length > 2) {
+        const area = MeasurementService.calculateArea(
+          pathRef.current,
+          measurementConfig?.units || "imperial"
+        );
+        const perimeter = MeasurementService.calculatePerimeter(
+          pathRef.current,
+          measurementConfig?.units || "imperial"
+        );
+
+        setLiveMeasurement({
+          area,
+          perimeter,
+          units: measurementConfig?.units || "imperial",
+          precision: measurementConfig?.precision ?? 2,
+          displayPosition: { x: 0, y: 0 }, // Will be updated below
+        });
+
+        // Update cursor position for overlay
+        const projection = map.getProjection();
+        if (projection) {
+          const point = projection.fromLatLngToPoint(e.latLng);
+          if (point) {
+            setCursorPosition({ x: point.x, y: point.y });
+          }
+        }
+      }
 
       // Update the polyline with enhanced styling
       if (polylineRef.current) {
@@ -913,7 +995,26 @@ const FreehandDrawingTool: React.FC<{
     };
   }, [map, isDrawing, onDrawEnd, setSelectedTool, shapes, toast]);
 
-  return null;
+  return (
+    <>
+      {liveMeasurement && (
+        <MeasurementOverlay
+          measurements={liveMeasurement}
+          position={cursorPosition}
+          config={
+            measurementConfig || {
+              units: "imperial",
+              precision: 2,
+              showArea: true,
+              showPerimeter: true,
+              showVertexCount: false,
+            }
+          }
+          visible={isDrawing}
+        />
+      )}
+    </>
+  );
 };
 
 const OpenStreetMapLayer = () => {
@@ -960,9 +1061,16 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
   setSelectedShapeIds,
   onBoundaryDrawn,
   onAutoSave,
+  measurementConfig,
+  mapProvider,
+  setMapProvider,
+  layerVisibility,
+  setLayerVisibility,
   className,
   viewState,
   onCameraChanged,
+  annotations,
+  setAnnotations,
 }) => {
   const isLoaded = useApiIsLoaded();
   const map = useMap();
@@ -979,6 +1087,18 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     path: null,
     area: null,
   });
+
+  const overlays = useMemo((): LayerOverlay[] => {
+    return [
+      {
+        id: "annotations",
+        name: "Annotations",
+        visible: layerVisibility["annotations"] ?? true,
+        opacity: 1,
+        type: "annotations",
+      },
+    ];
+  }, [layerVisibility]);
 
   const isInteractingWithShape = !!editingShapeId || !!movingShapeId;
   const isDrawing = ["rectangle", "polygon", "freehand", "zone"].includes(
@@ -1186,6 +1306,41 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
     onBoundaryDrawn({ type: "freehand", path, area });
   };
 
+  // Annotation handlers
+  const handleAnnotationCreate = useCallback(
+    (annotation: Annotation) => {
+      setAnnotations((prev) => [...prev, annotation]);
+      if (onAutoSave) {
+        onAutoSave();
+      }
+    },
+    [setAnnotations, onAutoSave]
+  );
+
+  const handleAnnotationClick = useCallback((annotation: Annotation) => {
+    // Handle annotation click - could show edit dialog or select annotation
+    console.log("Annotation clicked:", annotation);
+  }, []);
+
+  const handleAnnotationEdit = useCallback((annotation: Annotation) => {
+    // Handle annotation edit - could open edit dialog
+    console.log("Annotation edit:", annotation);
+  }, []);
+
+  const handleAnnotationDelete = useCallback(
+    (annotationId: string) => {
+      setAnnotations((prev) => prev.filter((a) => a.id !== annotationId));
+      if (onAutoSave) {
+        onAutoSave();
+      }
+    },
+    [setAnnotations, onAutoSave]
+  );
+
+  const handleAnnotationFinish = useCallback(() => {
+    setSelectedTool("pan");
+  }, [setSelectedTool]);
+
   useEffect(() => {
     const handleClickOutside = (e: google.maps.MapMouseEvent) => {
       if (selectedTool === "pan" && !isInteractingWithShape) {
@@ -1305,65 +1460,130 @@ export const MapCanvas: React.FC<MapCanvasProps> = ({
 
   return (
     <div className={className ?? "relative w-full h-full"}>
-      <Map
-        center={{ lat: viewState.latitude, lng: viewState.longitude }}
-        zoom={viewState.zoom}
-        onCameraChanged={onCameraChanged}
-        mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
-        mapTypeId="satellite"
-        tilt={0}
-        gestureHandling={
-          !isDrawing && !isInteractingWithShape ? "greedy" : "none"
-        }
-        zoomControl={!isDrawing && !isInteractingWithShape}
-        disableDoubleClickZoom={isDrawing || isInteractingWithShape}
-        streetViewControl={false}
-        mapTypeControl={false}
-        fullscreenControl={false}
-        className="w-full h-full"
+      <MapProviderManager
+        activeProvider={mapProvider}
+        onProviderChange={setMapProvider}
       >
-        {isLoaded && <OpenStreetMapLayer />}
-        {isLoaded && (
-          <DrawingManagerComponent
-            selectedTool={selectedTool}
-            shapes={shapes}
-            setSelectedTool={setSelectedTool}
-            onZoneDrawn={handleZoneDrawn}
-            onBoundaryDrawn={onBoundaryDrawn}
-          />
-        )}
-        {isLoaded && selectedTool === "freehand" && (
-          <FreehandDrawingTool
-            shapes={shapes}
-            onDrawEnd={handleFreehandDrawEnd}
-            setSelectedTool={setSelectedTool}
-          />
-        )}
-        {isLoaded && (
-          <DrawnShapes
-            shapes={shapes}
-            setShapes={setShapes}
-            onShapeRightClick={handleShapeRightClick}
-            onShapeClick={handleShapeClick}
-            selectedShapeIds={selectedShapeIds}
-            editingShapeId={editingShapeId}
-            setEditingShapeId={setEditingShapeId}
-            movingShapeId={movingShapeId}
-            setMovingShapeId={setMovingShapeId}
-            selectedTool={selectedTool}
-          />
-        )}
-        {isLoaded && elevationGrid && isAnalysisVisible && (
-          <ElevationGridDisplay
-            elevationGrid={elevationGrid}
-            steepnessThreshold={steepnessThreshold}
-          />
-        )}
-        {isLoaded && projectBoundary && (
-          <SiteMarker boundary={projectBoundary} />
-        )}
-      </Map>
-
+        <Map
+          center={{ lat: viewState.latitude, lng: viewState.longitude }}
+          zoom={viewState.zoom}
+          onCameraChanged={onCameraChanged}
+          mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
+          mapTypeId="satellite"
+          tilt={0}
+          gestureHandling={
+            !isDrawing && !isInteractingWithShape ? "greedy" : "none"
+          }
+          zoomControl={!isDrawing && !isInteractingWithShape}
+          disableDoubleClickZoom={isDrawing || isInteractingWithShape}
+          streetViewControl={false}
+          mapTypeControl={false}
+          fullscreenControl={false}
+          className="w-full h-full"
+        >
+          {isLoaded && (
+            <DrawingManagerComponent
+              selectedTool={selectedTool}
+              shapes={shapes}
+              setSelectedTool={setSelectedTool}
+              measurementConfig={
+                measurementConfig || {
+                  units: "imperial",
+                  precision: 2,
+                  showArea: true,
+                  showPerimeter: true,
+                  showVertexCount: false,
+                }
+              }
+              onZoneDrawn={handleZoneDrawn}
+              onBoundaryDrawn={onBoundaryDrawn}
+            />
+          )}
+          {isLoaded && selectedTool === "freehand" && (
+            <FreehandDrawingTool
+              shapes={shapes}
+              onDrawEnd={handleFreehandDrawEnd}
+              setSelectedTool={setSelectedTool}
+              measurementConfig={
+                measurementConfig || {
+                  units: "imperial",
+                  precision: 2,
+                  showArea: true,
+                  showPerimeter: true,
+                  showVertexCount: false,
+                }
+              }
+            />
+          )}
+          {isLoaded && (
+            <DrawnShapes
+              shapes={shapes}
+              setShapes={setShapes}
+              onShapeRightClick={handleShapeRightClick}
+              onShapeClick={handleShapeClick}
+              selectedShapeIds={selectedShapeIds}
+              editingShapeId={editingShapeId}
+              setEditingShapeId={setEditingShapeId}
+              movingShapeId={movingShapeId}
+              setMovingShapeId={setMovingShapeId}
+              selectedTool={selectedTool}
+            />
+          )}
+          {isLoaded &&
+            elevationGrid &&
+            isAnalysisVisible &&
+            (layerVisibility["elevation"] ?? true) && (
+              <ElevationGridDisplay
+                elevationGrid={elevationGrid}
+                steepnessThreshold={steepnessThreshold}
+              />
+            )}
+          {isLoaded && projectBoundary && (
+            <SiteMarker boundary={projectBoundary} />
+          )}
+          {isLoaded && selectedTool === "annotate" && (
+            <AnnotationTool
+              mode="text"
+              onAnnotationCreate={(annotation) => {
+                setAnnotations((prev) => [...prev, annotation]);
+                setSelectedTool("pan");
+              }}
+              selectedShapes={shapes.filter((s) =>
+                selectedShapeIds.includes(s.id)
+              )}
+              onFinish={() => setSelectedTool("pan")}
+            />
+          )}
+          {isLoaded && (
+            <AnnotationOverlay
+              annotations={annotations}
+              onAnnotationClick={(annotation) => {
+                // Handle annotation click if needed
+              }}
+              onAnnotationEdit={(annotation) => {
+                // Handle annotation edit if needed
+              }}
+              onAnnotationDelete={(annotationId) => {
+                setAnnotations((prev) =>
+                  prev.filter((a) => a.id !== annotationId)
+                );
+              }}
+            />
+          )}
+          {isLoaded && layerVisibility["local-authorities"] && (
+            <LocalAuthorityLayer
+              visible={layerVisibility["local-authorities"]}
+              opacity={0.3}
+              onAuthorityClick={(authority) => {
+                console.log("Local authority clicked:", authority);
+              }}
+              onAuthorityHover={(authority) => {
+                // Handle hover events if needed
+              }}
+            />
+          )}
+        </Map>
+      </MapProviderManager>
       {contextMenu && (
         <ShapeContextMenu
           position={contextMenu.position}

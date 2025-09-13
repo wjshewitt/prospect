@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile.nextjs
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - FLOOD_SERVICE_URL=http://flood:5000
+    depends_on:
+      - flood
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run dev
+
+  flood:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./src/app/api/uk-geoai/flood:/app
+    restart: unless-stopped

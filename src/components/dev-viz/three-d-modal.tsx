@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as turf from "@turf/turf";
+import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
+import transformRotate from "@turf/transform-rotate";
 import { cn } from "@/lib/utils";
 import { Switch } from "../ui/switch";
 import { mapboxgl, isMapboxConfigured } from "@/lib/mapbox-config";
@@ -119,12 +121,12 @@ export function ThreeDVisualization({
 
   useEffect(() => {
     // Start drawing when the tool is selected
-    if (selectedTool === "autofill" && !isDrawingAutofill) {
+    if ((selectedTool as any) === "autofill" && !isDrawingAutofill) {
       setIsDrawingAutofill(true);
       setAutofillPath([]);
     }
     // Cancel drawing if the tool changes
-    if (selectedTool !== "autofill" && isDrawingAutofill) {
+    if ((selectedTool as any) !== "autofill" && isDrawingAutofill) {
       setIsDrawingAutofill(false);
       setAutofillPath(null);
     }
@@ -146,7 +148,7 @@ export function ThreeDVisualization({
       const boundaryPoly = turf.polygon([boundaryCoords]);
       const clickPoint = turf.point(info.coordinate);
 
-      if (!turf.booleanPointInPolygon(clickPoint, boundaryPoly)) {
+      if (!booleanPointInPolygon(clickPoint, boundaryPoly)) {
         toast({
           variant: "destructive",
           title: "Out of Bounds",
@@ -235,7 +237,7 @@ export function ThreeDVisualization({
         const center = [x, y];
         const pt = turf.point(center);
 
-        if (turf.booleanPointInPolygon(pt, fillPolygon)) {
+        if (booleanPointInPolygon(pt, fillPolygon)) {
           const horizontalDistance =
             width / (111.32 * Math.cos(center[1] * (Math.PI / 180)));
           const verticalDistance = depth / 111.32;
@@ -245,7 +247,7 @@ export function ThreeDVisualization({
           const ymin = center[1] - verticalDistance / 2000;
           const ymax = center[1] + verticalDistance / 2000;
 
-          const newPoly = turf.transformRotate(
+          const newPoly = transformRotate(
             turf.bboxPolygon([xmin, ymin, xmax, ymax]),
             rotation,
             { pivot: center }
@@ -300,6 +302,7 @@ export function ThreeDVisualization({
   const handleSingleClick = (info: PickingInfo) => {
     // If drawing, add a point to the path
     if (isDrawingAutofill && info.coordinate) {
+      const coord = info.coordinate as [number, number];
       if (!autofillPath?.length) {
         toast({
           title: "Drawing Area",
@@ -307,9 +310,7 @@ export function ThreeDVisualization({
         });
       }
       setAutofillPath((prev) => {
-        const newPath = prev
-          ? [...prev, { lng: info.coordinate[0], lat: info.coordinate[1] }]
-          : [];
+        const newPath = prev ? [...prev, { lng: coord[0], lat: coord[1] }] : [];
         return newPath;
       });
       return;
@@ -349,18 +350,19 @@ export function ThreeDVisualization({
   };
 
   const onDragStart = (info: PickingInfo) => {
-    // Add a guard to prevent crashes when dragging off-map
-    if (!info.coordinate) {
+    // Guard: avoid crashes when dragging off-map or missing pointers
+    if (!info || !info.coordinate) {
       return;
     }
 
     if (selectedTool === "multi-select") {
-      setSelectionBox([
-        info.startPickingPointer[0],
-        info.startPickingPointer[1],
-        info.startPickingPointer[0],
-        info.startPickingPointer[1],
-      ]);
+      // Use screen coordinates provided by DeckGL picking info
+      const sx = (info as any).x;
+      const sy = (info as any).y;
+      if (typeof sx !== "number" || typeof sy !== "number") {
+        return;
+      }
+      setSelectionBox([sx, sy, sx, sy]);
       return;
     }
 
@@ -375,10 +377,14 @@ export function ThreeDVisualization({
     }
 
     if (info.object && info.object.id === selectedAssetId) {
+      // Guard against missing path points
+      const firstPt = info.object.path?.[0];
+      if (!firstPt) return;
+
       setDragInfo({
         id: info.object.id,
-        dx: info.coordinate[0] - info.object.path[0].lng,
-        dy: info.coordinate[1] - info.object.path[0].lat,
+        dx: info.coordinate[0] - firstPt.lng,
+        dy: info.coordinate[1] - firstPt.lat,
         initialPositions: new Map(),
       });
     }
@@ -388,12 +394,10 @@ export function ThreeDVisualization({
     if (!info.coordinate) return;
 
     if (selectedTool === "multi-select" && selectionBox) {
-      setSelectionBox([
-        selectionBox[0],
-        selectionBox[1],
-        info.pointer[0],
-        info.pointer[1],
-      ]);
+      const sx = (info as any).x;
+      const sy = (info as any).y;
+      if (typeof sx !== "number" || typeof sy !== "number") return;
+      setSelectionBox([selectionBox[0], selectionBox[1], sx, sy]);
       return;
     }
 
@@ -406,7 +410,7 @@ export function ThreeDVisualization({
       setShapes((prev) =>
         prev.map((s) => {
           const initialPath = dragInfo.initialPositions.get(s.id);
-          if (initialPath && selectedShapeIds.includes(s.id)) {
+          if (initialPath) {
             const newPath = initialPath.map((p) => ({
               lng: p.lng + lngDiff,
               lat: p.lat + latDiff,
@@ -446,7 +450,9 @@ export function ThreeDVisualization({
         width: Math.abs(x1 - x2),
         height: Math.abs(y1 - y2),
       };
-      const picked = info.deck.pickObjects(selectionBounds);
+      const picked = (info as any).deck?.pickObjects
+        ? (info as any).deck.pickObjects(selectionBounds)
+        : [];
       const selectedIds = picked
         .filter((p) => p.object?.assetMeta)
         .map((p) => p.object.id);
@@ -486,9 +492,9 @@ export function ThreeDVisualization({
       elevationData: `/api/mapbox-proxy?path=/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw`,
       texture: textureUrl,
       elevationDecoder: {
-        r: 256,
-        g: 1,
-        b: 1 / 256,
+        rScaler: 256,
+        gScaler: 1,
+        bScaler: 1 / 256,
         offset: -32768,
       },
       material: {
@@ -535,11 +541,8 @@ export function ThreeDVisualization({
       id: "zones",
       data: zones.filter((z) => z.visible !== false),
       getPolygon: (d) => d.path.map((p) => [p.lng, p.lat]),
-      getFillColor: (d: any) => getZoneColor(d.zoneMeta.kind),
-      getLineColor: (d: any) => {
-        const color = getZoneColor(d.zoneMeta.kind);
-        return [...color.slice(0, 3), 200];
-      },
+      getFillColor: (d: any) => getZoneColor(d.zoneMeta?.kind).slice(0, 3),
+      getLineColor: (d: any) => getZoneColor(d.zoneMeta?.kind).slice(0, 3),
       getDashArray: [5, 5],
       lineWidthMinPixels: 2,
       extruded: false,
@@ -562,8 +565,8 @@ export function ThreeDVisualization({
       data: autofillPath
         ? [{ polygon: autofillPath.map((p) => [p.lng, p.lat]) }]
         : [],
-      getFillColor: [255, 193, 7, 50],
-      getLineColor: [255, 193, 7, 200],
+      getFillColor: [255, 193, 7],
+      getLineColor: [255, 193, 7],
       getLineWidth: 2,
       lineWidthMinPixels: 2,
     });

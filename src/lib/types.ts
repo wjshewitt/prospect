@@ -171,7 +171,46 @@ export interface LayerOverlay {
   name: string;
   visible: boolean;
   opacity: number;
-  type: "elevation" | "zoning" | "property-lines" | "annotations";
+  type:
+    | "elevation"
+    | "zoning"
+    | "property-lines"
+    | "annotations"
+    | "administrative";
+}
+
+// New types for Local Authority Dataset Integration
+export interface LocalAuthorityFeature {
+  type: "Feature";
+  properties: {
+    dataset: string;
+    "end-date": string;
+    entity: string;
+    "entry-date": string;
+    name: string;
+    "organisation-entity": string;
+    prefix: string;
+    reference: string;
+    "start-date": string;
+    typology: string;
+  };
+  geometry: {
+    type: "MultiPolygon";
+    coordinates: number[][][][];
+  };
+}
+
+export interface LocalAuthorityCollection {
+  type: "FeatureCollection";
+  name: string;
+  features: LocalAuthorityFeature[];
+}
+
+export interface LocalAuthorityInfo {
+  name: string;
+  reference: string;
+  entity: string;
+  planningAuthority: string;
 }
 
 // New types for Annotation System (Phase 1 Priority 3)
@@ -195,6 +234,7 @@ export interface Annotation {
   content: string;
   style: AnnotationStyle;
   attachedTo?: string; // Shape ID if attached
+  visible?: boolean;
   metadata?: Record<string, any>;
 }
 

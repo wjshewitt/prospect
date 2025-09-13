@@ -1,6 +1,16 @@
 "use client";
 
-import type { Shape, Tool, ElevationGrid, LatLng } from "@/lib/types";
+import type {
+  Shape,
+  Tool,
+  ElevationGrid,
+  LatLng,
+  MeasurementConfig,
+  Annotation,
+} from "@/lib/types";
+
+// Force dynamic rendering for this page
+export const dynamic = "force-dynamic";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -32,12 +42,26 @@ import { useToast } from "@/hooks/use-toast";
 import { analyzeElevation } from "@/services/elevation";
 import { generateSolarLayout } from "@/ai/flows/generate-solar-layout-flow";
 import { proceduralGenerateLayout } from "@/ai/flows/procedural-generate-layout-flow";
-import type { ProceduralGenerateLayoutInput } from "@/lib/procedural-types";
+import type { ProceduralGenerateLayoutOutput } from "@/lib/procedural-types";
 import { useAuth } from "@/hooks/use-auth";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, getDoc, collection, addDoc } from "firebase/firestore";
 import { AddressSearchBox } from "@/components/map/address-search-box";
+import { area, getCoords } from "@turf/turf";
 import * as turf from "@turf/turf";
+import { LocalAuthorityLayer } from "@/components/map/local-authority-layer";
+
+interface AutosaveData {
+  projectId: string;
+  siteName: string;
+  shapes: Shape[];
+  viewState: any;
+  measurementConfig: MeasurementConfig;
+  mapProvider: string;
+  layerVisibility: Record<string, boolean>;
+  annotations: Annotation[];
+  lastModified: string;
+}
 
 // Custom hook for debouncing a value
 function useDebounce<T>(value: T, delay: number): T {
@@ -74,6 +98,8 @@ function VisionPageContent() {
   const [selectedShapeIds, setSelectedShapeIds] = useState<string[]>([]);
   const [selectedTool, setSelectedTool] = useState<Tool>("pan");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(480); // ~1/3 of typical screen width (1440px)
+  const [isResizing, setIsResizing] = useState(false);
 
   const [gridResolution, setGridResolution] = useState<number>(30); // UI state
   const debouncedGridResolution = useDebounce(gridResolution, 1000); // Debounced state for API
@@ -116,11 +142,34 @@ function VisionPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Measurement configuration from localStorage
+  const [measurementConfig, setMeasurementConfig] =
+    useLocalStorage<MeasurementConfig>("measurement-config", {
+      units: "imperial",
+      precision: 2,
+      showArea: true,
+      showPerimeter: true,
+      showVertexCount: false,
+    });
+
+  const [mapProvider, setMapProvider] = useLocalStorage(
+    "map-provider",
+    "google-satellite"
+  );
+  const [layerVisibility, setLayerVisibility] = useLocalStorage<
+    Record<string, boolean>
+  >("layer-visibility", {});
+
+  // Annotations state
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+
   // Local storage for auto-save snapshots
-  const [autosaveData] = useLocalStorage("project-autosave", null);
+  const [autosaveData, setAutosaveData] = useLocalStorage<AutosaveData | null>(
+    "project-autosave",
+    null
+  );
 
   // Hook for clearing autosave data
-  const [, setAutosaveData] = useLocalStorage("project-autosave", null);
   const clearAutosave = useCallback(
     () => setAutosaveData(null),
     [setAutosaveData]
@@ -156,11 +205,11 @@ function VisionPageContent() {
     const lngFromUrl = searchParams.get("lng");
     const zoomFromUrl = searchParams.get("zoom");
 
-    if (user && projectIdFromUrl) {
-      const loadProject = async () => {
-        setIsLoading(true);
-        let loadSuccess = false;
+    const loadProject = async () => {
+      setIsLoading(true);
+      let loadSuccess = false;
 
+      if (user && projectIdFromUrl) {
         try {
           const projectDocRef = doc(
             db,
@@ -175,10 +224,6 @@ function VisionPageContent() {
             setSiteName(projectData.siteName || "My Project");
             setShapes(projectData.shapes || []);
 
-            // Priority order for setting view state:
-            // 1. URL parameters (for new projects or specific zoom requests)
-            // 2. Saved project map state
-            // 3. Default view state
             if (latFromUrl && lngFromUrl) {
               setViewState({
                 latitude: parseFloat(latFromUrl),
@@ -198,8 +243,6 @@ function VisionPageContent() {
             }
             setProjectId(projectIdFromUrl);
             loadSuccess = true;
-
-            // Clear local autosave on successful server load
             clearAutosave();
           } else {
             toast({
@@ -211,52 +254,72 @@ function VisionPageContent() {
           }
         } catch (error) {
           console.error("Error loading project from server:", error);
-        } finally {
-          if (!loadSuccess) {
-            // Try to restore from local autosave
-            if (
-              autosaveData &&
-              (!projectIdFromUrl ||
-                autosaveData.projectId === projectIdFromUrl ||
-                autosaveData.projectId === "temp")
-            ) {
-              toast({
-                title: "Restored from Auto-save",
-                description: "Your previous session has been restored.",
-                duration: 3000,
-              });
-              setSiteName(autosaveData.siteName || "My Project");
-              setShapes(autosaveData.shapes || []);
-              setViewState(autosaveData.viewState || INITIAL_VIEW_STATE);
-              if (
-                autosaveData.projectId !== "temp" &&
-                autosaveData.projectId !== projectIdFromUrl
-              ) {
-                setProjectId(autosaveData.projectId);
-                router.push(`/vision?projectId=${autosaveData.projectId}`, {
-                  scroll: false,
-                });
-              }
-              // Clear autosave after restoration
-              clearAutosave();
-            } else {
-              toast({
-                variant: "destructive",
-                title: "Load Failed",
-                description:
-                  "Could not load project data from server or local storage.",
+        }
+      }
+
+      if (!loadSuccess) {
+        if (
+          autosaveData &&
+          (!projectIdFromUrl ||
+            autosaveData.projectId === projectIdFromUrl ||
+            autosaveData.projectId === "temp")
+        ) {
+          toast({
+            title: "Restored from Auto-save",
+            description: "Your previous session has been restored.",
+            duration: 3000,
+          });
+          setSiteName(autosaveData.siteName || "My Project");
+          setShapes(autosaveData.shapes || []);
+          setViewState(autosaveData.viewState || INITIAL_VIEW_STATE);
+          setMeasurementConfig(
+            autosaveData.measurementConfig || {
+              units: "imperial",
+              precision: 2,
+              showArea: true,
+              showPerimeter: true,
+              showVertexCount: false,
+            }
+          );
+          setMapProvider(autosaveData.mapProvider || "google-satellite");
+          setLayerVisibility(autosaveData.layerVisibility || {});
+          setAnnotations(autosaveData.annotations || []);
+          if (
+            autosaveData.projectId !== "temp" &&
+            autosaveData.projectId !== projectIdFromUrl
+          ) {
+            setProjectId(autosaveData.projectId);
+            if (user) {
+              router.push(`/vision?projectId=${autosaveData.projectId}`, {
+                scroll: false,
               });
             }
           }
-          setIsLoading(false);
+          clearAutosave();
+        } else if (projectIdFromUrl) {
+          toast({
+            variant: "destructive",
+            title: "Load Failed",
+            description:
+              "Could not load project data from server or local storage.",
+          });
         }
-      };
-      loadProject();
-    } else {
+      }
       setIsLoading(false);
+    };
+
+    if (!authLoading) {
+      loadProject();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, searchParams, router, autosaveData]);
+  }, [
+    user,
+    authLoading,
+    searchParams,
+    router,
+    autosaveData,
+    clearAutosave,
+    toast,
+  ]);
 
   useEffect(() => {
     const runAnalysis = async () => {
@@ -266,6 +329,8 @@ function VisionPageContent() {
       if (
         typeof window !== "undefined" &&
         window.google &&
+        window.google.maps &&
+        window.google.maps.ElevationService &&
         selectedShapeIds.length === 1 &&
         shapeToAnalyze &&
         !shapeToAnalyze.assetMeta
@@ -278,24 +343,57 @@ function VisionPageContent() {
             debouncedGridResolution
           );
           setElevationGrid(grid);
-        } catch (err) {
+        } catch (err: any) {
           console.error("Error getting elevation grid:", err);
-          toast({
-            variant: "destructive",
-            title: "Elevation API Error",
-            description:
-              "Could not fetch elevation data. Please check your API key and permissions.",
-          });
+
+          // Check if it's an Elevation API permission error
+          const isElevationError =
+            err?.message?.includes("ELEVATION") ||
+            err?.code === "UNKNOWN_ERROR" ||
+            err?.status === "UNKNOWN_ERROR";
+
+          if (isElevationError) {
+            toast({
+              variant: "destructive",
+              title: "Elevation API Unavailable",
+              description:
+                "Elevation data requires Elevation API to be enabled. Topography analysis is disabled.",
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Elevation API Error",
+              description:
+                "Could not fetch elevation data. Please try again later.",
+            });
+          }
           setElevationGrid(null); // Clear grid on error
         }
-      } else if (elevationGrid !== null) {
-        // If conditions aren't met, clear the grid.
-        setElevationGrid(null);
       }
     };
     runAnalysis();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedShapeIds, debouncedGridResolution]);
+  }, [selectedShapeIds, debouncedGridResolution, shapes]);
+
+  // Separate effect to clear elevation grid when conditions aren't met
+  useEffect(() => {
+    const shapeToAnalyze = shapes.find((s) => s.id === selectedShapeIds[0]);
+
+    // Clear elevation grid if conditions aren't met and we currently have a grid
+    if (elevationGrid !== null) {
+      const shouldClearGrid =
+        typeof window === "undefined" ||
+        !window.google ||
+        !window.google.maps ||
+        !window.google.maps.ElevationService ||
+        selectedShapeIds.length !== 1 ||
+        !shapeToAnalyze ||
+        !!shapeToAnalyze.assetMeta;
+
+      if (shouldClearGrid) {
+        setElevationGrid(null);
+      }
+    }
+  }, [selectedShapeIds, shapes, elevationGrid]);
 
   const projectBoundary = shapes.find(
     (s) => !s.bufferMeta && !s.zoneMeta && !s.assetMeta
@@ -330,15 +428,18 @@ function VisionPageContent() {
     }
 
     // Save to local storage immediately for snapshot
-    const localProjectData = {
+    const localProjectData: AutosaveData = {
       projectId: projectId || "temp",
       siteName,
       shapes,
       viewState,
+      measurementConfig,
+      mapProvider,
+      layerVisibility,
+      annotations,
       lastModified: new Date().toISOString(),
     };
-    const { setValue } = useLocalStorage("project-autosave", null);
-    setValue(localProjectData);
+    setAutosaveData(localProjectData);
 
     try {
       const projectData = {
@@ -350,6 +451,10 @@ function VisionPageContent() {
               zoom: viewState.zoom,
             }
           : null,
+        measurementConfig,
+        mapProvider,
+        layerVisibility,
+        annotations,
         lastModified: new Date().toISOString(),
       };
 
@@ -410,7 +515,7 @@ function VisionPageContent() {
   }, [handleSave]);
 
   const handleGenerateProceduralLayout = async (
-    settings: Omit<ProceduralGenerateLayoutInput, "boundary">
+    settings: Omit<ProceduralGenerateLayoutOutput, "boundary">
   ) => {
     if (!projectBoundary) return;
 
@@ -427,11 +532,11 @@ function VisionPageContent() {
       });
 
       const turfToShape = (
-        fc: turf.FeatureCollection,
+        fc: any,
         type: "asset" | "zone" | "road"
       ): Shape[] => {
         return fc.features.map((feature: any) => {
-          const path = (turf.getCoords(feature)[0] as number[][]).map((c) => ({
+          const path = (getCoords(feature)[0] as number[][]).map((c) => ({
             lat: c[1],
             lng: c[0],
           }));
@@ -439,7 +544,7 @@ function VisionPageContent() {
             id: uuid(),
             type: "polygon",
             path,
-            area: turf.area(feature),
+            area: area(feature),
           };
           if (type === "asset") {
             shape.assetMeta = {
@@ -615,12 +720,16 @@ function VisionPageContent() {
         });
         return;
       }
-      if (!window.google) {
+      if (
+        !window.google ||
+        !window.google.maps ||
+        !window.google.maps.ElevationService
+      ) {
         toast({
           variant: "destructive",
           title: "API Error",
           description:
-            "Google Maps API not available yet. Please wait a moment and try again.",
+            "Google Maps Elevation API not available. Please check your API key configuration.",
         });
         return;
       }
@@ -642,12 +751,29 @@ function VisionPageContent() {
             gridResolution
           );
           setElevationGrid(grid);
-        } catch (e) {
-          toast({
-            variant: "destructive",
-            title: "Elevation API Error",
-            description: "Could not fetch elevation data for 3D view.",
-          });
+        } catch (e: any) {
+          console.error("3D elevation error:", e);
+
+          // Check if it's an Elevation API permission error
+          const isElevationError =
+            e?.message?.includes("ELEVATION") ||
+            e?.code === "UNKNOWN_ERROR" ||
+            e?.status === "UNKNOWN_ERROR";
+
+          if (isElevationError) {
+            toast({
+              variant: "destructive",
+              title: "Elevation API Required",
+              description:
+                "3D view requires Elevation API to be enabled for your Google Maps API key.",
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Elevation API Error",
+              description: "Could not fetch elevation data for 3D view.",
+            });
+          }
           setIsSidebarOpen(true); // Restore sidebar
           return; // Don't switch if data fails
         }
@@ -689,6 +815,7 @@ function VisionPageContent() {
           onClick={handleToggle3DView}
           disabled={!projectBoundary}
           data-tutorial="step-4"
+          className="hover:bg-gradient-to-r hover:from-green-500 hover:to-orange-500 hover:text-white hover:border-green-500 transition-all duration-200"
         >
           <View className="h-4 w-4 mr-2" />
           {is3DMode ? "2D View" : "3D View"}
@@ -704,17 +831,21 @@ function VisionPageContent() {
           setSelectedShapeIds={setSelectedShapeIds}
           onTutorialStart={handleTutorialStart}
           is3DView={is3DMode}
+          measurementConfig={measurementConfig}
+          setMeasurementConfig={setMeasurementConfig}
+          mapProvider={mapProvider}
+          setMapProvider={setMapProvider}
+          layerVisibility={layerVisibility}
+          setLayerVisibility={setLayerVisibility}
         />
-        <main className="flex-1 relative bg-muted/20 flex">
+        <main className="flex-1 relative bg-muted/20 sidebar-layout-main">
           {!is3DMode && (
             <div
-              className="absolute top-2 z-10 flex justify-center"
+              className="absolute top-2 z-10 flex justify-center sidebar-layout-search"
               style={{
                 left: "var(--tool-palette-width, 4rem)",
-                right: isSidebarOpen
-                  ? "var(--stats-sidebar-width, 20rem)"
-                  : "0",
-                transition: "right 0.3s ease-in-out",
+                right: isSidebarOpen ? `${sidebarWidth}px` : "0",
+                transition: isResizing ? "none" : "right 0.3s ease-in-out",
               }}
             >
               <AddressSearchBox
@@ -739,7 +870,6 @@ function VisionPageContent() {
                   assets={assets}
                   zones={zones}
                   boundary={projectBoundary}
-                  elevationGrid={elevationGrid}
                   onDeleteAsset={handleDeleteAsset}
                   selectedAssetId={selectedAssetId}
                   setSelectedAssetId={setSelectedAssetId}
@@ -778,6 +908,20 @@ function VisionPageContent() {
               onAutoSave={handleAutoSave}
               viewState={viewState}
               onCameraChanged={onMapCameraChanged}
+              measurementConfig={measurementConfig}
+              mapProvider={mapProvider}
+              setMapProvider={setMapProvider}
+              layerVisibility={layerVisibility}
+              setLayerVisibility={setLayerVisibility}
+              annotations={annotations}
+              setAnnotations={setAnnotations}
+            />
+          )}
+
+          {/* Local Authority Layer */}
+          {!is3DMode && (
+            <LocalAuthorityLayer
+              visible={layerVisibility["local-authorities"] || false}
             />
           )}
 
@@ -786,18 +930,29 @@ function VisionPageContent() {
             variant="outline"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className={cn(
-              "absolute top-14 right-4 z-10 bg-background/80 backdrop-blur-sm"
+              "absolute top-4 z-10 bg-background/80 backdrop-blur-sm shadow-md hover:shadow-lg transition-all duration-200",
+              isSidebarOpen ? "right-4" : "right-4"
             )}
+            title={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
           >
-            {isSidebarOpen ? <PanelRightClose /> : <PanelLeftClose />}
+            {isSidebarOpen ? (
+              <PanelRightClose className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
           </Button>
         </main>
         <StatisticsSidebar
           shapes={shapes}
           setShapes={setShapes}
+          siteId={projectId}
           siteName={siteName}
           isOpen={isSidebarOpen}
           setIsOpen={setIsSidebarOpen}
+          width={sidebarWidth}
+          setWidth={setSidebarWidth}
+          isResizing={isResizing}
+          setIsResizing={setIsResizing}
           gridResolution={gridResolution}
           setGridResolution={setGridResolution}
           steepnessThreshold={steepnessThreshold}
@@ -820,6 +975,10 @@ function VisionPageContent() {
           setGroundStyle={setGroundStyle}
           groundColor={groundColor}
           setGroundColor={setGroundColor}
+          layerVisibility={layerVisibility}
+          setLayerVisibility={setLayerVisibility}
+          mapProvider={mapProvider}
+          setMapProvider={setMapProvider}
         />
       </div>
       <NameSiteDialog
@@ -856,8 +1015,10 @@ export default function VisionPage() {
 
   return (
     <APIProvider
-      apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-      mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID}
+      apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}
+      {...(process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID && {
+        mapId: process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID,
+      })}
       libraries={["drawing", "geometry", "elevation", "places"]}
     >
       <VisionPageContent />
