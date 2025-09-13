@@ -19,9 +19,15 @@ export type Shape = {
     | "union"
     | "difference"
     | "zone";
-  path: LatLng[];
+  path: LatLng[]; // Legacy format for backward compatibility
+  coordinates?: number[][][]; // GeoJSON polygon coordinates for MapLibre
   area?: number;
   visible?: boolean;
+  properties?: {
+    name?: string;
+    description?: string;
+    [key: string]: any;
+  };
   // Optional metadata for buffer shapes
   bufferMeta?: {
     originalShapeId: string;
@@ -128,14 +134,19 @@ export interface Measurement {
   timestamp: string;
 }
 
-// New types for Map Layer Management System (Phase 1 Priority 2)
+// Updated MapProvider interface for MapLibre (Phase 1)
 export interface MapProvider {
   id: string;
   name: string;
   type: "satellite" | "street" | "terrain" | "hybrid";
   attribution: string;
   maxZoom: number;
-  getTileUrl: (x: number, y: number, z: number) => string;
+  // MapLibre style URL (for modern MapLibre providers)
+  styleUrl?: string;
+  // Legacy tile URL function (for backward compatibility)
+  getTileUrl?: (x: number, y: number, z: number) => string;
+  // Whether this provider requires an API key
+  requiresApiKey?: boolean;
 }
 
 export const MAP_PROVIDERS: MapProvider[] = [
@@ -168,15 +179,22 @@ export const MAP_PROVIDERS: MapProvider[] = [
 
 export interface LayerOverlay {
   id: string;
-  name: string;
+  name?: string;
   visible: boolean;
-  opacity: number;
+  opacity?: number;
   type:
     | "elevation"
-    | "zoning"
+    | "zoning" 
     | "property-lines"
     | "annotations"
-    | "administrative";
+    | "administrative"
+    | "vector"
+    | "raster"
+    | "geojson";
+  // Additional properties for MapLibre layers
+  source?: any;
+  paint?: any;
+  layout?: any;
 }
 
 // New types for Local Authority Dataset Integration

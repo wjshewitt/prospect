@@ -9,14 +9,9 @@ import React, {
 } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import {
-  UnifiedCoordinateSystem,
-  CoordinateSystem,
-} from "../coordinates/CoordinateSystem";
 
 interface MapLibreContextType {
   map: maplibregl.Map | null;
-  coordinateSystem: CoordinateSystem;
   isLoaded: boolean;
 }
 
@@ -32,30 +27,31 @@ export const useMapLibre = () => {
 
 interface MapLibreProviderProps {
   children: React.ReactNode;
-  initialCenter?: [number, number];
-  initialZoom?: number;
+  containerRef: React.RefObject<HTMLDivElement>;
+  center?: [number, number];
+  zoom?: number;
   style?: string;
 }
 
 export const MapLibreProvider: React.FC<MapLibreProviderProps> = ({
   children,
-  initialCenter = [-2.244644, 53.483959], // UK center
-  initialZoom = 7,
+  containerRef,
+  center = [-2.244644, 53.483959], // UK center
+  zoom = 7,
   style = "https://demotiles.maplibre.org/style.json",
 }) => {
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const coordinateSystem = useRef(new UnifiedCoordinateSystem()).current;
-  const mapContainer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!containerRef.current || map) return;
 
     const mapInstance = new maplibregl.Map({
-      container: mapContainer.current,
+      container: containerRef.current,
       style,
-      center: initialCenter,
-      zoom: initialZoom,
+      center,
+      zoom,
+      attributionControl: true,
     });
 
     mapInstance.on("load", () => {
@@ -65,20 +61,15 @@ export const MapLibreProvider: React.FC<MapLibreProviderProps> = ({
     setMap(mapInstance);
 
     return () => {
-      mapInstance.remove();
+      if (mapInstance) {
+        mapInstance.remove();
+      }
     };
-  }, [initialCenter, initialZoom, style]);
-
-  const contextValue: MapLibreContextType = {
-    map,
-    coordinateSystem,
-    isLoaded,
-  };
+  }, [containerRef, center, zoom, style]);
 
   return (
-    <MapLibreContext.Provider value={contextValue}>
-      <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
-      {isLoaded && children}
+    <MapLibreContext.Provider value={{ map, isLoaded }}>
+      {children}
     </MapLibreContext.Provider>
   );
 };
