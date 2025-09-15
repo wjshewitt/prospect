@@ -16,6 +16,15 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_MAPBOX_TOKEN: 'pk.eyJ1Ijoid2pzaGV3aXR0IiwiYSI6ImNtZjczNGR4ajBkZjMybHM2MDFhazV0OTIifQ.EQrYlQl16I2Z9VKJHAArKw',
   },
+  // Optimize for Cloudflare build performance
+  webpack: (config, { isServer }) => {
+    // Reduce warnings for server-side builds
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push('handlebars');
+    }
+    return config;
+  },
   typescript: {
     ignoreBuildErrors: true,
   },
