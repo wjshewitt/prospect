@@ -1,191 +1,81 @@
-# Firebase Studio
+# Prospect - WIP
 
-This is a NextJS starter in Firebase Studio.
+Prospect is a land visualization and planning tool built with Next.js, Firebase, and Google Maps APIs. It provides advanced GIS features for analyzing, measuring, and annotating land parcels, with a focus on UK local authority datasets and flood risk data integration.
 
-To get started, take a look at src/app/page.tsx.
+## Key Features
 
-## Google Maps Setup for Project Creation (Location Step)
+- **Interactive Land Visualization:** Draw, measure, and annotate directly on maps using advanced drawing tools.
+- **GIS Toolset:** Live measurement system, annotation, responsive design, map provider switching, and tool palette organization.
+- **UK Local Authority Service:** Efficiently fetches, caches, and renders UK Local Authority District data. Includes viewport-based rendering, debouncing, and server-side caching.
+- **Flood Risk Data Integration:** Containerized Python service fetches flood risk information from the Environment Agency API.
+- **Auto-Save & Performance Optimizations:** Debounced calculations at 60fps, lazy loading, efficient rendering, memory management, and viewport culling.
+- **Accessibility:** Keyboard shortcuts and accessible UI features.
+- **Google Maps Integration:** Uses @react-google-maps/api for seamless location selection and project creation.
 
-The New Project flow uses Google Maps (via @react-google-maps/api) for the Location step. Follow these steps to enable maps locally and in production.
+## Architecture Overview
 
-### 1) Enable APIs in Google Cloud Console
+- **Frontend:** Next.js (TypeScript), React, Firebase for authentication and data storage.
+- **Backend:** Firebase, external APIs (e.g., Environment Agency Flood Risk, OSM Overpass).
+- **Services:** Modular services for local authorities, demographics, zoning, and geometry.
+- **Flood Service:** Python containerized microservice for processing UK flood data.
+- **Spatial Indexing:** Client-side spatial index (future enhancement: robust indexing with `rbush`).
 
-Enable the following APIs in your Google Cloud project:
+## Getting Started
 
-- Maps JavaScript API
-- Places API
-- Geocoding API (optional but recommended for reverse geocoding of the marker position)
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/wjshewitt/prospect.git
+   cd prospect
+   ```
 
-### 2) Create and Restrict an API Key
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
 
-Create a browser API key and restrict it to HTTP referrers:
+3. **Set up environment variables:**
+   - Configure API keys in `next.config.ts` as needed for Google Maps and Firebase.
 
-- Local development:
-  - http://localhost:3000/\*
-  - http://127.0.0.1:3000/*
-- Production (examples):
-  - https://your-domain.com/*
-  - https://www.your-domain.com/*
+4. **Development server (with Turbopack):**
+   ```bash
+   npm run dev
+   ```
 
-Under API restrictions, allow only:
+5. **Build and start production:**
+   ```bash
+   npm run build
+   npm run start
+   ```
 
-- Maps JavaScript API
-- Places API
-- Geocoding API (if using reverse geocoding)
+6. **Lint and typecheck:**
+   ```bash
+   npm run lint
+   npm run typecheck
+   ```
 
-### 3) Configure Environment Variable
+## Directory Structure
 
-Add the API key to your .env.local file (do NOT commit the actual key to source control):
+- `src/app/`: Main application pages and layout.
+- `src/services/`: Modular service logic (local authority, demographics, geometry, zoning, etc.).
+- `docs/`: Documentation for specialized services (e.g., flood-service).
+- `.idx/`: Nix workspace configuration for development environments.
 
-```
-# .env.local
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=YOUR_GOOGLE_MAPS_BROWSER_API_KEY
-```
+## Configuration Notes
 
-Restart the Next.js dev server after adding/updating env vars.
+- TypeScript and ESLint errors are ignored during builds (see `next.config.ts`).
+- Remote image patterns configured for placehold.co and picsum.photos.
+- ES2017 target with modern module resolution.
 
-### 4) Development Preview Route
+## Future Enhancements
 
-A development-only preview route exists to test the Location step without auth:
+- Advanced spatial indexing with `rbush` for faster queries.
+- Geometry simplification at different zoom levels for scalable rendering.
+- Search functionality for local authorities by name and map navigation.
 
-- Route: /dev/location-preview
-- This page is automatically disabled in production builds.
-- It allows you to:
-  - Search for a place (Places Autocomplete)
-  - Drag a marker and see reverse-geocoded address updates
-  - Use the browser Geolocation API via a “Use my location” control
-  - Copy the resolved address
+## License
 
-If you don’t see the map:
+MIT
 
-- Ensure NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is set
-- Confirm the key referrers include your local origin
-- Verify the APIs are enabled and billing is configured in Cloud Console
+---
 
-### 5) Production Notes
-
-- The Location step is integrated into the Create New Project modal and is used both on the empty state and when projects exist.
-- The map initializes client-side using @react-google-maps/api with useJsApiLoader and requests only the “places” library.
-- The component provides safe fallbacks:
-  - Missing API key message
-  - Script load error with retry
-  - Offline/denied geolocation messages
-  - Loading skeleton while script initializes
-
-### Troubleshooting
-
-- Blank map or “gray” tiles:
-  - Check that the referrer restriction matches your current origin exactly
-  - Verify the Maps JavaScript API is enabled
-  - Confirm billing is active on the Cloud project
-- “ApiNotActivatedMapError”:
-  - Enable Maps JavaScript API for your key
-- “RefererNotAllowedMapError”:
-  - Add your origin to HTTP referrers and wait a few minutes for changes to propagate
-- Geolocation errors:
-  - Ensure your browser has permission to use location
-  - Some browsers require HTTPS for geolocation; localhost is typically allowed
-
-### Security
-
-- Use a browser API key restricted by HTTP referrer.
-- Do not embed server-side or unrestricted keys in the client.
-
-## Enhanced GIS Toolset Features
-
-### Live Measurement System
-
-The enhanced GIS toolset includes a live measurement system that displays real-time area and perimeter calculations during drawing operations:
-
-- **Usage**: Select any drawing tool (rectangle, polygon, freehand) and draw a shape
-- **Display**: A floating overlay shows area and perimeter measurements as you draw
-- **Configuration**: Access measurement settings through the tool palette settings menu to:
-  - Toggle between metric and imperial units
-  - Adjust decimal precision
-  - Show/hide area and perimeter values
-
-### Map Provider Switching
-
-Switch between different map providers for varied visualization options:
-
-- **Usage**: Open the layer control panel (top-right corner of map)
-- **Providers**:
-  - Google Satellite (default)
-  - OpenStreetMap
-- **Persistence**: Your map provider preference is saved between sessions
-
-### Annotation System
-
-Add text labels and dimension lines to your maps:
-
-- **Text Annotations**:
-  - Select the "Text" tool from the annotation category in the tool palette
-  - Click on the map to place a text annotation
-  - Edit the text content in the popup editor
-- **Dimension Annotations**:
-  - Select the "Dimension" tool from the annotation category
-  - Click the first point of your measurement
-  - Click the second point to create a dimension line with distance
-- **Area Labels**:
-  - Select the "Area Label" tool from the annotation category
-  - Click on a shape to automatically label it with its area measurement
-
-### Tool Palette Organization
-
-The tool palette has been reorganized into logical categories:
-
-- **Drawing Tools**: Rectangle, polygon, freehand, zone
-- **Measurement Tools**: Live measurement display
-- **Annotation Tools**: Text, dimension, area label
-- **Layer Control**: Access map provider and overlay settings
-
-### Auto-Save Integration
-
-All new data types are automatically saved:
-
-- Measurement configuration preferences
-- Map provider selection
-- Layer visibility settings
-- Annotations
-- The system automatically saves your work every few minutes and when you explicitly save
-
-### Responsive Design
-
-The enhanced toolset is fully responsive:
-
-- Tool palette adapts to different screen sizes
-- Layer control panel is optimized for mobile and tablet
-- Measurement overlay adjusts position for better visibility on smaller screens
-
-### Accessibility Features
-
-The enhanced toolset includes comprehensive accessibility support:
-
-- **Keyboard Navigation**: Full keyboard support throughout the interface
-  - Use Tab to navigate between tools and controls
-  - Press Escape to close dialogs and cancel operations
-  - Arrow keys for navigating dropdown menus and sliders
-- **Screen Reader Support**: ARIA labels and live regions for assistive technology
-  - Live measurement announcements during drawing operations
-  - Descriptive labels for all interactive elements
-  - Status updates for tool state changes
-- **High Contrast**: All UI elements meet WCAG contrast requirements
-- **Focus Management**: Clear focus indicators and logical tab order
-- **Touch Support**: Optimized for touch devices with appropriate target sizes
-
-### Keyboard Shortcuts
-
-- **Escape**: Cancel current operation or close dialogs
-- **Ctrl+Click** (or **Cmd+Click** on Mac): Multi-select shapes
-- **Tab**: Navigate between interface elements
-- **Enter/Space**: Activate buttons and controls
-
-### Performance Optimizations
-
-The enhanced toolset includes several performance optimizations:
-
-- **Debounced Calculations**: Live measurements update at 60fps without performance impact
-- **Lazy Loading**: Components load only when needed
-- **Efficient Rendering**: Optimized re-rendering with React.memo and useMemo
-- **Memory Management**: Automatic cleanup of unused map elements
-- **Viewport Culling**: Only renders visible annotations and measurements
+Maintained by [@wjshewitt](https://github.com/wjshewitt).
