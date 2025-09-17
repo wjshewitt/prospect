@@ -1,6 +1,6 @@
 # Prospect - WIP
 
-Prospect is a land visualization and planning tool built with Next.js, Firebase, and Google Maps APIs. It provides advanced GIS features for analyzing, measuring, and annotating land parcels, with a focus on UK local authority datasets and flood risk data integration.
+Prospect is a land visualization and planning tool built with Next.js, Firebase, and Google Maps APIs. It provides advanced GIS features for analszing, measuring, and annotating land parcels, with a focus on UK local authority datasets and flood risk data integration.
 
 ## Key Features
 
