@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering for this dev page
+export const dynamic = "force-dynamic";
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";

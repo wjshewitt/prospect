@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering for this dev page
+export const dynamic = "force-dynamic";
+
 import React, { useState, useCallback } from "react";
 import {
   APIProvider,
